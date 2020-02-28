@@ -1,0 +1,185 @@
+\documentclass[oneside]{ausarbeitung}
+\bibliography{latexlit}
+
+\usepackage{tikz}
+\usepackage{listings}
+\lstset{numbers=left, numberstyle=\tiny, numbersep=5pt}
+\lstset{language=C}
+\lstset{ % ... whatever was already there ...
+        literate=% ... any other literates already there ...
+                 {!}{!}1
+                 {?}{?}1
+                 {:}{:}1
+}
+
+\usepackage{xcolor}
+
+\colorlet{punct}{red!60!black}
+\definecolor{background}{HTML}{EEEEEE}
+\definecolor{delim}{RGB}{20,105,176}
+\colorlet{numb}{magenta!60!black}
+
+\lstdefinelanguage{json}{
+    basicstyle=\normalfont\ttfamily,
+    numbers=left,
+    numberstyle=\scriptsize,
+    stepnumber=1,
+    numbersep=8pt,
+    showstringspaces=false,
+    breaklines=true,
+    literate=
+     *{0}{{{\color{numb}0}}}{1}
+      {1}{{{\color{numb}1}}}{1}
+      {2}{{{\color{numb}2}}}{1}
+      {3}{{{\color{numb}3}}}{1}
+      {4}{{{\color{numb}4}}}{1}
+      {5}{{{\color{numb}5}}}{1}
+      {6}{{{\color{numb}6}}}{1}
+      {7}{{{\color{numb}7}}}{1}
+      {8}{{{\color{numb}8}}}{1}
+      {9}{{{\color{numb}9}}}{1}
+      {:}{{{\color{punct}{:}}}}{1}
+      {,}{{{\color{punct}{,}}}}{1}
+      {\{}{{{\color{delim}{\{}}}}{1}
+      {\}}{{{\color{delim}{\}}}}}{1}
+      {[}{{{\color{delim}{[}}}}{1}
+      {]}{{{\color{delim}{]}}}}{1},
+}
+
+% ----------------------------------------------------------------------
+
+\begin{document}
+
+\selectlanguage{ngerman}
+
+%--- Art der Arbeit
+% Erlaubte Werte:
+% Praxissemesterbericht, Projektbericht, Bachelorarbeit oder                                % Masterarbeit
+\doctype{Bachelorarbeit}
+
+%--- Studiengang:
+\depname{Medieninformatik}
+
+\title{Erstellung einer 3D Web Applikation mit WebGPU und WebAssembly}
+
+\author{Laurin Agostini}
+\matrikelnr{60526}
+
+\examinerA{Prof.~Dr.~Winfried~Bantel}
+\date{XX. Mai 2020}
+
+%--- Titelseite Anzeigen
+\maketitle
+\cleardoublepage
+
+%---
+\pagenumbering{roman}
+\setcounter{page}{1}
+
+
+%--- Eidesstattliche Erklärung anzeigen
+\makeaffirmation
+\cleardoublepage
+
+%---
+\chapter*{Kurzfassung}
+\addcontentsline{toc}{chapter}{Kurzfassung}
+
+%-----------------------------------------------------------------------
+\cleardoublepage
+\addcontentsline{toc}{chapter}{Inhaltsverzeichnis}
+\tableofcontents
+
+%---
+\addcontentsline{toc}{chapter}{Abbildungsverzeichnis}
+\listoffigures
+
+%---
+\addcontentsline{toc}{chapter}{Tabellenverzeichnis}
+\listoftables
+
+%---
+\chapter*{Abkürzungsverzeichnis}
+\addcontentsline{toc}{chapter}{Abkürzungsverzeichnis}
+\begin{acronym}[JSON]  % Längstes Kürzel in der nachfolgenden
+                       % Liste um die Breite der Spalte für die
+                       % Abkürzungen zu bestimmen.
+
+%% Eintrag: \acro{Referenzname}[Kürzel]{Langform}
+%% Im Text wird die Abkürzung dann mit \ac{Referenzname} benutzt.
+\acro{zb}[z.B.]{zum Beispiel}
+\acro{dh}[d.h.]{das heißt}
+\acro{json}[JSON]{JavaScript Object Notation}
+\end{acronym}
+%---
+\cleardoublepage
+\pagenumbering{arabic}
+\setcounter{page}{1}
+
+% ----------------------------------------------------------------------
+\chapter{Einleitung}
+\label{cha:einleitung}
+
+\section{Motivation}
+\label{sec:motivation}
+
+\section{Problemstellung und -abgrenzung}
+\label{sec:problemstellung}
+
+\section{Ziel der Arbeit}
+\label{sec:ziel}
+
+
+\section{Vorgehen}
+\label{sec:vorgehen}
+
+
+% ---
+\chapter{Grundlagen}
+\label{cha:grundlagen}
+%---
+\chapter{Problemanalyse}
+\label{cha:problemanalyse}
+
+
+%---
+\chapter{Implementierung}
+\label{cha:implementierung}
+
+
+
+%---
+\chapter{Evaluierung}
+\label{cha:evaluation}
+
+
+%---
+\chapter{Zusammenfassung und Ausblick}
+\label{cha:zusammenfassung}
+\section{Erreichte Ergebnisse}
+\label{sec:ergebnisse}
+
+
+\section{Ausblick}
+\label{sec:ausblick}
+
+\subsection{Erweiterbarkeit der Ergebnisse}
+\label{sub:erweiterbarkeit}
+
+\subsection{Übertragbarkeit der Ergebnisse}
+\label{sub:uebertragbarkeit}
+
+%-----------------------------------------------------------------------
+\appendix
+
+%---
+\printbibliography
+
+%---
+%\chapter{Anhang A}
+
+%---
+%\chapter{Anhang B}
+
+
+\end{document}

@@ -1,0 +1,6 @@
+[submodule "external/wgpu"]
+	path = external/wgpu
+	url = https://github.com/gfx-rs/wgpu
+[submodule "external/emscripten"]
+	path = external/emscripten
+	url = https://github.com/emscripten-core/emscripten
