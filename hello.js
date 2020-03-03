@@ -120,6 +120,7 @@ var Module = typeof Module !== 'undefined' ? Module : {};
       }
   Module['FS_createPath']('/', 'src', true, true);
 Module['FS_createPath']('/src', 'shaders', true, true);
+Module['FS_createPath']('/src/shaders', 'compiled', true, true);
 
       function DataRequest(start, end, audio) {
         this.start = start;
@@ -195,7 +196,7 @@ Module['FS_createPath']('/src', 'shaders', true, true);
     }
   
    }
-   loadPackage({"files": [{"start": 0, "audio": 0, "end": 1540, "filename": "/src/shaders/vert.spv"}, {"start": 1540, "audio": 0, "end": 2148, "filename": "/src/shaders/frag.spv"}], "remote_package_size": 2148, "package_uuid": "ecb3d14c-cb2f-4b63-8c3b-23ce12576f31"});
+   loadPackage({"files": [{"start": 0, "audio": 0, "end": 608, "filename": "/src/shaders/compiled/frag.spv"}, {"start": 608, "audio": 0, "end": 2292, "filename": "/src/shaders/compiled/vert.spv"}], "remote_package_size": 2292, "package_uuid": "12f30f00-b4e3-4f59-9104-78e117453de7"});
   
   })();
   
@@ -818,8 +819,8 @@ var wasmMemory;
 // In the wasm backend, we polyfill the WebAssembly object,
 // so this creates a (non-native-wasm) table for us.
 var wasmTable = new WebAssembly.Table({
-  'initial': 11,
-  'maximum': 11 + 0,
+  'initial': 12,
+  'maximum': 12 + 0,
   'element': 'anyfunc'
 });
 
@@ -1420,11 +1421,11 @@ function updateGlobalBufferAndViews(buf) {
 }
 
 var STATIC_BASE = 1024,
-    STACK_BASE = 5247104,
+    STACK_BASE = 5250480,
     STACKTOP = STACK_BASE,
-    STACK_MAX = 4224,
-    DYNAMIC_BASE = 5247104,
-    DYNAMICTOP_PTR = 4064;
+    STACK_MAX = 7600,
+    DYNAMIC_BASE = 5250480,
+    DYNAMICTOP_PTR = 7440;
 
 assert(STACK_BASE % 16 === 0, 'stack must start aligned');
 assert(DYNAMIC_BASE % 16 === 0, 'heap must start aligned');
@@ -1948,7 +1949,7 @@ var ASM_CONSTS = {
 
 
 
-// STATICTOP = STATIC_BASE + 3200;
+// STATICTOP = STATIC_BASE + 6576;
 /* global initializers */  __ATINIT__.push({ func: function() { ___wasm_call_ctors() } });
 
 
@@ -4568,12 +4569,17 @@ var ASM_CONSTS = {
 
   function ___unlock() {}
 
+  function _clock() {
+      if (_clock.start === undefined) _clock.start = Date.now();
+      return ((Date.now() - _clock.start) * (1000000 / 1000))|0;
+    }
+
   function _emscripten_get_heap_size() {
       return HEAPU8.length;
     }
 
   function _emscripten_get_sbrk_ptr() {
-      return 4064;
+      return 7440;
     }
 
   function _emscripten_memcpy_big(dest, src, num) {
@@ -5693,6 +5699,32 @@ var ASM_CONSTS = {
       setTempRet0(($i) | 0);
     }
 
+  function _wgpuBufferMapWriteAsync(bufferId, callback, userdata) {
+      var bufferWrapper = WebGPU.mgrBuffer.objects[bufferId];
+      var buffer = bufferWrapper.object;
+  
+      var WEBGPU_BUFFER_MAP_ASYNC_STATUS_SUCCESS = 0;
+      var WEBGPU_BUFFER_MAP_ASYNC_STATUS_ERROR = 1;
+      buffer["mapWriteAsync"]().then(function(mapped) {
+        WebGPU.trackMapWrite(bufferWrapper, mapped);
+  
+        var data = bufferWrapper.mapWriteSrc;
+        var dataLength_h = (mapped.byteLength / 0x100000000) | 0;
+        var dataLength_l = mapped.byteLength | 0;
+        // WGPUBufferMapAsyncStatus status, void* data, uint64_t dataLength, void* userdata
+        dynCall('viiji', callback, [WEBGPU_BUFFER_MAP_ASYNC_STATUS_SUCCESS, data, dataLength_l, dataLength_h, userdata]);
+      }, function() {
+        // TODO(kainino0x): Figure out how to pick other error status values.
+        dynCall('viiji', callback, [WEBGPU_BUFFER_MAP_ASYNC_STATUS_ERROR, 0, 0, 0, userdata]);
+      });
+    }
+
+  function _wgpuBufferUnmap(bufferId) {
+      var bufferWrapper = WebGPU.mgrBuffer.objects[bufferId];
+      WebGPU.trackUnmap(bufferWrapper);
+      bufferWrapper.object["unmap"]();
+    }
+
   function _wgpuCommandEncoderBeginRenderPass(encoderId, descriptor) {
       assert(descriptor);
   
@@ -5768,6 +5800,19 @@ var ASM_CONSTS = {
   
       var commandEncoder = WebGPU.mgrCommandEncoder.get(encoderId);
       return WebGPU.mgrRenderPassEncoder.create(commandEncoder["beginRenderPass"](desc));
+    }
+
+  function _wgpuCommandEncoderCopyBufferToBuffer(encoderId, srcId, srcOffset_l, srcOffset_h, dstId, dstOffset_l, dstOffset_h, size_l, size_h) {
+      var commandEncoder = WebGPU.mgrCommandEncoder.get(encoderId);
+      var src = WebGPU.mgrBuffer.get(srcId);
+      var dst = WebGPU.mgrBuffer.get(dstId);
+      commandEncoder["copyBufferToBuffer"](
+        src, (assert(srcOffset_h < 0x200000), srcOffset_h * 0x100000000 + srcOffset_l)
+  ,
+        dst, (assert(dstOffset_h < 0x200000), dstOffset_h * 0x100000000 + dstOffset_l)
+  ,
+        (assert(size_h < 0x200000), size_h * 0x100000000 + size_l)
+  );
     }
 
   function _wgpuCommandEncoderFinish(encoderId) {
@@ -5888,6 +5933,45 @@ var ASM_CONSTS = {
   
       var device = WebGPU["mgrDevice"].get(deviceId);
       return WebGPU.mgrBindGroupLayout.create(device["createBindGroupLayout"](desc));
+    }
+
+  function _wgpuDeviceCreateBuffer(deviceId, descriptor) {
+      assert(descriptor);assert(HEAP32[((descriptor)>>2)] === 0);
+      var desc = {
+        "label": undefined,
+        "usage": HEAPU32[(((descriptor)+(8))>>2)],
+        "size": HEAPU32[((((descriptor + 4))+(16))>>2)] * 0x100000000 + HEAPU32[(((descriptor)+(16))>>2)],
+      };
+      var labelPtr = HEAP32[(((descriptor)+(4))>>2)];
+      if (labelPtr) desc["label"] = UTF8ToString(labelPtr);
+  
+      var device = WebGPU["mgrDevice"].get(deviceId);
+      return WebGPU.mgrBuffer.create(device["createBuffer"](desc));
+    }
+
+  function _wgpuDeviceCreateBufferMapped(returnPtr, deviceId, descriptor) {
+      assert(descriptor);assert(HEAP32[((descriptor)>>2)] === 0);
+      var desc = {
+        "usage": HEAPU32[(((descriptor)+(8))>>2)],
+        "size": HEAPU32[((((descriptor + 4))+(16))>>2)] * 0x100000000 + HEAPU32[(((descriptor)+(16))>>2)],
+      };
+  
+      var device = WebGPU["mgrDevice"].get(deviceId);
+      var bufferMapped = device["createBufferMapped"](desc);
+      var buffer = bufferMapped[0];
+      var mapped = bufferMapped[1];
+  
+      var bufferWrapper = {};
+      var bufferId = WebGPU.mgrBuffer.create(buffer, bufferWrapper);
+      WebGPU.trackMapWrite(bufferWrapper, mapped);
+  
+      var dataLength_h = (mapped.byteLength / 0x100000000) | 0;
+      var dataLength_l = mapped.byteLength | 0;
+  
+      HEAP32[((returnPtr)>>2)]=bufferId
+      HEAP32[(((returnPtr)+(8))>>2)]=dataLength_l
+      HEAP32[(((returnPtr)+(12))>>2)]=dataLength_h
+      HEAP32[(((returnPtr)+(16))>>2)]=bufferWrapper.mapWriteSrc
     }
 
   function _wgpuDeviceCreateCommandEncoder(deviceId, descriptor) {
@@ -6179,9 +6263,9 @@ var ASM_CONSTS = {
       queue.submit(cmds);
     }
 
-  function _wgpuRenderPassEncoderDraw(passId, vertexCount, instanceCount, firstVertex, firstInstance) {
+  function _wgpuRenderPassEncoderDrawIndexed(passId, indexCount, instanceCount, firstIndex, baseVertex, firstInstance) {
       var pass = WebGPU.mgrRenderPassEncoder.get(passId);
-      pass["draw"](vertexCount, instanceCount, firstVertex, firstInstance);
+      pass["drawIndexed"](indexCount, instanceCount, firstIndex, baseVertex, firstInstance);
     }
 
   function _wgpuRenderPassEncoderEndPass(passId) {
@@ -6189,10 +6273,35 @@ var ASM_CONSTS = {
       pass["endPass"]();
     }
 
+  function _wgpuRenderPassEncoderSetBindGroup(passId, groupIndex, groupId, dynamicOffsetCount, dynamicOffsetsPtr) {
+      var pass = WebGPU.mgrRenderPassEncoder.get(passId);
+      var group = WebGPU.mgrBindGroup.get(groupId);
+      if (dynamicOffsetCount == 0) {
+        pass["setBindGroup"](groupIndex, group);
+      } else {
+        var offsets = [];
+        for (var i = 0; i < dynamicOffsetCount; i++, dynamicOffsetsPtr += 4) {
+          offsets.push(HEAPU32[((dynamicOffsetsPtr)>>2)]);
+        }
+        pass["setBindGroup"](groupIndex, group, offsets);
+      }
+    }
+
+  function _wgpuRenderPassEncoderSetIndexBuffer(passId, bufferId, offset) {
+      var pass = WebGPU.mgrRenderPassEncoder.get(passId);
+      var buffer = WebGPU.mgrBuffer.get(bufferId);
+      pass["setIndexBuffer"](buffer, offset);
+    }
+
   function _wgpuRenderPassEncoderSetPipeline(passId, pipelineId) {
       var pass = WebGPU.mgrRenderPassEncoder.get(passId);
       var pipeline = WebGPU.mgrRenderPipeline.get(pipelineId);
       pass["setPipeline"](pipeline);
+    }
+
+  function _wgpuRenderPassEncoderSetVertexBuffer(passId, slot, bufferId, offset) {
+      var pass = WebGPU.mgrRenderPassEncoder.get(passId);
+      pass["setVertexBuffer"](slot, WebGPU.mgrBuffer.get(bufferId), offset);
     }
 
   function _wgpuSwapChainGetCurrentTextureView(swapChainId) {
@@ -6254,7 +6363,7 @@ function intArrayToString(array) {
 // ASM_LIBRARY EXTERN PRIMITIVES: Int8Array,Int32Array
 
 var asmGlobalArg = {};
-var asmLibraryArg = { "__assert_fail": ___assert_fail, "__handle_stack_overflow": ___handle_stack_overflow, "__lock": ___lock, "__syscall221": ___syscall221, "__syscall5": ___syscall5, "__syscall54": ___syscall54, "__unlock": ___unlock, "emscripten_get_sbrk_ptr": _emscripten_get_sbrk_ptr, "emscripten_memcpy_big": _emscripten_memcpy_big, "emscripten_resize_heap": _emscripten_resize_heap, "emscripten_set_main_loop": _emscripten_set_main_loop, "emscripten_webgpu_get_device": _emscripten_webgpu_get_device, "fd_close": _fd_close, "fd_read": _fd_read, "fd_seek": _fd_seek, "fd_write": _fd_write, "memory": wasmMemory, "setTempRet0": _setTempRet0, "table": wasmTable, "wgpuCommandEncoderBeginRenderPass": _wgpuCommandEncoderBeginRenderPass, "wgpuCommandEncoderFinish": _wgpuCommandEncoderFinish, "wgpuDeviceCreateBindGroup": _wgpuDeviceCreateBindGroup, "wgpuDeviceCreateBindGroupLayout": _wgpuDeviceCreateBindGroupLayout, "wgpuDeviceCreateCommandEncoder": _wgpuDeviceCreateCommandEncoder, "wgpuDeviceCreatePipelineLayout": _wgpuDeviceCreatePipelineLayout, "wgpuDeviceCreateQueue": _wgpuDeviceCreateQueue, "wgpuDeviceCreateRenderPipeline": _wgpuDeviceCreateRenderPipeline, "wgpuDeviceCreateShaderModule": _wgpuDeviceCreateShaderModule, "wgpuDeviceCreateSwapChain": _wgpuDeviceCreateSwapChain, "wgpuDeviceSetUncapturedErrorCallback": _wgpuDeviceSetUncapturedErrorCallback, "wgpuInstanceCreateSurface": _wgpuInstanceCreateSurface, "wgpuQueueSubmit": _wgpuQueueSubmit, "wgpuRenderPassEncoderDraw": _wgpuRenderPassEncoderDraw, "wgpuRenderPassEncoderEndPass": _wgpuRenderPassEncoderEndPass, "wgpuRenderPassEncoderSetPipeline": _wgpuRenderPassEncoderSetPipeline, "wgpuSwapChainGetCurrentTextureView": _wgpuSwapChainGetCurrentTextureView };
+var asmLibraryArg = { "__assert_fail": ___assert_fail, "__handle_stack_overflow": ___handle_stack_overflow, "__lock": ___lock, "__syscall221": ___syscall221, "__syscall5": ___syscall5, "__syscall54": ___syscall54, "__unlock": ___unlock, "clock": _clock, "emscripten_get_sbrk_ptr": _emscripten_get_sbrk_ptr, "emscripten_memcpy_big": _emscripten_memcpy_big, "emscripten_resize_heap": _emscripten_resize_heap, "emscripten_set_main_loop": _emscripten_set_main_loop, "emscripten_webgpu_get_device": _emscripten_webgpu_get_device, "fd_close": _fd_close, "fd_read": _fd_read, "fd_seek": _fd_seek, "fd_write": _fd_write, "memory": wasmMemory, "setTempRet0": _setTempRet0, "table": wasmTable, "wgpuBufferMapWriteAsync": _wgpuBufferMapWriteAsync, "wgpuBufferUnmap": _wgpuBufferUnmap, "wgpuCommandEncoderBeginRenderPass": _wgpuCommandEncoderBeginRenderPass, "wgpuCommandEncoderCopyBufferToBuffer": _wgpuCommandEncoderCopyBufferToBuffer, "wgpuCommandEncoderFinish": _wgpuCommandEncoderFinish, "wgpuDeviceCreateBindGroup": _wgpuDeviceCreateBindGroup, "wgpuDeviceCreateBindGroupLayout": _wgpuDeviceCreateBindGroupLayout, "wgpuDeviceCreateBuffer": _wgpuDeviceCreateBuffer, "wgpuDeviceCreateBufferMapped": _wgpuDeviceCreateBufferMapped, "wgpuDeviceCreateCommandEncoder": _wgpuDeviceCreateCommandEncoder, "wgpuDeviceCreatePipelineLayout": _wgpuDeviceCreatePipelineLayout, "wgpuDeviceCreateQueue": _wgpuDeviceCreateQueue, "wgpuDeviceCreateRenderPipeline": _wgpuDeviceCreateRenderPipeline, "wgpuDeviceCreateShaderModule": _wgpuDeviceCreateShaderModule, "wgpuDeviceCreateSwapChain": _wgpuDeviceCreateSwapChain, "wgpuDeviceSetUncapturedErrorCallback": _wgpuDeviceSetUncapturedErrorCallback, "wgpuInstanceCreateSurface": _wgpuInstanceCreateSurface, "wgpuQueueSubmit": _wgpuQueueSubmit, "wgpuRenderPassEncoderDrawIndexed": _wgpuRenderPassEncoderDrawIndexed, "wgpuRenderPassEncoderEndPass": _wgpuRenderPassEncoderEndPass, "wgpuRenderPassEncoderSetBindGroup": _wgpuRenderPassEncoderSetBindGroup, "wgpuRenderPassEncoderSetIndexBuffer": _wgpuRenderPassEncoderSetIndexBuffer, "wgpuRenderPassEncoderSetPipeline": _wgpuRenderPassEncoderSetPipeline, "wgpuRenderPassEncoderSetVertexBuffer": _wgpuRenderPassEncoderSetVertexBuffer, "wgpuSwapChainGetCurrentTextureView": _wgpuSwapChainGetCurrentTextureView };
 var asm = createWasm();
 Module["asm"] = asm;
 var ___wasm_call_ctors = Module["___wasm_call_ctors"] = function() {
@@ -6333,6 +6442,12 @@ var dynCall_viii = Module["dynCall_viii"] = function() {
   assert(runtimeInitialized, 'you need to wait for the runtime to be ready (e.g. wait for main() to be called)');
   assert(!runtimeExited, 'the runtime was exited (use NO_EXIT_RUNTIME to keep it alive after main() exits)');
   return Module["asm"]["dynCall_viii"].apply(null, arguments)
+};
+
+var dynCall_viiji = Module["dynCall_viiji"] = function() {
+  assert(runtimeInitialized, 'you need to wait for the runtime to be ready (e.g. wait for main() to be called)');
+  assert(!runtimeExited, 'the runtime was exited (use NO_EXIT_RUNTIME to keep it alive after main() exits)');
+  return Module["asm"]["dynCall_viiji"].apply(null, arguments)
 };
 
 var dynCall_v = Module["dynCall_v"] = function() {

@@ -1,24 +1,65 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <assert.h>
+#include <string.h>
+#include <time.h>
 
 #include <webgpu/webgpu.h>
 #include <emscripten.h>
 #include <emscripten/html5.h>
 
-const uint32_t vsCode[] = {
-    119734787, 65536, 851975, 38, 0, 131089, 1, 393227, 1, 1280527431, 1685353262, 808793134, 0, 196622, 0, 1, 458767, 0, 4, 1852399981, 0, 10, 25, 196611, 1, 310, 655364, 1197427783, 1279741775, 1885560645, 1953718128, 1600482425, 1701734764, 1919509599, 1769235301, 25974, 524292, 1197427783, 1279741775, 1852399429, 1685417059, 1768185701, 1952671090, 6649449, 262149, 4, 1852399981, 0, 393221, 8, 1348430951, 1700164197, 2019914866, 0, 393222, 8, 0, 1348430951, 1953067887, 7237481, 458758, 8, 1, 1348430951, 1953393007, 1702521171, 0, 196613, 10, 0, 393221, 25, 1449094247, 1702130277, 1684949368, 30821, 327685, 28, 1701080681, 1818386808, 101, 327752, 8, 0, 11, 0, 327752, 8, 1, 11, 1, 196679, 8, 2, 262215, 25, 11, 42, 131091, 2, 196641, 3, 2, 196630, 6, 32, 262167, 7, 6, 4, 262174, 8, 7, 6, 262176, 9, 3, 8, 262203, 9, 10, 3, 262165, 11, 32, 1, 262187, 11, 12, 0, 262167, 13, 6, 2, 262165, 14, 32, 0, 262187, 14, 15, 3, 262172, 16, 13, 15, 262187, 6, 17, 0, 262187, 6, 18, 1056964608, 327724, 13, 19, 17, 18, 262187, 6, 20, 3204448256, 327724, 13, 21, 20, 20, 327724, 13, 22, 18, 20, 393260, 16, 23, 19, 21, 22, 262176, 24, 1, 11, 262203, 24, 25, 1, 262176, 27, 7, 16, 262176, 29, 7, 13, 262187, 6, 32, 1065353216, 262176, 36, 3, 7, 327734, 2, 4, 0, 3, 131320, 5, 262203, 27, 28, 7, 262205, 11, 26, 25, 196670, 28, 23, 327745, 29, 30, 28, 26, 262205, 13, 31, 30, 327761, 6, 33, 31, 0, 327761, 6, 34, 31, 1, 458832, 7, 35, 33, 34, 17, 32, 327745, 36, 37, 10, 12, 196670, 37, 35, 65789, 65592
+#include "vertex.h"
+
+#define ARRAY_LEN(arr) sizeof(arr) / sizeof(arr[0])
+
+const Vertex vertices[] = {
+    {{-0.5f,  0.5f, 0.0f}, {1.0f, 0.0f, 0.0f}}, // TL
+    {{ 0.5f,  0.5f, 0.0f}, {0.0f, 1.0f, 0.0f}}, // TR
+    {{ 0.5f, -0.5f, 0.0f}, {0.0f, 0.0f, 1.0f}}, // BR
+    {{-0.5f, -0.5f, 0.0f}, {1.0f, 1.0f, 1.0f}}, // BL
 };
-const uint32_t fsCode[] = {
-    119734787, 65536, 851975, 14, 0, 131089, 1, 393227, 1, 1280527431, 1685353262, 808793134, 0, 196622, 0, 1, 393231, 4, 4, 1852399981, 0, 9, 196624, 4, 7, 196611, 1, 310, 655364, 1197427783, 1279741775, 1885560645, 1953718128, 1600482425, 1701734764, 1919509599, 1769235301, 25974, 524292, 1197427783, 1279741775, 1852399429, 1685417059, 1768185701, 1952671090, 6649449, 262149, 4, 1852399981, 0, 327685, 9, 1734439526, 1869377347, 114, 196679, 9, 0, 262215, 9, 30, 0, 131091, 2, 196641, 3, 2, 196630, 6, 32, 262167, 7, 6, 4, 262176, 8, 3, 7, 262203, 8, 9, 3, 262187, 6, 10, 0, 262187, 6, 11, 1056964608, 262187, 6, 12, 1065353216, 458796, 7, 13, 10, 11, 12, 12, 327734, 2, 4, 0, 3, 131320, 5, 196670, 9, 13, 65789, 65592
+
+const uint16_t indices[] = {
+    0, 1, 2, 2, 3, 0
 };
+
+UniformBufferObject ubo = {
+    .model = {
+        1.0f, 0.0f, 0.0f, 0.0f,
+        0.0f, 1.0f, 0.0f, 0.0f,
+        0.0f, 0.0f, 1.0f, 0.0f,
+        0.0f, 0.0f, 0.0f, 1.0f,
+    },
+    .view = {
+        1.0f, 0.0f, 0.0f, 0.0f,
+        0.0f, 1.0f, 0.0f, 0.0f,
+        0.0f, 0.0f, 1.0f, 0.0f,
+        0.0f, 0.0f, 0.0f, 1.0f,
+    },
+    .proj = {
+        1.0f, 0.0f, 0.0f, 0.0f,
+        0.0f, 1.0f, 0.0f, 0.0f,
+        0.0f, 0.0f, 1.0f, 0.0f,
+        0.0f, 0.0f, 0.0f, 1.0f,
+    }
+};
+
+static WGPUBuffer vertexBuffer;
+static WGPUBuffer indexBuffer;
+static WGPUBuffer uniformStagingBuffer;
+static WGPUBuffer uniformBuffer;
 
 static WGPUDevice device;
 static WGPUQueue queue;
 static WGPUBuffer readbackBuffer;
 static WGPURenderPipeline pipeline;
 static WGPUSwapChain swapChain;
+
+static WGPUBindGroup bindGroup;
+static WGPUBindGroupLayout bgl;
+
 static bool done = false;
+clock_t startClock;
 
 typedef struct FileReadResult {
     uint32_t size;
@@ -45,6 +86,7 @@ FileReadResult vertShader = { .size = 0, .data = NULL };
 FileReadResult fragShader = { .size = 0, .data = NULL };
 
 void init() {
+    startClock = clock();
     printf("init: start\n");
     device = emscripten_webgpu_get_device();
     printf("init: got device\n");
@@ -53,7 +95,7 @@ void init() {
     queue = wgpuDeviceCreateQueue(device);
     printf("init: created queue\n");
 
-    readFile("src/shaders/vert.spv", &vertShader);
+    readFile("src/shaders/compiled/vert.spv", &vertShader);
     printf("read file: size: %d\n", vertShader.size);
     WGPUShaderModule vsModule;
     {
@@ -65,7 +107,7 @@ void init() {
     }
     printf("init: created vsModule\n");
 
-    readFile("src/shaders/frag.spv", &fragShader);
+    readFile("src/shaders/compiled/frag.spv", &fragShader);
     printf("read file: size: %d\n", fragShader.size);
     WGPUShaderModule fsModule;
     {
@@ -77,20 +119,83 @@ void init() {
     }
     printf("init: created fsModule\n");
 
-    WGPUBindGroup bindGroup;
+    // Uniform buffer creation
     {
-        WGPUBindGroupLayoutDescriptor bglDesc;
-        WGPUBindGroupLayout bgl = wgpuDeviceCreateBindGroupLayout(device, &bglDesc);
+        WGPUBufferDescriptor bufferDesc = {
+            .usage = WGPUBufferUsage_Uniform | WGPUBufferUsage_CopyDst,
+            .size = sizeof(UniformBufferObject)
+        };
+
+        uniformBuffer = wgpuDeviceCreateBuffer(device, &bufferDesc);
+
+        /*
+        memcpy(result.data, &ubo, result.dataLength);
+        uniformBuffer = result.buffer;
+        wgpuBufferUnmap(uniformBuffer);
+        */
+    }
+
+    // Uniform buffer creation
+    {
+        WGPUBufferDescriptor bufferDesc = {
+            .usage = WGPUBufferUsage_MapWrite | WGPUBufferUsage_CopySrc,
+            .size = sizeof(UniformBufferObject)
+        };
+
+        WGPUCreateBufferMappedResult result = wgpuDeviceCreateBufferMapped(device, &bufferDesc);
+
+        memcpy(result.data, &ubo, result.dataLength);
+        uniformStagingBuffer = result.buffer;
+        wgpuBufferUnmap(uniformStagingBuffer);
+    }
+
+    {
+        WGPUBindGroupLayoutBinding bindingLayouts[] = {
+            {
+                .binding = 0,
+                .visibility = WGPUShaderStage_Vertex,
+                .type = WGPUBindingType_UniformBuffer,
+                .hasDynamicOffset = false,
+                .multisampled = false,
+                .textureDimension = WGPUTextureViewDimension_Undefined,
+                .textureComponentType = WGPUTextureComponentType_Float,
+            }
+        };
+
+        WGPUBindGroupLayoutDescriptor bglDesc = {
+            .bindingCount = ARRAY_LEN(bindingLayouts),
+            .bindings = bindingLayouts
+        };
+        bgl = wgpuDeviceCreateBindGroupLayout(device, &bglDesc);
+        
+        WGPUBindGroupBinding bindings[] = {
+            {
+                .binding = 0,
+                .buffer = uniformBuffer,
+                .offset = 0,
+                .size = sizeof(UniformBufferObject),
+                .sampler = NULL,
+                .textureView = NULL,
+            }
+        };
+
         WGPUBindGroupDescriptor desc = {
             .layout = bgl,
-            .bindingCount = 0,
-            .bindings = NULL
+            .bindingCount = ARRAY_LEN(bindings),
+            .bindings = bindings
         };
         bindGroup = wgpuDeviceCreateBindGroup(device, &desc);
     }
     printf("init: created bindGroup\n");
 
+    // Render pipeline creation
     {
+        WGPUPipelineLayoutDescriptor pl = {
+            .bindGroupLayoutCount = 1,
+            .bindGroupLayouts = &bgl
+        };
+        printf("init: created pipelineLayoutDescriptor\n");
+
         WGPUProgrammableStageDescriptor fragmentStage = {
             .module = fsModule,
             .entryPoint = "main"
@@ -113,17 +218,50 @@ void init() {
         };
         printf("init: created colorStateDescriptor\n");
 
-        WGPUPipelineLayoutDescriptor pl = {
-            .bindGroupLayoutCount = 0,
-            .bindGroupLayouts = NULL
+        WGPUVertexAttributeDescriptor vertexAttributeDescs[] = {
+            {
+                .format = WGPUVertexFormat_Float3,
+                .offset = offsetof(Vertex, pos),
+                .shaderLocation = 0
+            },
+            {
+                .format = WGPUVertexFormat_Float3,
+                .offset = offsetof(Vertex, color),
+                .shaderLocation = 1
+            }
         };
-        printf("init: created pipelineLayoutDescriptor\n");
+
+        WGPUVertexBufferLayoutDescriptor vertexBufferLayoutDescs[] = {
+            {
+                .arrayStride = sizeof(Vertex),
+                .stepMode = WGPUInputStepMode_Vertex,
+                .attributeCount = ARRAY_LEN(vertexAttributeDescs),
+                .attributes = vertexAttributeDescs
+            }
+        };
+
+        WGPUVertexStateDescriptor vertexStateDesc = {
+            .indexFormat = WGPUIndexFormat_Uint16,
+            .vertexBufferCount = ARRAY_LEN(vertexBufferLayoutDescs),
+            .vertexBuffers = vertexBufferLayoutDescs
+        };
+
+        WGPURasterizationStateDescriptor rastDesc = {
+            .nextInChain = NULL,
+            .frontFace = WGPUFrontFace_CCW,
+            .cullMode = WGPUCullMode_None,
+            .depthBias = 0,
+            .depthBiasSlopeScale = 0.0f,
+            .depthBiasClamp = 0.0f,
+        };
 
         WGPURenderPipelineDescriptor pipelineDesc = {
             .layout = wgpuDeviceCreatePipelineLayout(device, &pl),
             .vertexStage.module = vsModule,
             .vertexStage.entryPoint = "main",
+            .vertexState = &vertexStateDesc,
             .fragmentStage = &fragmentStage,
+            .rasterizationState = &rastDesc,
             .colorStateCount = 1,
             .colorStates = &colorStateDescriptor,
             .primitiveTopology = WGPUPrimitiveTopology_TriangleList,
@@ -133,15 +271,82 @@ void init() {
         pipeline = wgpuDeviceCreateRenderPipeline(device, &pipelineDesc);
         printf("init: created pipeline\n");
     }
+
+    // Vertex buffer creation
+    {
+        WGPUBufferDescriptor bufferDesc = {
+            .usage = WGPUBufferUsage_Vertex,
+            .size = sizeof(vertices)
+        };
+
+        WGPUCreateBufferMappedResult result = wgpuDeviceCreateBufferMapped(device, &bufferDesc);
+
+        memcpy(result.data, vertices, result.dataLength);
+        vertexBuffer = result.buffer;
+        wgpuBufferUnmap(vertexBuffer);
+    }
+
+    // Index buffer creation
+    {
+        WGPUBufferDescriptor bufferDesc = {
+            .usage = WGPUBufferUsage_Index,
+            .size = sizeof(indices)
+        };
+
+        WGPUCreateBufferMappedResult result = wgpuDeviceCreateBufferMapped(device, &bufferDesc);
+
+        memcpy(result.data, indices, result.dataLength);
+        indexBuffer = result.buffer;
+        wgpuBufferUnmap(indexBuffer);
+    }
 }
 
 void shutdown() {
+    printf("shutdown: start\n");
     if(vertShader.size > 0) {
         free(vertShader.data);
     }
     if(fragShader.size > 0) {
         free(fragShader.data);
     }
+    wgpuBufferDestroy(vertexBuffer);
+    wgpuBufferDestroy(indexBuffer);
+}
+
+void writeUBOCallback(WGPUBufferMapAsyncStatus status, void * data, uint64_t dataLength, void * userdata) {
+    memcpy(data, userdata, dataLength);
+    wgpuBufferUnmap(uniformStagingBuffer);
+
+    WGPUCommandBuffer commands;
+    WGPUCommandEncoder encoder = wgpuDeviceCreateCommandEncoder(device, NULL);
+    wgpuCommandEncoderCopyBufferToBuffer(encoder, uniformStagingBuffer, 0, uniformBuffer, 0, sizeof(UniformBufferObject));
+    commands = wgpuCommandEncoderFinish(encoder, NULL);
+
+    wgpuQueueSubmit(queue, 1, &commands);
+}
+
+void update() {
+    clock_t curClock = clock();
+    float diff = ((float)(curClock - startClock) / CLOCKS_PER_SEC);
+
+    vec3 axis = {
+        0.0f, 0.0, 1.0f
+    };
+    mat4 identity = GLM_MAT4_IDENTITY_INIT;
+    glm_rotate(identity, diff * glm_rad(90.0f), axis);
+    memcpy(ubo.model, identity, sizeof(mat4));
+    vec3 eye = {
+        2.0f, 2.0f, 2.0f
+    };
+    vec3 center = {
+        0.0f, 0.0f, 0.0f
+    };
+    vec3 up = {
+        0.0f, 0.0f, 1.0f
+    };
+    glm_lookat(eye, center, up, ubo.view);
+    glm_perspective(glm_rad(45.0f), 640.0f / 480.0f, 0.1f, 10.0f, ubo.proj);
+    wgpuBufferMapWriteAsync(uniformStagingBuffer, writeUBOCallback, &ubo);
 }
 
 void render(WGPUTextureView view) {
@@ -165,7 +370,10 @@ void render(WGPUTextureView view) {
         {
             WGPURenderPassEncoder pass = wgpuCommandEncoderBeginRenderPass(encoder, &renderpass);
             wgpuRenderPassEncoderSetPipeline(pass, pipeline);
-            wgpuRenderPassEncoderDraw(pass, 3, 1, 0, 0);
+            wgpuRenderPassEncoderSetBindGroup(pass, 0, bindGroup, 0, NULL);
+            wgpuRenderPassEncoderSetVertexBuffer(pass, 0, vertexBuffer, 0);
+            wgpuRenderPassEncoderSetIndexBuffer(pass, indexBuffer, 0);
+            wgpuRenderPassEncoderDrawIndexed(pass, ARRAY_LEN(indices), 1, 0, 0, 0);
             wgpuRenderPassEncoderEndPass(pass);
             //printf("render: finished renderPass\n");
         }
@@ -178,6 +386,7 @@ void render(WGPUTextureView view) {
 }
 
 void frame() {
+    update();
     WGPUTextureView backbuffer = wgpuSwapChainGetCurrentTextureView(swapChain);
     render(backbuffer);
 }
@@ -209,6 +418,6 @@ int main(void) {
         printf("main: created swapChain\n");
     }
     emscripten_set_main_loop(frame, 30, false);
-    shutdown();
+    //shutdown();
     return 0;
 }
