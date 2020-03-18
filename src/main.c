@@ -9,8 +9,7 @@
 #include <emscripten/html5.h>
 
 #include "vertex.h"
-
-#define ARRAY_LEN(arr) sizeof(arr) / sizeof(arr[0])
+#include "helper.h"
 
 const Vertex vertices[] = {
     {{-0.5f,  0.5f, 0.0f}, {1.0f, 0.0f, 0.0f}}, // TL
@@ -61,50 +60,42 @@ static WGPUBindGroupLayout bgl;
 static bool done = false;
 clock_t startClock;
 
-typedef struct FileReadResult {
-    uint32_t size;
-    char* data;
-} FileReadResult;
 
-void readFile(const char* filename, FileReadResult* result) {
-    FILE *f = fopen(filename, "rb");
-    assert(f != NULL);
-    fseek(f, 0, SEEK_END);
-    result->size = ftell(f);
-    fseek(f, 0, SEEK_SET);  /* same as rewind(f); */
-
-    result->data = malloc(result->size);
-    fread(result->data, 1, result->size, f);
-    fclose(f);
-}
-
-void errorCallback(WGPUErrorType type, char const * message, void * userdata) {
-    printf("%d: %s\n", type, message);
-}
 
 FileReadResult vertShader = { .size = 0, .data = NULL };
 FileReadResult fragShader = { .size = 0, .data = NULL };
 
-void init() {
-    startClock = clock();
-    printf("init: start\n");
+void getDevice() {
     device = emscripten_webgpu_get_device();
     printf("init: got device\n");
     wgpuDeviceSetUncapturedErrorCallback(device, &errorCallback, NULL);
-    
+}
+
+void createQueue(WGPUDevice device) {
     queue = wgpuDeviceCreateQueue(device);
     printf("init: created queue\n");
+}
 
-    readFile("src/shaders/compiled/vert.spv", &vertShader);
-    printf("read file: size: %d\n", vertShader.size);
+WGPUShaderModule createShaderModule(WGPUDevice device, const char* file, FileReadResult* readResult) {
+    readFile("src/shaders/compiled/vert.spv", readResult);
+    printf("read file: size: %d\n", readResult->size);
     WGPUShaderModule vsModule;
     {
         WGPUShaderModuleDescriptor descriptor = {
-            .codeSize = vertShader.size / sizeof(uint32_t),
-            .code = (const uint32_t*)vertShader.data
+            .codeSize = readResult->size / sizeof(uint32_t),
+            .code = (const uint32_t*)readResult->data
         };
         vsModule = wgpuDeviceCreateShaderModule(device, &descriptor);
     }
+}
+
+void init() {
+    startClock = clock();
+    printf("init: start\n");
+    getDevice();
+    createQueue(device);
+
+    WGPUShaderModule vsModule = createShaderModule("src/shaders/compiled/vert.spv", &vertShader);
     printf("init: created vsModule\n");
 
     readFile("src/shaders/compiled/frag.spv", &fragShader);
