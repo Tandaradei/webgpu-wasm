@@ -9,7 +9,8 @@
 #include <emscripten/html5.h>
 
 #include "vertex.h"
-#include "helper.h"
+
+#define ARRAY_LEN(arr) sizeof(arr) / sizeof(arr[0])
 
 const Vertex vertices[] = {
     {{-0.5f,  0.5f, 0.0f}, {1.0f, 0.0f, 0.0f}}, // TL
@@ -23,13 +24,7 @@ const uint16_t indices[] = {
 };
 
 UniformBufferObject ubo = {
-    .model = {
-        1.0f, 0.0f, 0.0f, 0.0f,
-        0.0f, 1.0f, 0.0f, 0.0f,
-        0.0f, 0.0f, 1.0f, 0.0f,
-        0.0f, 0.0f, 0.0f, 1.0f,
-    },
-    .view = {
+    .model_view = {
         1.0f, 0.0f, 0.0f, 0.0f,
         0.0f, 1.0f, 0.0f, 0.0f,
         0.0f, 0.0f, 1.0f, 0.0f,
@@ -60,42 +55,50 @@ static WGPUBindGroupLayout bgl;
 static bool done = false;
 clock_t startClock;
 
+typedef struct FileReadResult {
+    uint32_t size;
+    char* data;
+} FileReadResult;
 
+void readFile(const char* filename, FileReadResult* result) {
+    FILE *f = fopen(filename, "rb");
+    assert(f != NULL);
+    fseek(f, 0, SEEK_END);
+    result->size = ftell(f);
+    fseek(f, 0, SEEK_SET);  /* same as rewind(f); */
+
+    result->data = malloc(result->size);
+    fread(result->data, 1, result->size, f);
+    fclose(f);
+}
+
+void errorCallback(WGPUErrorType type, char const * message, void * userdata) {
+    printf("%d: %s\n", type, message);
+}
 
 FileReadResult vertShader = { .size = 0, .data = NULL };
 FileReadResult fragShader = { .size = 0, .data = NULL };
 
-void getDevice() {
-    device = emscripten_webgpu_get_device();
-    printf("init: got device\n");
-    wgpuDeviceSetUncapturedErrorCallback(device, &errorCallback, NULL);
-}
-
-void createQueue(WGPUDevice device) {
-    queue = wgpuDeviceCreateQueue(device);
-    printf("init: created queue\n");
-}
-
-WGPUShaderModule createShaderModule(WGPUDevice device, const char* file, FileReadResult* readResult) {
-    readFile("src/shaders/compiled/vert.spv", readResult);
-    printf("read file: size: %d\n", readResult->size);
-    WGPUShaderModule vsModule;
-    {
-        WGPUShaderModuleDescriptor descriptor = {
-            .codeSize = readResult->size / sizeof(uint32_t),
-            .code = (const uint32_t*)readResult->data
-        };
-        vsModule = wgpuDeviceCreateShaderModule(device, &descriptor);
-    }
-}
-
 void init() {
     startClock = clock();
     printf("init: start\n");
-    getDevice();
-    createQueue(device);
+    device = emscripten_webgpu_get_device();
+    printf("init: got device\n");
+    wgpuDeviceSetUncapturedErrorCallback(device, &errorCallback, NULL);
+    
+    queue = wgpuDeviceCreateQueue(device);
+    printf("init: created queue\n");
 
-    WGPUShaderModule vsModule = createShaderModule("src/shaders/compiled/vert.spv", &vertShader);
+    readFile("src/shaders/compiled/vert.spv", &vertShader);
+    printf("read file: size: %d\n", vertShader.size);
+    WGPUShaderModule vsModule;
+    {
+        WGPUShaderModuleDescriptor descriptor = {
+            .codeSize = vertShader.size / sizeof(uint32_t),
+            .code = (const uint32_t*)vertShader.data
+        };
+        vsModule = wgpuDeviceCreateShaderModule(device, &descriptor);
+    }
     printf("init: created vsModule\n");
 
     readFile("src/shaders/compiled/frag.spv", &fragShader);
@@ -305,13 +308,13 @@ void shutdown() {
 }
 
 void writeUBOCallback(WGPUBufferMapAsyncStatus status, void * data, uint64_t dataLength, void * userdata) {
+    printf("entered callback\n");
     memcpy(data, userdata, dataLength);
     wgpuBufferUnmap(uniformStagingBuffer);
 
-    WGPUCommandBuffer commands;
     WGPUCommandEncoder encoder = wgpuDeviceCreateCommandEncoder(device, NULL);
     wgpuCommandEncoderCopyBufferToBuffer(encoder, uniformStagingBuffer, 0, uniformBuffer, 0, sizeof(UniformBufferObject));
-    commands = wgpuCommandEncoderFinish(encoder, NULL);
+    WGPUCommandBuffer commands = wgpuCommandEncoderFinish(encoder, NULL);
 
     wgpuQueueSubmit(queue, 1, &commands);
 }
@@ -325,7 +328,8 @@ void update() {
     };
     mat4 identity = GLM_MAT4_IDENTITY_INIT;
     glm_rotate(identity, diff * glm_rad(90.0f), axis);
-    memcpy(ubo.model, identity, sizeof(mat4));
+    mat4 model = GLM_MAT4_IDENTITY_INIT;
+    memcpy(model, identity, sizeof(mat4));
     vec3 eye = {
         2.0f, 2.0f, 2.0f
     };
@@ -335,9 +339,12 @@ void update() {
     vec3 up = {
         0.0f, 0.0f, 1.0f
     };
-    glm_lookat(eye, center, up, ubo.view);
+    mat4 view = GLM_MAT4_IDENTITY_INIT;
+    glm_lookat(eye, center, up, view);
+    glm_mat4_mul(view, model, ubo.model_view);
     glm_perspective(glm_rad(45.0f), 640.0f / 480.0f, 0.1f, 10.0f, ubo.proj);
     wgpuBufferMapWriteAsync(uniformStagingBuffer, writeUBOCallback, &ubo);
+    printf("update: end\n");
 }
 
 void render(WGPUTextureView view) {

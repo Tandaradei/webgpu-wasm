@@ -196,7 +196,7 @@ Module['FS_createPath']('/src/shaders', 'compiled', true, true);
     }
   
    }
-   loadPackage({"files": [{"start": 0, "audio": 0, "end": 608, "filename": "/src/shaders/compiled/frag.spv"}, {"start": 608, "audio": 0, "end": 2388, "filename": "/src/shaders/compiled/vert.spv"}], "remote_package_size": 2388, "package_uuid": "57a78880-7829-495a-823d-d90b13c0bdcf"});
+   loadPackage({"files": [{"start": 0, "audio": 0, "end": 608, "filename": "/src/shaders/compiled/frag.spv"}, {"start": 608, "audio": 0, "end": 2144, "filename": "/src/shaders/compiled/vert.spv"}], "remote_package_size": 2144, "package_uuid": "205abe08-c277-4077-b6ac-bdb172c8a9e9"});
   
   })();
   
@@ -1421,11 +1421,11 @@ function updateGlobalBufferAndViews(buf) {
 }
 
 var STATIC_BASE = 1024,
-    STACK_BASE = 5250544,
+    STACK_BASE = 5250976,
     STACKTOP = STACK_BASE,
-    STACK_MAX = 7664,
-    DYNAMIC_BASE = 5250544,
-    DYNAMICTOP_PTR = 7504;
+    STACK_MAX = 8096,
+    DYNAMIC_BASE = 5250976,
+    DYNAMICTOP_PTR = 7936;
 
 assert(STACK_BASE % 16 === 0, 'stack must start aligned');
 assert(DYNAMIC_BASE % 16 === 0, 'heap must start aligned');
@@ -1949,7 +1949,7 @@ var ASM_CONSTS = {
 
 
 
-// STATICTOP = STATIC_BASE + 6640;
+// STATICTOP = STATIC_BASE + 7072;
 /* global initializers */  __ATINIT__.push({ func: function() { ___wasm_call_ctors() } });
 
 
@@ -4574,7 +4574,7 @@ var ASM_CONSTS = {
     }
 
   function _emscripten_get_sbrk_ptr() {
-      return 7504;
+      return 7936;
     }
 
   function _emscripten_memcpy_big(dest, src, num) {

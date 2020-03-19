@@ -24,26 +24,11 @@ void createObjects(void) {
             }
         }
     );
-    WGPUBindGroupLayoutBinding bgls[] = {
-        {
-            .binding = 0,
-            .visibility = WGPUShaderStage_Vertex,
-            .type = WGPUBindingType_UniformBuffer,
-            .hasDynamicOffset = false,
-            .multisampled = false,
-            .textureDimension = WGPUTextureViewDimension_Undefined,
-            .textureComponentType = WGPUTextureComponentType_Float,
-        }
-    };
 
     SPMaterialID material = spCreateMaterial(
         &(SPMaterialDesc){
             .vert.file = "src/shaders/compiled/vert.spv",
             .frag.file = "src/shaders/compiled/frag.spv",
-            .bgls = {
-                .data = bgls,
-                .count = ARRAY_LEN(bgls),
-            },
         }
     );
     if(!mesh.id || !material.id) {
@@ -53,10 +38,15 @@ void createObjects(void) {
         .mesh = mesh, 
         .material = material
     });
+    SPRenderObjectID render_object_2 = spCreateRenderObject(&(SPRenderObjectDesc){
+        .mesh = mesh, 
+        .material = material
+    });
 
 }
 
 void frame(void) {
+    spUpdate();
     spRender();
 }
 
@@ -80,7 +70,7 @@ int main() {
         .pools.capacities = {
             .meshes = 8,
             .materials = 8,
-            .render_objects = 32,
+            .render_objects = 8,
         },
     });
     createObjects();
