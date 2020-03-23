@@ -5,9 +5,10 @@ layout(binding = 0) uniform UBODynamic {
     mat4 model;
 } ubo_dyn;
 
-layout(binding = 1) uniform UBOCommon {
+layout(binding = 2) uniform UBOCommon {
     mat4 view;
     mat4 proj;
+    vec3 lightPos;
 } ubo_com;
 
 layout(location = 0) in vec3 inPosition;
@@ -17,6 +18,7 @@ layout(location = 2) in vec3 inNormal;
 layout(location = 0) out vec3 fragColor;
 layout(location = 1) out vec3 fragPosWorld;
 layout(location = 2) out vec3 fragNormal;
+layout(location = 3) out vec3 lightPos;
 
 void main() {
     vec3 pos_world = vec3(ubo_dyn.model * vec4(inPosition, 1.0));
@@ -24,4 +26,5 @@ void main() {
     fragColor = inColor;
     fragPosWorld = pos_world;
     fragNormal = mat3(transpose(inverse(ubo_dyn.model))) * inNormal;
+    lightPos = ubo_com.lightPos;
 }

@@ -1,5 +1,5 @@
 #!/bin/bash
 pushd src/shaders
-glslc shader.vert -o compiled/vert.spv
-glslc shader.frag -o compiled/frag.spv
+glslc standard.vert -o compiled/standard.vert.spv
+glslc standard.frag -o compiled/standard.frag.spv
 popd

@@ -72,13 +72,16 @@ void createObjects(void) {
         }
     );
 
-    SPMaterialID material = spCreateMaterial(&(SPMaterialDesc){
-            .vert.file = "src/shaders/compiled/vert.spv",
-            .frag.file = "src/shaders/compiled/frag.spv",
+    SPMaterialID rough = spCreateMaterial(&(SPMaterialDesc){
+            .specular = 0.05f,
+        }
+    );
+    SPMaterialID shiny = spCreateMaterial(&(SPMaterialDesc){
+            .specular = 0.8f,
         }
     );
 
-    if(!mesh.id || !material.id) {
+    if(!mesh.id || !rough.id || !shiny.id) {
         return;
     }
     
@@ -87,7 +90,7 @@ void createObjects(void) {
     for(int i = 0; i < INSTANCES_COUNT; i++) {
         instance_ids[i] = spCreateInstance(&(SPInstanceDesc){
                 .mesh = mesh_box, 
-                .material = material,
+                .material = (rand() % 2) ? shiny : rough,
                 .transform = &(SPTransform){
                     .pos = {randFloatRange(-spacing, spacing), randFloatRange(-spacing, spacing), randFloatRange(-spacing, spacing)},
                     .scale = {randFloatRange(0.5f, 1.5f), randFloatRange(0.5f, 1.5f), randFloatRange(0.5f, 1.5f)},
@@ -99,7 +102,7 @@ void createObjects(void) {
 
     spCreateInstance(&(SPInstanceDesc){
             .mesh = mesh, 
-            .material = material,
+            .material = rough,
             .transform = &(SPTransform){
                 .pos = {0.0f, -spacing, 0.0f},
                 .scale = {spacing * 2.0f, 1.0f, spacing * 2.0f},
@@ -109,7 +112,7 @@ void createObjects(void) {
     );
     look_at_cube_id = spCreateInstance(&(SPInstanceDesc){
             .mesh = mesh_box, 
-            .material = material,
+            .material = shiny,
             .transform = &(SPTransform){
                 .pos = {0.0f, 0.0f, 0.0f},
                 .scale = {0.2f, 0.2f, 0.2f},
@@ -138,11 +141,10 @@ void frame(void) {
     }
     SPCamera* camera = spGetActiveCamera();
     const float radius = 10.0f;
-    const float depth = sin(time_elapsed_total_s * 0.12f) * 3.0f;
-    SPInstance* look_at_cube = spGetInstance(look_at_cube_id);
+    const float depth = sin(time_elapsed_total_s * 0.12f) * 6.0f;
 
     memcpy(
-        look_at_cube->transform.pos, 
+        camera->look_at, 
         (vec3){
             sin(time_elapsed_total_s * 0.49f) * 2.0f, 
             sin(23.5f + time_elapsed_total_s * 0.27f), 
@@ -151,9 +153,11 @@ void frame(void) {
         sizeof(vec3)
     );
 
-    memcpy(camera->look_at, look_at_cube->transform.pos, sizeof(vec3));
+    SPInstance* look_at_cube = spGetInstance(look_at_cube_id);
+    memcpy(look_at_cube->transform.pos, camera->look_at, sizeof(vec3));
+    spSetLightPos(camera->look_at);
 
-    camera->fovy = glm_rad(60.0f - depth * 10.0f);
+    camera->fovy = glm_rad(60.0f - depth * 5.0f);
     //memcpy(camera->pos, (vec3){sin(time_elapsed_total_s) * radius, 0.0f, cos(time_elapsed_total_s) * -radius}, sizeof(vec3));
     spUpdate();
     spRender();

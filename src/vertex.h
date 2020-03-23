@@ -6,10 +6,16 @@
 typedef struct UBOCommon {
     mat4 view;
     mat4 proj;
+    vec3 light_pos;
 } UBOCommon;
+
+typedef struct MaterialProperties {
+    float specular;
+} MaterialProperties;
 
 typedef struct UBODynamic {
     mat4 model;
+    MaterialProperties material;
 } UBODynamic;
 
 typedef struct Vertex {
