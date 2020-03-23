@@ -1,0 +1,33 @@
+{
+    "rdocCaptureSettings": 1,
+    "settings": {
+        "autoStart": false,
+        "commandLine": "--new-window \"localhost:8080/index0.html\" --disable-gpu-sandbox --disable-direct-composition",
+        "environment": [
+            {
+                "separator": "Platform style",
+                "type": "Set",
+                "value": "0",
+                "variable": "RENDERDOC_HOOK_EGL"
+            }
+        ],
+        "executable": "C:\\Users\\Laurin\\AppData\\Local\\Google\\Chrome SxS\\Application\\chrome.exe",
+        "inject": false,
+        "numQueuedFrames": 0,
+        "options": {
+            "allowFullscreen": true,
+            "allowVSync": true,
+            "apiValidation": false,
+            "captureAllCmdLists": false,
+            "captureCallstacks": false,
+            "captureCallstacksOnlyDraws": false,
+            "debugOutputMute": true,
+            "delayForDebugger": 0,
+            "hookIntoChildren": true,
+            "refAllResources": false,
+            "verifyBufferAccess": false
+        },
+        "queuedFrameCap": 0,
+        "workingDir": ""
+    }
+}
