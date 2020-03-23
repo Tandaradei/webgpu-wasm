@@ -3,14 +3,19 @@
 
 #include <cglm/cglm.h>
 
-typedef struct UniformBufferObject {
-    mat4 model_view;
+typedef struct UBOCommon {
+    mat4 view;
     mat4 proj;
-} UniformBufferObject;
+} UBOCommon;
+
+typedef struct UBODynamic {
+    mat4 model;
+} UBODynamic;
 
 typedef struct Vertex {
     vec3 pos;
     vec3 color;
+    vec3 normal;
 } Vertex;
 
 #endif // VERTEX_H_

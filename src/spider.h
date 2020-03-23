@@ -12,20 +12,33 @@
 #include <emscripten/html5.h>
 
 #include "helper.h"
-#include "debug.h"
 #include "vertex.h"
 
 #define SPIDER_ASSERT(assertion) assert(assertion)
 #define SPIDER_MALLOC(size) malloc(size)
+
+#define DEBUG_PRINT_TYPE_INIT 1
+#define DEBUG_PRINT_TYPE_CREATE_MATERIAL 1
+#define DEBUG_PRINT_WARNING 1
+#define DEBUG_PRINT_GENERAL 1
+#define DEBUG_PRINT_RENDER 0
+#define DEBUG_PRINT_METRICS 1
 
 typedef struct SPShaderStage {
     WGPUShaderModule module;
     WGPUBindGroupLayout bind_group_layout;
 } SPShaderStage;
 
+typedef enum SPCameraMode {
+    SPCameraMode_Direction,
+    SPCameraMode_LookAt
+} SPCameraMode;
+
 typedef struct SPCamera {
     vec3 pos;
     vec3 dir;
+    vec3 look_at;
+    SPCameraMode mode;
     float fovy;
     float aspect;
     float near;
@@ -47,7 +60,7 @@ typedef struct SPPoolsDesc {
     const struct {
         size_t materials;
         size_t meshes;
-        size_t render_objects;
+        size_t instances;
     } capacities;
 } SPPoolsDesc;
 
@@ -87,7 +100,7 @@ typedef struct SPMaterial {
     SPShaderStage vert;
     SPShaderStage frag;
     
-    WGPUBuffer uniform_staging_buffer;
+    //WGPUBuffer uniform_staging_buffer;
     WGPUBuffer uniform_buffer;
     WGPUBindGroup bind_group;
 
@@ -113,33 +126,52 @@ typedef struct SPTransform {
     vec3 scale; // 12 bytes
 } SPTransform; // 36 bytes
 
-typedef struct SPRenderObject {
+typedef struct SPInstance {
     SPMeshID mesh;
     SPMaterialID material;
     SPTransform transform;
-} SPRenderObject;
+} SPInstance;
 
-typedef struct SPRenderObjectDesc {
+typedef struct SPInstanceDesc {
     SPMeshID mesh;
     SPMaterialID material;
-} SPRenderObjectDesc;
+    const SPTransform* transform;
+} SPInstanceDesc;
 
-typedef struct SPRenderObjectID {
+typedef struct SPInstanceID {
     uint32_t id;
-} SPRenderObjectID;
+} SPInstanceID;
 
 typedef struct _SPPools {
     _SPPool material_pool;
     SPMaterial* materials;
     _SPPool mesh_pool;
     SPMesh* meshes;
-    _SPPool render_object_pool;
-    SPRenderObject* render_objects;
+    _SPPool instance_pool;
+    SPInstance* instances;
 } _SPPools;
 
+#define SP_STAGING_POOL_SIZE 16
+#define SP_STAGING_POOL_MAPPINGS_UNTIL_NEXT_CHECK 255
+
+typedef struct _SPStagingBufferPool {
+    uint32_t num_bytes;
+    uint8_t count;
+    uint8_t cur;
+    uint8_t max_cur;
+    uint8_t mappings_until_next_check;
+    WGPUBuffer buffer[SP_STAGING_POOL_SIZE];
+    uint8_t* data[SP_STAGING_POOL_SIZE];
+    bool waiting_for_map[SP_STAGING_POOL_SIZE];
+} _SPStagingBufferPool;
+
 typedef struct _SPBuffers {
-    WGPUBuffer uniform_buffer;
-    WGPUBuffer uniform_staging_buffer;
+    struct {
+        WGPUBuffer common;
+        WGPUBuffer dynamic;
+        _SPStagingBufferPool common_staging;
+        _SPStagingBufferPool dynamic_staging;
+    } uniform;
 } _SPBuffers;    
 
 #define _SP_GET_DEFAULT_IF_ZERO(value, default_value) value ? value : default_value 
@@ -163,10 +195,32 @@ struct {
     _SPBuffers buffers;
     SPCamera active_cam;
 
-    UniformBufferObject ubo;
+    SPInstanceID active_instance;
 
-    SPRenderObjectID active_ren_obj;
+    WGPUTextureView depth_view;
+
+    struct {
+        uint32_t width;
+        uint32_t height;
+    } surface_size;
+
+    uint32_t dynamic_alignment;
+
+    uint32_t frame_index;
 } _sp_state;
+
+#define DEBUG_PRINT(should_print, ...) do{if(should_print){ printf("[%u] ", _sp_state.frame_index);printf(__VA_ARGS__); }}while(0)
+
+#define DEBUG_PRINT_MAT4(should_print, name, mat) \
+do{ \
+    if(should_print){\
+        printf("[%u] %s:\n", name); \
+        printf("     %.2f %.2f %.2f %.2f\n", mat[0][0], mat[0][1], mat[0][2], mat[0][3]); \
+        printf("     %.2f %.2f %.2f %.2f\n", mat[1][0], mat[1][1], mat[1][2], mat[1][3]); \
+        printf("     %.2f %.2f %.2f %.2f\n", mat[2][0], mat[2][1], mat[2][2], mat[2][3]); \
+        printf("     %.2f %.2f %.2f %.2f\n", mat[3][0], mat[3][1], mat[3][2], mat[3][3]); \
+    } \
+} while(0)
 
 void errorCallback(WGPUErrorType type, char const * message, void * userdata) {
     printf("%d: %s\n", type, message);
@@ -177,9 +231,12 @@ void spInit(const SPInitDesc* desc);
 void spRender(void);
 SPMeshID spCreateMesh(const SPMeshDesc* desc);
 SPMaterialID spCreateMaterial(const SPMaterialDesc* desc);
-SPRenderObjectID spCreateRenderObject(const SPRenderObjectDesc* desc);
+SPInstanceID spCreateInstance(const SPInstanceDesc* desc);
+
+void spUpdateInstanceTransform(const SPInstanceID instance_id, const SPTransform* transform);
 
 // PRIVATE
+void _spSubmit(void);
 void _spInitPool(_SPPool* pool, size_t size) {
     SPIDER_ASSERT(pool && size >= 1);
     pool->size = size + 1;
@@ -204,16 +261,16 @@ void _spSetupPools(_SPPools* pools, const SPPoolsDesc* pools_desc) {
 
     
     _spInitPool(&(_sp_state.pools.material_pool), _SP_GET_DEFAULT_IF_ZERO(pools_desc->capacities.materials, _SP_MATERIAL_POOL_MAX));
-    size_t mat_pool_byte_size = sizeof(SPMesh) * pools->material_pool.size;
+    size_t mat_pool_byte_size = sizeof(SPMaterial) * pools->material_pool.size;
     pools->materials = (SPMaterial*) SPIDER_MALLOC(mat_pool_byte_size);
     SPIDER_ASSERT(pools->materials);
     memset(pools->materials, 0, mat_pool_byte_size);
 
-    _spInitPool(&(_sp_state.pools.render_object_pool), _SP_GET_DEFAULT_IF_ZERO(pools_desc->capacities.render_objects, _SP_RENDER_OBJECT_POOL_MAX));
-    size_t ren_obj_pool_byte_size = sizeof(SPMesh) * pools->render_object_pool.size;
-    pools->render_objects = (SPRenderObject*) SPIDER_MALLOC(ren_obj_pool_byte_size);
-    SPIDER_ASSERT(pools->render_objects);
-    memset(pools->render_objects, 0, ren_obj_pool_byte_size);
+    _spInitPool(&(_sp_state.pools.instance_pool), _SP_GET_DEFAULT_IF_ZERO(pools_desc->capacities.instances, _SP_RENDER_OBJECT_POOL_MAX));
+    size_t instance_pool_byte_size = sizeof(SPInstance) * pools->instance_pool.size;
+    pools->instances = (SPInstance*) SPIDER_MALLOC(instance_pool_byte_size);
+    SPIDER_ASSERT(pools->instances);
+    memset(pools->instances, 0, instance_pool_byte_size);
 }
 
 void _spDiscardPool(_SPPool* pool) {
@@ -280,6 +337,9 @@ void spInit(const SPInitDesc* desc) {
     _sp_state.surface = wgpuInstanceCreateSurface(_sp_state.instance, &surf_desc);
     DEBUG_PRINT(DEBUG_PRINT_TYPE_INIT, "init: created surface\n");
 
+    _sp_state.surface_size.width = desc->surface_size.width;
+    _sp_state.surface_size.height = desc->surface_size.height;
+
     WGPUSwapChainDescriptor sc_desc = {
         .usage = WGPUTextureUsage_OutputAttachment,
         .format = WGPUTextureFormat_BGRA8Unorm,
@@ -298,68 +358,94 @@ void spInit(const SPInitDesc* desc) {
     {
         WGPUBufferDescriptor buffer_desc = {
             .usage = WGPUBufferUsage_Uniform | WGPUBufferUsage_CopyDst,
-            .size = sizeof(UniformBufferObject)
+            .size = sizeof(UBOCommon),
         };
 
-       _sp_state.buffers.uniform_buffer = wgpuDeviceCreateBuffer(_sp_state.device, &buffer_desc);
+       _sp_state.buffers.uniform.common = wgpuDeviceCreateBuffer(_sp_state.device, &buffer_desc);
     }
+    
+    _sp_state.buffers.uniform.common_staging.count = 0;
+    _sp_state.buffers.uniform.common_staging.cur = 0;
+    _sp_state.buffers.uniform.common_staging.num_bytes = sizeof(UBOCommon);
 
-    // Uniform staging buffer creation
+    _sp_state.dynamic_alignment = 256;// sizeof(UBODynamic);
+    const uint32_t instance_count = (_sp_state.pools.instance_pool.size - 1);
+
+    // Uniform buffer creation
     {
         WGPUBufferDescriptor buffer_desc = {
-            .usage = WGPUBufferUsage_MapWrite | WGPUBufferUsage_CopySrc,
-            .size = sizeof(UniformBufferObject)
+            .usage = WGPUBufferUsage_Uniform | WGPUBufferUsage_CopyDst,
+            .size = _sp_state.dynamic_alignment * instance_count,
         };
 
-        _sp_state.buffers.uniform_staging_buffer = wgpuDeviceCreateBuffer(_sp_state.device, &buffer_desc);
-
-        /*
-        memset(result.data, 0, result.dataLength);
-        _sp_state.buffers.uniform_staging_buffer = result.buffer;
-        wgpuBufferUnmap(_sp_state.buffers.uniform_staging_buffer);
-        */
+        _sp_state.buffers.uniform.dynamic = wgpuDeviceCreateBuffer(_sp_state.device, &buffer_desc);
     }
-}
+    _sp_state.buffers.uniform.dynamic_staging.count = 0;
+    _sp_state.buffers.uniform.dynamic_staging.cur = 0;
+    _sp_state.buffers.uniform.dynamic_staging.num_bytes = _sp_state.dynamic_alignment * instance_count;
 
-void _spWriteMVPCallback(WGPUBufferMapAsyncStatus status, void * data, uint64_t dataLength, void * userdata) {
-    DEBUG_PRINT(DEBUG_PRINT_GENERAL, "entered callback\n");
-    if(status != WGPUBufferMapAsyncStatus_Success) {
-        DEBUG_PRINT(DEBUG_PRINT_WARNING, "BufferMapAsync not successful\n");
-    }
-    memcpy(data, userdata, dataLength);
-    wgpuBufferUnmap(_sp_state.buffers.uniform_staging_buffer);
+    DEBUG_PRINT(DEBUG_PRINT_TYPE_INIT, "init: created uniform_buffer with size %u\n", _sp_state.dynamic_alignment * instance_count);
+
+    _sp_state.active_cam = desc->camera;
+
+    WGPUTextureDescriptor texture_desc = {
+        .usage = WGPUTextureUsage_OutputAttachment,
+        .dimension = WGPUTextureDimension_2D,
+        .size = {
+            .width = _sp_state.surface_size.width,
+            .height = _sp_state.surface_size.height,
+            .depth = 1,
+        },
+        .arrayLayerCount = 1,
+        .format = WGPUTextureFormat_Depth32Float,
+        .mipLevelCount = 1,
+        .sampleCount = 1,
+    };
+    WGPUTexture depth_texture = wgpuDeviceCreateTexture(_sp_state.device, &texture_desc);
+
+    WGPUTextureViewDescriptor view_desc = {
+        .format = WGPUTextureFormat_Depth32Float,
+        .dimension = WGPUTextureViewDimension_2D,
+        .aspect = WGPUTextureAspect_All,
+    };
+    _sp_state.depth_view = wgpuTextureCreateView(depth_texture, &view_desc);
     
-    WGPUCommandEncoder encoder = wgpuDeviceCreateCommandEncoder(_sp_state.device, NULL);
-    wgpuCommandEncoderCopyBufferToBuffer(encoder, _sp_state.buffers.uniform_staging_buffer, 0, _sp_state.buffers.uniform_buffer, 0, sizeof(UniformBufferObject));
-    const WGPUCommandBuffer cmds = wgpuCommandEncoderFinish(encoder, NULL);
-
-    wgpuQueueSubmit(_sp_state.queue, 1, &cmds);
 }
 
-void _spUpdateTransform(SPRenderObject* ren_obj) {
-    DEBUG_PRINT(DEBUG_PRINT_GENERAL, "update transforms: start\n");
-    mat4 model = GLM_MAT4_IDENTITY_INIT;
-    //glm_rotate(model.model, );
-    //glm_scale();
-    glm_translate(model, ren_obj->transform.pos);
-    memcpy(_sp_state.ubo.model_view, GLM_MAT4_IDENTITY, sizeof(mat4));
-    glm_mat4_mul(_sp_state.active_cam._view, model, _sp_state.ubo.model_view);
-    SPMaterialID mat_id = ren_obj->material;
-    SPMaterial* material = &(_sp_state.pools.materials[mat_id.id]);
-
-    memcpy(_sp_state.ubo.proj, _sp_state.active_cam._proj, sizeof(mat4));
-    wgpuBufferMapWriteAsync(_sp_state.buffers.uniform_staging_buffer, _spWriteMVPCallback, &(_sp_state.ubo));
-    DEBUG_PRINT(DEBUG_PRINT_GENERAL, "update transforms: end\n");
+void _spDiscardStagingBuffers() {
+    for(uint8_t i = 0; i < _sp_state.buffers.uniform.common_staging.count; i++) {
+        wgpuBufferRelease(_sp_state.buffers.uniform.common_staging.buffer[i]);
+        _sp_state.buffers.uniform.common_staging.buffer[i] = NULL;
+        _sp_state.buffers.uniform.common_staging.data[i] = NULL;
+    }
+    _sp_state.buffers.uniform.common_staging.count = 0;
+    for(uint8_t i = 0; i < _sp_state.buffers.uniform.dynamic_staging.count; i++) {
+        wgpuBufferRelease(_sp_state.buffers.uniform.dynamic_staging.buffer[i]);
+        _sp_state.buffers.uniform.dynamic_staging.buffer[i] = NULL;
+        _sp_state.buffers.uniform.dynamic_staging.data[i] = NULL;
+    }
+    _sp_state.buffers.uniform.dynamic_staging.count = 0;
 }
 
 void _spUpdateView(void) {
     vec3 up = { 0.0f, 1.0f, 0.0f };
-    glm_look(
-        _sp_state.active_cam.pos,
-        _sp_state.active_cam.dir,
-        up,
-        _sp_state.active_cam._view
-    );
+    if(_sp_state.active_cam.mode == SPCameraMode_Direction) {
+        glm_look(
+            _sp_state.active_cam.pos,
+            _sp_state.active_cam.dir,
+            up,
+            _sp_state.active_cam._view
+        );
+    } 
+    else {
+        glm_lookat(
+            _sp_state.active_cam.pos,
+            _sp_state.active_cam.look_at,
+            up,
+            _sp_state.active_cam._view
+        );
+    }
+    //DEBUG_PRINT_MAT4(DEBUG_PRINT_GENERAL, "view", _sp_state.active_cam._view);
 }
 
 void _spUpdateProjection(void) {
@@ -372,6 +458,123 @@ void _spUpdateProjection(void) {
     );
 }
 
+#define _SP_CREATE_STAGING_POOL_CALLBACK(Pool, PoolName) \
+void _spUpdateStagingPool##PoolName##Callback(WGPUBufferMapAsyncStatus status, void* data, uint64_t dataLength, void * userdata) { \
+    int index = (int)userdata; \
+    if(index < Pool.count) { \
+        Pool.data[index] = (uint8_t*)data; \
+    } \
+ }
+
+ _SP_CREATE_STAGING_POOL_CALLBACK(_sp_state.buffers.uniform.dynamic_staging, Dynamic)
+ _SP_CREATE_STAGING_POOL_CALLBACK(_sp_state.buffers.uniform.common_staging, Common)
+
+void _spUpdateStagingPool(_SPStagingBufferPool* pool, WGPUBufferMapWriteCallback callback) {
+    if(pool->count) {
+        wgpuBufferMapWriteAsync(
+            pool->buffer[pool->cur], 
+            callback, 
+            (void*)(int)pool->cur
+        );
+    }
+
+    bool found = false;
+    for(uint8_t i = 0; i < pool->count; i++) {
+        if(pool->data[i]) {
+            pool->cur = i;
+            if(pool->cur > pool->max_cur) {
+                pool->max_cur = pool->cur;
+                pool->mappings_until_next_check = SP_STAGING_POOL_MAPPINGS_UNTIL_NEXT_CHECK;
+            }
+            found = true;
+            break;
+        }
+    }
+
+    if(!found) {
+        pool->mappings_until_next_check = SP_STAGING_POOL_MAPPINGS_UNTIL_NEXT_CHECK;
+        SPIDER_ASSERT(pool->count < SP_STAGING_POOL_SIZE);
+        pool->cur = pool->count++;
+        WGPUBufferDescriptor buffer_desc = {
+            .usage = WGPUBufferUsage_MapWrite | WGPUBufferUsage_CopySrc,
+            .size = pool->num_bytes,
+        };
+
+        WGPUCreateBufferMappedResult result = wgpuDeviceCreateBufferMapped(_sp_state.device, &buffer_desc);
+        pool->buffer[pool->cur] = result.buffer;
+        pool->data[pool->cur] = (uint8_t*) result.data;
+       
+        DEBUG_PRINT(DEBUG_PRINT_GENERAL, "staging buffers: created new buffer (%u in pool) with size %u\n", pool->cur, pool->num_bytes);
+    }
+
+    if(--pool->mappings_until_next_check == 0) {
+        pool->mappings_until_next_check = SP_STAGING_POOL_MAPPINGS_UNTIL_NEXT_CHECK;
+        if(pool->max_cur < pool->count) {
+            pool->count--;
+            wgpuBufferRelease(pool->buffer[pool->count]);
+            pool->buffer[pool->count] = NULL;
+            pool->data[pool->count] = NULL;
+
+            DEBUG_PRINT(DEBUG_PRINT_GENERAL, "staging buffers: released unused buffer (%u in pool) with size %u\n", pool->count, pool->num_bytes);
+        }
+    }
+}
+
+void _spUpdateUBODynamic(void) {
+    _SPStagingBufferPool* pool = &(_sp_state.buffers.uniform.dynamic_staging);
+    _spUpdateStagingPool(pool, _spUpdateStagingPoolDynamicCallback);
+    uint32_t index = 0;
+    for(size_t i = 1; i < _sp_state.pools.instance_pool.size; i++) {
+        SPMeshID mesh_id = _sp_state.pools.instances[i].mesh;
+        SPMaterialID mat_id = _sp_state.pools.instances[i].material;
+        if(mesh_id.id == SP_INVALID_ID || mat_id.id == SP_INVALID_ID) {
+            continue;
+        }
+        SPInstance* instance = &(_sp_state.pools.instances[i]);
+        UBODynamic ubo = {
+            .model = GLM_MAT4_IDENTITY_INIT,
+        };
+        mat4 scale = GLM_MAT4_IDENTITY_INIT;
+        glm_scale(scale, instance->transform.scale);
+        vec3 rot_rad = {
+            glm_rad(instance->transform.rot[0]),
+            glm_rad(instance->transform.rot[1]),
+            glm_rad(instance->transform.rot[2])
+        };
+        mat4 rot = GLM_MAT4_IDENTITY_INIT;
+        glm_euler_zxy(rot_rad, rot);
+        glm_mat4_mul(rot, scale, rot);
+        glm_translate(ubo.model, instance->transform.pos);
+        glm_mat4_mul(ubo.model, rot, ubo.model);
+        uint64_t offset = index * _sp_state.dynamic_alignment;
+
+        memcpy((void*)((uint64_t)(pool->data[pool->cur]) + offset), &ubo, sizeof(UBODynamic));
+        
+        index++;
+    }
+    wgpuBufferUnmap(pool->buffer[pool->cur]);
+    pool->data[pool->cur] = NULL;
+    //DEBUG_PRINT(DEBUG_PRINT_GENERAL, "ubo dyn: finished\n");
+}
+
+void _spUpdateUBOCommon(void) {
+    _SPStagingBufferPool* pool = &(_sp_state.buffers.uniform.common_staging);
+    _spUpdateStagingPool(pool, _spUpdateStagingPoolCommonCallback);
+
+    UBOCommon ubo = {
+        .view = GLM_MAT4_IDENTITY_INIT,
+        .proj = GLM_MAT4_IDENTITY_INIT,
+    };
+    memcpy(ubo.view, _sp_state.active_cam._view, sizeof(mat4));
+    memcpy(ubo.proj, _sp_state.active_cam._proj, sizeof(mat4));
+
+    memcpy(pool->data[pool->cur], &ubo, sizeof(UBOCommon));
+
+    wgpuBufferUnmap(pool->buffer[pool->cur]);
+    pool->data[pool->cur] = NULL;
+    //DEBUG_PRINT(DEBUG_PRINT_GENERAL, "ubo com: finished\n");
+}
+
 void _spUpdate(void) {
     _spUpdateView();
     _spUpdateProjection();
@@ -381,54 +584,94 @@ void spUpdate(void) {
     _spUpdate();
 }
 
+void _spSubmit(void) {
+    WGPUCommandBuffer commands = wgpuCommandEncoderFinish(_sp_state.cmd_enc, NULL);
+    wgpuCommandEncoderRelease(_sp_state.cmd_enc);
+    _sp_state.cmd_enc = NULL;
+
+    wgpuQueueSubmit(_sp_state.queue, 1, &commands);
+    wgpuCommandBufferRelease(commands);
+
+    _sp_state.cmd_enc = wgpuDeviceCreateCommandEncoder(_sp_state.device, NULL);
+} 
+
 void spRender(void) {
-    WGPUTextureView view = wgpuSwapChainGetCurrentTextureView(_sp_state.swap_chain);
+    DEBUG_PRINT(DEBUG_PRINT_RENDER, "render: start\n");
+
+    _spUpdateUBOCommon();
+    wgpuCommandEncoderCopyBufferToBuffer(
+        _sp_state.cmd_enc, 
+        _sp_state.buffers.uniform.common_staging.buffer[_sp_state.buffers.uniform.common_staging.cur], 0, 
+        _sp_state.buffers.uniform.common, 0, 
+        _sp_state.buffers.uniform.common_staging.num_bytes
+    ); 
+    DEBUG_PRINT(DEBUG_PRINT_RENDER, "render: recorded copy common ubo\n");
     
-    WGPURenderPassColorAttachmentDescriptor attachment = {
+    _spUpdateUBODynamic();
+    wgpuCommandEncoderCopyBufferToBuffer(
+        _sp_state.cmd_enc, 
+        _sp_state.buffers.uniform.dynamic_staging.buffer[_sp_state.buffers.uniform.dynamic_staging.cur], 0, 
+        _sp_state.buffers.uniform.dynamic, 0, 
+        _sp_state.buffers.uniform.dynamic_staging.num_bytes
+    );
+    DEBUG_PRINT(DEBUG_PRINT_RENDER, "render: recorded copy dynamic ubo\n");
+
+    WGPUTextureView view = wgpuSwapChainGetCurrentTextureView(_sp_state.swap_chain);
+
+    // main pass
+    // ***
+    WGPURenderPassColorAttachmentDescriptor color_attachment = {
         .attachment = view,
         .loadOp = WGPULoadOp_Clear,
         .storeOp = WGPUStoreOp_Store,
         .clearColor = (WGPUColor){0.0f, 0.0f, 0.0f, 1.0f}
     };
-    //printf("render: created renderPassColorAttachmentDescriptor\n");
+
+    WGPURenderPassDepthStencilAttachmentDescriptor depth_attachment = {
+        .attachment = _sp_state.depth_view,
+        .depthLoadOp = WGPULoadOp_Clear,
+        .depthStoreOp = WGPUStoreOp_Store,
+        .clearDepth = 1.0f,
+        .stencilLoadOp = WGPULoadOp_Clear,
+        .stencilStoreOp = WGPUStoreOp_Store,
+        .clearStencil = 0,
+    };
 
     WGPURenderPassDescriptor render_pass = {
         .colorAttachmentCount = 1,
-        .colorAttachments = &attachment
+        .colorAttachments = &color_attachment,
+        .depthStencilAttachment = &depth_attachment,
     };
-    
-    SPMaterialID last_mat_id = {0};
-    for(size_t i = 1; i < _sp_state.pools.render_object_pool.size; i++) {
-        SPMeshID mesh_id = _sp_state.pools.render_objects[i].mesh;
-        SPMaterialID mat_id = _sp_state.pools.render_objects[i].material;
+    uint32_t index = 0;
+    _sp_state.pass_enc = wgpuCommandEncoderBeginRenderPass(_sp_state.cmd_enc, &render_pass);
+    for(uint32_t i = 1; i < _sp_state.pools.instance_pool.size; i++) {
+        SPMeshID mesh_id = _sp_state.pools.instances[i].mesh;
+        SPMaterialID mat_id = _sp_state.pools.instances[i].material;
         if(mesh_id.id == SP_INVALID_ID || mat_id.id == SP_INVALID_ID) {
             continue;
         }
-        DEBUG_PRINT(DEBUG_PRINT_GENERAL, "rendering obj %zu\n", i);
-        _spUpdateTransform(&(_sp_state.pools.render_objects[i]));
-        SPMesh* mesh =  &(_sp_state.pools.meshes[mesh_id.id]);
+        SPMesh* mesh = &(_sp_state.pools.meshes[mesh_id.id]);
         SPMaterial* material = &(_sp_state.pools.materials[mat_id.id]);
-        if(mat_id.id != last_mat_id.id) {
-            _sp_state.pass_enc = wgpuCommandEncoderBeginRenderPass(_sp_state.cmd_enc, &render_pass);
-            wgpuRenderPassEncoderSetPipeline(_sp_state.pass_enc, material->pipeline);
-            wgpuRenderPassEncoderSetBindGroup(_sp_state.pass_enc, 0, material->bind_group, 0, NULL);
-        }
+
+        uint32_t offsets[] = {index * _sp_state.dynamic_alignment};
+
+        DEBUG_PRINT(DEBUG_PRINT_RENDER, "render: obj %u with offset %u\n", i, offsets[0]);
+
+        wgpuRenderPassEncoderSetPipeline(_sp_state.pass_enc, material->pipeline);
+        wgpuRenderPassEncoderSetBindGroup(_sp_state.pass_enc, 0, material->bind_group, ARRAY_LEN(offsets), offsets);
+
         wgpuRenderPassEncoderSetVertexBuffer(_sp_state.pass_enc, 0, mesh->vertex_buffer, 0);
         wgpuRenderPassEncoderSetIndexBuffer(_sp_state.pass_enc, mesh->index_buffer, 0);
         wgpuRenderPassEncoderDrawIndexed(_sp_state.pass_enc, mesh->indices_count, 1, 0, 0, 0);
-        if(mat_id.id != last_mat_id.id) {
-            wgpuRenderPassEncoderEndPass(_sp_state.pass_enc);
-        }
-        last_mat_id = mat_id;
-    }
-    
-    WGPUCommandBuffer commands = wgpuCommandEncoderFinish(_sp_state.cmd_enc, NULL);
-    wgpuCommandEncoderRelease(_sp_state.cmd_enc);
-    _sp_state.cmd_enc = NULL;
-    wgpuQueueSubmit(_sp_state.queue, 1, &commands);
-    wgpuCommandBufferRelease(commands);
 
-    _sp_state.cmd_enc = wgpuDeviceCreateCommandEncoder(_sp_state.device, NULL);
+        index++;
+    }
+    wgpuRenderPassEncoderEndPass(_sp_state.pass_enc);
+    wgpuRenderPassEncoderRelease(_sp_state.pass_enc);
+    DEBUG_PRINT(DEBUG_PRINT_RENDER, "render: finished render pass\n");
+    _spSubmit();
+    _sp_state.frame_index++;
+    // ***
 }
 
 SPMeshID spCreateMesh(const SPMeshDesc* desc) {
@@ -500,9 +743,18 @@ SPMaterialID spCreateMaterial(const SPMaterialDesc* desc) {
     }
     DEBUG_PRINT(DEBUG_PRINT_TYPE_CREATE_MATERIAL, "mat_creation: created frag shader\n");
 
-    WGPUBindGroupLayoutBinding bgls[] = {
+    WGPUBindGroupLayoutBinding vert_bglbs[] = {
         {
             .binding = 0,
+            .visibility = WGPUShaderStage_Vertex,
+            .type = WGPUBindingType_UniformBuffer,
+            .hasDynamicOffset = true,
+            .multisampled = false,
+            .textureDimension = WGPUTextureViewDimension_Undefined,
+            .textureComponentType = WGPUTextureComponentType_Float,
+        },
+        {
+            .binding = 1,
             .visibility = WGPUShaderStage_Vertex,
             .type = WGPUBindingType_UniformBuffer,
             .hasDynamicOffset = false,
@@ -513,8 +765,8 @@ SPMaterialID spCreateMaterial(const SPMaterialDesc* desc) {
     };
 
     WGPUBindGroupLayoutDescriptor bgl_desc = {
-        .bindingCount = ARRAY_LEN(bgls),
-        .bindings = bgls
+        .bindingCount = ARRAY_LEN(vert_bglbs),
+        .bindings = vert_bglbs
     };
     material->vert.bind_group_layout = wgpuDeviceCreateBindGroupLayout(_sp_state.device, &bgl_desc);
     DEBUG_PRINT(DEBUG_PRINT_TYPE_CREATE_MATERIAL, "mat_creation: created vert bgl\n");
@@ -523,9 +775,17 @@ SPMaterialID spCreateMaterial(const SPMaterialDesc* desc) {
     WGPUBindGroupBinding bindings[] = {
         {
             .binding = 0,
-            .buffer = _sp_state.buffers.uniform_buffer,
+            .buffer = _sp_state.buffers.uniform.dynamic,
             .offset = 0,
-            .size = sizeof(UniformBufferObject),
+            .size = sizeof(UBODynamic),
+            .sampler = NULL,
+            .textureView = NULL,
+        },
+        {
+            .binding = 1,
+            .buffer = _sp_state.buffers.uniform.common,
+            .offset = 0,
+            .size = sizeof(UBOCommon),
             .sampler = NULL,
             .textureView = NULL,
         }
@@ -539,9 +799,13 @@ SPMaterialID spCreateMaterial(const SPMaterialDesc* desc) {
     material->bind_group = wgpuDeviceCreateBindGroup(_sp_state.device, &bg_desc);
     DEBUG_PRINT(DEBUG_PRINT_TYPE_CREATE_MATERIAL, "mat_creation: created bind group\n");
 
+    WGPUBindGroupLayout blgs[] = {
+        material->vert.bind_group_layout
+    };
+
     WGPUPipelineLayoutDescriptor pipeline_layout_desc = {
-        .bindGroupLayoutCount = 1,
-        .bindGroupLayouts = &(material->vert.bind_group_layout)
+        .bindGroupLayoutCount = ARRAY_LEN(blgs),
+        .bindGroupLayouts = blgs
     };
 
     WGPUProgrammableStageDescriptor frag_stage_desc = {
@@ -574,6 +838,11 @@ SPMaterialID spCreateMaterial(const SPMaterialDesc* desc) {
             .format = WGPUVertexFormat_Float3,
             .offset = offsetof(Vertex, color),
             .shaderLocation = 1
+        },
+        {
+            .format = WGPUVertexFormat_Float3,
+            .offset = offsetof(Vertex, normal),
+            .shaderLocation = 2
         }
     };
 
@@ -592,10 +861,30 @@ SPMaterialID spCreateMaterial(const SPMaterialDesc* desc) {
         .vertexBuffers = vert_buffer_layout_descs
     };
 
+    WGPUDepthStencilStateDescriptor depth_stencil_state_desc = {
+        .depthWriteEnabled = true,
+        .format = WGPUTextureFormat_Depth32Float,
+        .depthCompare = WGPUCompareFunction_Less,
+        .stencilFront = {
+            .compare = WGPUCompareFunction_Always,
+            .failOp = WGPUStencilOperation_Keep,
+            .depthFailOp = WGPUStencilOperation_Keep,
+            .passOp = WGPUStencilOperation_Keep,
+        },
+        .stencilBack = {
+            .compare = WGPUCompareFunction_Always,
+            .failOp = WGPUStencilOperation_Keep,
+            .depthFailOp = WGPUStencilOperation_Keep,
+            .passOp = WGPUStencilOperation_Keep,
+        },
+        .stencilReadMask = 0xFFFFFFFF,
+        .stencilWriteMask = 0xFFFFFFFF,
+    };
+
     WGPURasterizationStateDescriptor rast_state_desc = {
         .nextInChain = NULL,
-        .frontFace = WGPUFrontFace_CCW,
-        .cullMode = WGPUCullMode_None,
+        .frontFace = WGPUFrontFace_CW,
+        .cullMode = WGPUCullMode_Front,
         .depthBias = 0,
         .depthBiasSlopeScale = 0.0f,
         .depthBiasClamp = 0.0f,
@@ -608,10 +897,11 @@ SPMaterialID spCreateMaterial(const SPMaterialDesc* desc) {
         .vertexState = &vert_state_desc,
         .fragmentStage = &frag_stage_desc,
         .rasterizationState = &rast_state_desc,
+        .sampleCount = 1,
+        .depthStencilState = &depth_stencil_state_desc,
         .colorStateCount = 1,
         .colorStates = &color_state_desc,
         .primitiveTopology = WGPUPrimitiveTopology_TriangleList,
-        .sampleCount = 1,
         .sampleMask = 0xFFFFFFFF
     };
     material->pipeline = wgpuDeviceCreateRenderPipeline(_sp_state.device, &pipeline_desc);
@@ -619,23 +909,39 @@ SPMaterialID spCreateMaterial(const SPMaterialDesc* desc) {
     return material_id;
 }
 
-SPRenderObjectID spCreateRenderObject(const SPRenderObjectDesc* desc) {
+SPInstanceID spCreateInstance(const SPInstanceDesc* desc) {
     SPIDER_ASSERT(desc->mesh.id != SP_INVALID_ID && desc->material.id != SP_INVALID_ID);
     if(!desc->mesh.id || !desc->material.id) {
-        return (SPRenderObjectID){SP_INVALID_ID};
+        return (SPInstanceID){SP_INVALID_ID};
     }
-    SPRenderObjectID render_object_id = (SPRenderObjectID){_spAllocPoolIndex(&(_sp_state.pools.render_object_pool))};
-    if(render_object_id.id == SP_INVALID_ID) {
-        return render_object_id;
+    SPInstanceID instance_id = (SPInstanceID){_spAllocPoolIndex(&(_sp_state.pools.instance_pool))};
+    if(instance_id.id == SP_INVALID_ID) {
+        return instance_id;
     }
-    int id = render_object_id.id; 
-    SPRenderObject* ren_obj = &(_sp_state.pools.render_objects[id]);
-    ren_obj->mesh = desc->mesh;
-    ren_obj->material = desc->material;
-    ren_obj->transform = (SPTransform){
-        .scale = {1.0f, 1.0f, 1.0f},
-    };
-    return render_object_id;
+    int id = instance_id.id; 
+    SPInstance* instance = &(_sp_state.pools.instances[id]);
+    instance->mesh = desc->mesh;
+    instance->material = desc->material;
+    if(desc->transform) {
+        memcpy(&(instance->transform), desc->transform, sizeof(SPTransform));
+    }
+    else {
+        instance->transform = (SPTransform){
+            .scale = {1.0f, 1.0f, 1.0f},
+        };
+    }
+    return instance_id;
+}
+
+SPCamera* spGetActiveCamera() {
+    return &(_sp_state.active_cam);
+}
+
+SPInstance* spGetInstance(SPInstanceID instance_id) {
+    if(instance_id.id == SP_INVALID_ID || instance_id.id >= _sp_state.pools.instance_pool.size) {
+        return NULL;
+    }
+    return &(_sp_state.pools.instances[instance_id.id]);
 }
 
 #endif // SPIDER_H_

@@ -326,10 +326,8 @@ void update() {
     vec3 axis = {
         0.0f, 0.0, 1.0f
     };
-    mat4 identity = GLM_MAT4_IDENTITY_INIT;
-    glm_rotate(identity, diff * glm_rad(90.0f), axis);
     mat4 model = GLM_MAT4_IDENTITY_INIT;
-    memcpy(model, identity, sizeof(mat4));
+    glm_rotate(model, diff * glm_rad(90.0f), axis);
     vec3 eye = {
         2.0f, 2.0f, 2.0f
     };
