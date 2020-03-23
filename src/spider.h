@@ -227,94 +227,98 @@ void errorCallback(WGPUErrorType type, char const * message, void * userdata) {
 }
 
 // PUBLIC
+/* 
+Initializes the application and creates all static resources
+*/
 void spInit(const SPInitDesc* desc);
+/* 
+Updates the model, view and projection matrices and copies them
+in a mapped staging buffer
+*/
+void spUpdate(void);
+/*
+Records the commands for the GPU and submits them
+Includes copying from staging to GPU-only buffers
+Draws all instances created with spCreateInstance
+*/
 void spRender(void);
+/*
+Creates a mesh and returns an identifier to it
+*/
 SPMeshID spCreateMesh(const SPMeshDesc* desc);
+/*
+Creates a material and returns an identifier to it
+*/
 SPMaterialID spCreateMaterial(const SPMaterialDesc* desc);
+/*
+Creates an instance and returns an identifier to it
+*/
 SPInstanceID spCreateInstance(const SPInstanceDesc* desc);
 
-void spUpdateInstanceTransform(const SPInstanceID instance_id, const SPTransform* transform);
+/*
+Returns a temporary pointer to the active camera 
+*/
+SPCamera* spGetActiveCamera();
+/*
+Returns a temporary pointer to the instance with the specified id
+NULL if not a valid id
+*/
+SPInstance* spGetInstance(SPInstanceID instance_id);
 
 // PRIVATE
+// Pools from https://github.com/floooh/sokol/
+/* Setup all pools */
+void _spSetupPools(_SPPools* pools, const SPPoolsDesc* pools_desc);
+/* Inititalize a pool */
+void _spInitPool(_SPPool* pool, size_t size);
+/* Discard a pool */
+void _spDiscardPool(_SPPool* pool);
+/* Get the next free ID from a pool */
+int _spAllocPoolIndex(_SPPool* pool);
+/* Free an ID from a pool */
+void _spFreePoolIndex(_SPPool* pool, int slot_index);
+
+// Matrices
+/* Updates the view matrix */
+void _spUpdateView(void);
+/* Updates the projection matrix */
+void _spUpdateProjection(void);
+
+// Staging buffer pools
+/* Callback for wgpuBufferMapWriteAsync for the staging buffer pool containing dynamic model data */
+void _spUpdateStagingPoolDynamicCallback(WGPUBufferMapAsyncStatus status, void* data, uint64_t dataLength, void * userdata);
+/* Callback for wgpuBufferMapWriteAsync for the staging buffer pool containing common data */
+void _spUpdateStagingPoolCommonCallback(WGPUBufferMapAsyncStatus status, void* data, uint64_t dataLength, void * userdata);
+/* Releases all staging buffers */
+void _spDiscardStagingBuffers();
+/* Updates a pool
+ - finding a mapped buffer
+   - otherwise create a new mapped buffer
+ - release unused buffer
+ - pool->cur is now the index to a valid mapped buffer
+ */
+void _spUpdateStagingPool(_SPStagingBufferPool* pool, WGPUBufferMapWriteCallback callback);
+/* Creates a model matrix for each instance 
+and copies them to the current mapped 'dynamic' staging buffer */
+void _spUpdateUBODynamic(void);
+/* Copies the view and projection matrices to the current mapped 'common' staging buffer  */
+void _spUpdateUBOCommon(void);
+
+// General
+/*
+Calls all internal updates
+*/
+void _spUpdate(void);
+/*
+Creates a command buffer from the recorded commands
+and submits it to the queue
+Recreates the command encoder
+*/
 void _spSubmit(void);
-void _spInitPool(_SPPool* pool, size_t size) {
-    SPIDER_ASSERT(pool && size >= 1);
-    pool->size = size + 1;
-    pool->queue_top = 0;
-    size_t gen_ctrs_size = sizeof(uint32_t) * pool->size;
-    pool->gen_ctrs = (uint32_t*) SPIDER_MALLOC(gen_ctrs_size);
-    SPIDER_ASSERT(pool->gen_ctrs);
-    pool->free_queue = (int*)SPIDER_MALLOC(sizeof(int)*size);
-    SPIDER_ASSERT(pool->free_queue);
-    /* never allocate the zero-th pool item since the invalid id is 0 */
-    for (int i = pool->size-1; i >= 1; i--) {
-        pool->free_queue[pool->queue_top++] = i;
-    }
-}
-
-void _spSetupPools(_SPPools* pools, const SPPoolsDesc* pools_desc) {
-    _spInitPool(&(_sp_state.pools.mesh_pool), _SP_GET_DEFAULT_IF_ZERO(pools_desc->capacities.meshes, _SP_MESH_POOL_MAX));
-    size_t mesh_pool_byte_size = sizeof(SPMesh) * pools->mesh_pool.size;
-    pools->meshes = (SPMesh*) SPIDER_MALLOC(mesh_pool_byte_size);
-    SPIDER_ASSERT(pools->meshes);
-    memset(pools->meshes, 0, mesh_pool_byte_size);
-
-    
-    _spInitPool(&(_sp_state.pools.material_pool), _SP_GET_DEFAULT_IF_ZERO(pools_desc->capacities.materials, _SP_MATERIAL_POOL_MAX));
-    size_t mat_pool_byte_size = sizeof(SPMaterial) * pools->material_pool.size;
-    pools->materials = (SPMaterial*) SPIDER_MALLOC(mat_pool_byte_size);
-    SPIDER_ASSERT(pools->materials);
-    memset(pools->materials, 0, mat_pool_byte_size);
-
-    _spInitPool(&(_sp_state.pools.instance_pool), _SP_GET_DEFAULT_IF_ZERO(pools_desc->capacities.instances, _SP_RENDER_OBJECT_POOL_MAX));
-    size_t instance_pool_byte_size = sizeof(SPInstance) * pools->instance_pool.size;
-    pools->instances = (SPInstance*) SPIDER_MALLOC(instance_pool_byte_size);
-    SPIDER_ASSERT(pools->instances);
-    memset(pools->instances, 0, instance_pool_byte_size);
-}
-
-void _spDiscardPool(_SPPool* pool) {
-    SPIDER_ASSERT(pool);
-    SPIDER_ASSERT(pool->free_queue);
-    SPIDER_ASSERT(pool->free_queue);
-    pool->free_queue = 0;
-    SPIDER_ASSERT(pool->gen_ctrs);
-    SPIDER_ASSERT(pool->gen_ctrs);
-    pool->gen_ctrs = 0;
-    pool->size = 0;
-    pool->queue_top = 0;
-}
-
-int _spAllocPoolIndex(_SPPool* pool) {
-    SPIDER_ASSERT(pool);
-    SPIDER_ASSERT(pool->free_queue);
-    if (pool->queue_top > 0) {
-        int slot_index = pool->free_queue[--pool->queue_top];
-        SPIDER_ASSERT((slot_index > 0) && (slot_index < pool->size));
-        return slot_index;
-    }
-    else {
-        /* pool exhausted */
-        return SP_INVALID_ID;
-    }
-}
-
-void _spFreePoolIndex(_SPPool* pool, int slot_index) {
-    SPIDER_ASSERT((slot_index > SP_INVALID_ID) && (slot_index < pool->size));
-    SPIDER_ASSERT(pool);
-    SPIDER_ASSERT(pool->free_queue);
-    SPIDER_ASSERT(pool->queue_top < pool->size);
-    #ifdef SPIDER_DEBUG
-    /* debug check against double-free */
-    for (int i = 0; i < pool->queue_top; i++) {
-        SPIDER_ASSERT(pool->free_queue[i] != slot_index);
-    }
-    #endif
-    pool->free_queue[pool->queue_top++] = slot_index;
-    SPIDER_ASSERT(pool->queue_top <= (pool->size-1));
-}
 
 // IMPLEMENTATION
+
+// PUBLIC
 void spInit(const SPInitDesc* desc) {
     _sp_state.device = emscripten_webgpu_get_device();
     DEBUG_PRINT(DEBUG_PRINT_TYPE_INIT, "init: got device\n");
@@ -412,193 +416,12 @@ void spInit(const SPInitDesc* desc) {
     
 }
 
-void _spDiscardStagingBuffers() {
-    for(uint8_t i = 0; i < _sp_state.buffers.uniform.common_staging.count; i++) {
-        wgpuBufferRelease(_sp_state.buffers.uniform.common_staging.buffer[i]);
-        _sp_state.buffers.uniform.common_staging.buffer[i] = NULL;
-        _sp_state.buffers.uniform.common_staging.data[i] = NULL;
-    }
-    _sp_state.buffers.uniform.common_staging.count = 0;
-    for(uint8_t i = 0; i < _sp_state.buffers.uniform.dynamic_staging.count; i++) {
-        wgpuBufferRelease(_sp_state.buffers.uniform.dynamic_staging.buffer[i]);
-        _sp_state.buffers.uniform.dynamic_staging.buffer[i] = NULL;
-        _sp_state.buffers.uniform.dynamic_staging.data[i] = NULL;
-    }
-    _sp_state.buffers.uniform.dynamic_staging.count = 0;
-}
-
-void _spUpdateView(void) {
-    vec3 up = { 0.0f, 1.0f, 0.0f };
-    if(_sp_state.active_cam.mode == SPCameraMode_Direction) {
-        glm_look(
-            _sp_state.active_cam.pos,
-            _sp_state.active_cam.dir,
-            up,
-            _sp_state.active_cam._view
-        );
-    } 
-    else {
-        glm_lookat(
-            _sp_state.active_cam.pos,
-            _sp_state.active_cam.look_at,
-            up,
-            _sp_state.active_cam._view
-        );
-    }
-    //DEBUG_PRINT_MAT4(DEBUG_PRINT_GENERAL, "view", _sp_state.active_cam._view);
-}
-
-void _spUpdateProjection(void) {
-    glm_perspective(
-        _sp_state.active_cam.fovy,
-        _sp_state.active_cam.aspect,
-        _sp_state.active_cam.near,
-        _sp_state.active_cam.far,
-        _sp_state.active_cam._proj
-    );
-}
-
-#define _SP_CREATE_STAGING_POOL_CALLBACK(Pool, PoolName) \
-void _spUpdateStagingPool##PoolName##Callback(WGPUBufferMapAsyncStatus status, void* data, uint64_t dataLength, void * userdata) { \
-    int index = (int)userdata; \
-    if(index < Pool.count) { \
-        Pool.data[index] = (uint8_t*)data; \
-    } \
- }
-
- _SP_CREATE_STAGING_POOL_CALLBACK(_sp_state.buffers.uniform.dynamic_staging, Dynamic)
- _SP_CREATE_STAGING_POOL_CALLBACK(_sp_state.buffers.uniform.common_staging, Common)
-
-void _spUpdateStagingPool(_SPStagingBufferPool* pool, WGPUBufferMapWriteCallback callback) {
-    if(pool->count) {
-        wgpuBufferMapWriteAsync(
-            pool->buffer[pool->cur], 
-            callback, 
-            (void*)(int)pool->cur
-        );
-    }
-
-    bool found = false;
-    for(uint8_t i = 0; i < pool->count; i++) {
-        if(pool->data[i]) {
-            pool->cur = i;
-            if(pool->cur > pool->max_cur) {
-                pool->max_cur = pool->cur;
-                pool->mappings_until_next_check = SP_STAGING_POOL_MAPPINGS_UNTIL_NEXT_CHECK;
-            }
-            found = true;
-            break;
-        }
-    }
-
-    if(!found) {
-        pool->mappings_until_next_check = SP_STAGING_POOL_MAPPINGS_UNTIL_NEXT_CHECK;
-        SPIDER_ASSERT(pool->count < SP_STAGING_POOL_SIZE);
-        pool->cur = pool->count++;
-        WGPUBufferDescriptor buffer_desc = {
-            .usage = WGPUBufferUsage_MapWrite | WGPUBufferUsage_CopySrc,
-            .size = pool->num_bytes,
-        };
-
-        WGPUCreateBufferMappedResult result = wgpuDeviceCreateBufferMapped(_sp_state.device, &buffer_desc);
-        pool->buffer[pool->cur] = result.buffer;
-        pool->data[pool->cur] = (uint8_t*) result.data;
-       
-        DEBUG_PRINT(DEBUG_PRINT_GENERAL, "staging buffers: created new buffer (%u in pool) with size %u\n", pool->cur, pool->num_bytes);
-    }
-
-    if(--pool->mappings_until_next_check == 0) {
-        pool->mappings_until_next_check = SP_STAGING_POOL_MAPPINGS_UNTIL_NEXT_CHECK;
-        if(pool->max_cur < pool->count) {
-            pool->count--;
-            wgpuBufferRelease(pool->buffer[pool->count]);
-            pool->buffer[pool->count] = NULL;
-            pool->data[pool->count] = NULL;
-
-            DEBUG_PRINT(DEBUG_PRINT_GENERAL, "staging buffers: released unused buffer (%u in pool) with size %u\n", pool->count, pool->num_bytes);
-        }
-    }
-}
-
-void _spUpdateUBODynamic(void) {
-    _SPStagingBufferPool* pool = &(_sp_state.buffers.uniform.dynamic_staging);
-    _spUpdateStagingPool(pool, _spUpdateStagingPoolDynamicCallback);
-    uint32_t index = 0;
-    for(size_t i = 1; i < _sp_state.pools.instance_pool.size; i++) {
-        SPMeshID mesh_id = _sp_state.pools.instances[i].mesh;
-        SPMaterialID mat_id = _sp_state.pools.instances[i].material;
-        if(mesh_id.id == SP_INVALID_ID || mat_id.id == SP_INVALID_ID) {
-            continue;
-        }
-        SPInstance* instance = &(_sp_state.pools.instances[i]);
-        UBODynamic ubo = {
-            .model = GLM_MAT4_IDENTITY_INIT,
-        };
-        mat4 scale = GLM_MAT4_IDENTITY_INIT;
-        glm_scale(scale, instance->transform.scale);
-        vec3 rot_rad = {
-            glm_rad(instance->transform.rot[0]),
-            glm_rad(instance->transform.rot[1]),
-            glm_rad(instance->transform.rot[2])
-        };
-        mat4 rot = GLM_MAT4_IDENTITY_INIT;
-        glm_euler_zxy(rot_rad, rot);
-        glm_mat4_mul(rot, scale, rot);
-        glm_translate(ubo.model, instance->transform.pos);
-        glm_mat4_mul(ubo.model, rot, ubo.model);
-        uint64_t offset = index * _sp_state.dynamic_alignment;
-
-        memcpy((void*)((uint64_t)(pool->data[pool->cur]) + offset), &ubo, sizeof(UBODynamic));
-        
-        index++;
-    }
-    wgpuBufferUnmap(pool->buffer[pool->cur]);
-    pool->data[pool->cur] = NULL;
-    //DEBUG_PRINT(DEBUG_PRINT_GENERAL, "ubo dyn: finished\n");
-}
-
-void _spUpdateUBOCommon(void) {
-    _SPStagingBufferPool* pool = &(_sp_state.buffers.uniform.common_staging);
-    _spUpdateStagingPool(pool, _spUpdateStagingPoolCommonCallback);
-
-    UBOCommon ubo = {
-        .view = GLM_MAT4_IDENTITY_INIT,
-        .proj = GLM_MAT4_IDENTITY_INIT,
-    };
-    memcpy(ubo.view, _sp_state.active_cam._view, sizeof(mat4));
-    memcpy(ubo.proj, _sp_state.active_cam._proj, sizeof(mat4));
-
-    memcpy(pool->data[pool->cur], &ubo, sizeof(UBOCommon));
-
-    wgpuBufferUnmap(pool->buffer[pool->cur]);
-    pool->data[pool->cur] = NULL;
-    //DEBUG_PRINT(DEBUG_PRINT_GENERAL, "ubo com: finished\n");
-}
-
-void _spUpdate(void) {
-    _spUpdateView();
-    _spUpdateProjection();
-}
-
 void spUpdate(void) {
     _spUpdate();
 }
 
-void _spSubmit(void) {
-    WGPUCommandBuffer commands = wgpuCommandEncoderFinish(_sp_state.cmd_enc, NULL);
-    wgpuCommandEncoderRelease(_sp_state.cmd_enc);
-    _sp_state.cmd_enc = NULL;
-
-    wgpuQueueSubmit(_sp_state.queue, 1, &commands);
-    wgpuCommandBufferRelease(commands);
-
-    _sp_state.cmd_enc = wgpuDeviceCreateCommandEncoder(_sp_state.device, NULL);
-} 
-
 void spRender(void) {
     DEBUG_PRINT(DEBUG_PRINT_RENDER, "render: start\n");
-
-    _spUpdateUBOCommon();
     wgpuCommandEncoderCopyBufferToBuffer(
         _sp_state.cmd_enc, 
         _sp_state.buffers.uniform.common_staging.buffer[_sp_state.buffers.uniform.common_staging.cur], 0, 
@@ -607,7 +430,6 @@ void spRender(void) {
     ); 
     DEBUG_PRINT(DEBUG_PRINT_RENDER, "render: recorded copy common ubo\n");
     
-    _spUpdateUBODynamic();
     wgpuCommandEncoderCopyBufferToBuffer(
         _sp_state.cmd_enc, 
         _sp_state.buffers.uniform.dynamic_staging.buffer[_sp_state.buffers.uniform.dynamic_staging.cur], 0, 
@@ -943,5 +765,265 @@ SPInstance* spGetInstance(SPInstanceID instance_id) {
     }
     return &(_sp_state.pools.instances[instance_id.id]);
 }
+
+// PRIVATE
+// Pool implementation from https://github.com/floooh/sokol/ 
+// ***
+void _spSetupPools(_SPPools* pools, const SPPoolsDesc* pools_desc) {
+    _spInitPool(&(_sp_state.pools.mesh_pool), _SP_GET_DEFAULT_IF_ZERO(pools_desc->capacities.meshes, _SP_MESH_POOL_MAX));
+    size_t mesh_pool_byte_size = sizeof(SPMesh) * pools->mesh_pool.size;
+    pools->meshes = (SPMesh*) SPIDER_MALLOC(mesh_pool_byte_size);
+    SPIDER_ASSERT(pools->meshes);
+    memset(pools->meshes, 0, mesh_pool_byte_size);
+
+    
+    _spInitPool(&(_sp_state.pools.material_pool), _SP_GET_DEFAULT_IF_ZERO(pools_desc->capacities.materials, _SP_MATERIAL_POOL_MAX));
+    size_t mat_pool_byte_size = sizeof(SPMaterial) * pools->material_pool.size;
+    pools->materials = (SPMaterial*) SPIDER_MALLOC(mat_pool_byte_size);
+    SPIDER_ASSERT(pools->materials);
+    memset(pools->materials, 0, mat_pool_byte_size);
+
+    _spInitPool(&(_sp_state.pools.instance_pool), _SP_GET_DEFAULT_IF_ZERO(pools_desc->capacities.instances, _SP_RENDER_OBJECT_POOL_MAX));
+    size_t instance_pool_byte_size = sizeof(SPInstance) * pools->instance_pool.size;
+    pools->instances = (SPInstance*) SPIDER_MALLOC(instance_pool_byte_size);
+    SPIDER_ASSERT(pools->instances);
+    memset(pools->instances, 0, instance_pool_byte_size);
+}
+
+void _spInitPool(_SPPool* pool, size_t size) {
+    SPIDER_ASSERT(pool && size >= 1);
+    pool->size = size + 1;
+    pool->queue_top = 0;
+    size_t gen_ctrs_size = sizeof(uint32_t) * pool->size;
+    pool->gen_ctrs = (uint32_t*) SPIDER_MALLOC(gen_ctrs_size);
+    SPIDER_ASSERT(pool->gen_ctrs);
+    pool->free_queue = (int*)SPIDER_MALLOC(sizeof(int)*size);
+    SPIDER_ASSERT(pool->free_queue);
+    /* never allocate the zero-th pool item since the invalid id is 0 */
+    for (int i = pool->size-1; i >= 1; i--) {
+        pool->free_queue[pool->queue_top++] = i;
+    }
+}
+
+void _spDiscardPool(_SPPool* pool) {
+    SPIDER_ASSERT(pool);
+    SPIDER_ASSERT(pool->free_queue);
+    SPIDER_ASSERT(pool->free_queue);
+    pool->free_queue = 0;
+    SPIDER_ASSERT(pool->gen_ctrs);
+    SPIDER_ASSERT(pool->gen_ctrs);
+    pool->gen_ctrs = 0;
+    pool->size = 0;
+    pool->queue_top = 0;
+}
+
+int _spAllocPoolIndex(_SPPool* pool) {
+    SPIDER_ASSERT(pool);
+    SPIDER_ASSERT(pool->free_queue);
+    if (pool->queue_top > 0) {
+        int slot_index = pool->free_queue[--pool->queue_top];
+        SPIDER_ASSERT((slot_index > 0) && (slot_index < pool->size));
+        return slot_index;
+    }
+    else {
+        /* pool exhausted */
+        return SP_INVALID_ID;
+    }
+}
+
+void _spFreePoolIndex(_SPPool* pool, int slot_index) {
+    SPIDER_ASSERT((slot_index > SP_INVALID_ID) && (slot_index < pool->size));
+    SPIDER_ASSERT(pool);
+    SPIDER_ASSERT(pool->free_queue);
+    SPIDER_ASSERT(pool->queue_top < pool->size);
+    #ifdef SPIDER_DEBUG
+    /* debug check against double-free */
+    for (int i = 0; i < pool->queue_top; i++) {
+        SPIDER_ASSERT(pool->free_queue[i] != slot_index);
+    }
+    #endif
+    pool->free_queue[pool->queue_top++] = slot_index;
+    SPIDER_ASSERT(pool->queue_top <= (pool->size-1));
+}
+// ***
+
+void _spUpdateView(void) {
+    vec3 up = { 0.0f, 1.0f, 0.0f };
+    if(_sp_state.active_cam.mode == SPCameraMode_Direction) {
+        glm_look(
+            _sp_state.active_cam.pos,
+            _sp_state.active_cam.dir,
+            up,
+            _sp_state.active_cam._view
+        );
+    } 
+    else {
+        glm_lookat(
+            _sp_state.active_cam.pos,
+            _sp_state.active_cam.look_at,
+            up,
+            _sp_state.active_cam._view
+        );
+    }
+}
+
+void _spUpdateProjection(void) {
+    glm_perspective(
+        _sp_state.active_cam.fovy,
+        _sp_state.active_cam.aspect,
+        _sp_state.active_cam.near,
+        _sp_state.active_cam.far,
+        _sp_state.active_cam._proj
+    );
+}
+
+#define _SP_CREATE_STAGING_POOL_CALLBACK_IMPL(Pool, PoolName) \
+void _spUpdateStagingPool##PoolName##Callback(WGPUBufferMapAsyncStatus status, void* data, uint64_t dataLength, void * userdata) { \
+    int index = (int)userdata; \
+    if(index < Pool.count) { \
+        Pool.data[index] = (uint8_t*)data; \
+    } \
+ }
+
+_SP_CREATE_STAGING_POOL_CALLBACK_IMPL(_sp_state.buffers.uniform.dynamic_staging, Dynamic)
+_SP_CREATE_STAGING_POOL_CALLBACK_IMPL(_sp_state.buffers.uniform.common_staging, Common)
+
+void _spDiscardStagingBuffers() {
+    for(uint8_t i = 0; i < _sp_state.buffers.uniform.common_staging.count; i++) {
+        wgpuBufferRelease(_sp_state.buffers.uniform.common_staging.buffer[i]);
+        _sp_state.buffers.uniform.common_staging.buffer[i] = NULL;
+        _sp_state.buffers.uniform.common_staging.data[i] = NULL;
+    }
+    _sp_state.buffers.uniform.common_staging.count = 0;
+    for(uint8_t i = 0; i < _sp_state.buffers.uniform.dynamic_staging.count; i++) {
+        wgpuBufferRelease(_sp_state.buffers.uniform.dynamic_staging.buffer[i]);
+        _sp_state.buffers.uniform.dynamic_staging.buffer[i] = NULL;
+        _sp_state.buffers.uniform.dynamic_staging.data[i] = NULL;
+    }
+    _sp_state.buffers.uniform.dynamic_staging.count = 0;
+}
+
+void _spUpdateStagingPool(_SPStagingBufferPool* pool, WGPUBufferMapWriteCallback callback) {
+    if(pool->count) {
+        wgpuBufferMapWriteAsync(
+            pool->buffer[pool->cur], 
+            callback, 
+            (void*)(int)pool->cur
+        );
+    }
+
+    bool found = false;
+    for(uint8_t i = 0; i < pool->count; i++) {
+        if(pool->data[i]) {
+            pool->cur = i;
+            if(pool->cur > pool->max_cur) {
+                pool->max_cur = pool->cur;
+                pool->mappings_until_next_check = SP_STAGING_POOL_MAPPINGS_UNTIL_NEXT_CHECK;
+            }
+            found = true;
+            break;
+        }
+    }
+
+    if(!found) {
+        pool->mappings_until_next_check = SP_STAGING_POOL_MAPPINGS_UNTIL_NEXT_CHECK;
+        SPIDER_ASSERT(pool->count < SP_STAGING_POOL_SIZE);
+        pool->cur = pool->count++;
+        WGPUBufferDescriptor buffer_desc = {
+            .usage = WGPUBufferUsage_MapWrite | WGPUBufferUsage_CopySrc,
+            .size = pool->num_bytes,
+        };
+
+        WGPUCreateBufferMappedResult result = wgpuDeviceCreateBufferMapped(_sp_state.device, &buffer_desc);
+        pool->buffer[pool->cur] = result.buffer;
+        pool->data[pool->cur] = (uint8_t*) result.data;
+       
+        DEBUG_PRINT(DEBUG_PRINT_GENERAL, "staging buffers: created new buffer (%u in pool) with size %u\n", pool->cur, pool->num_bytes);
+    }
+
+    if(--pool->mappings_until_next_check == 0) {
+        pool->mappings_until_next_check = SP_STAGING_POOL_MAPPINGS_UNTIL_NEXT_CHECK;
+        if(pool->max_cur < pool->count) {
+            pool->count--;
+            wgpuBufferRelease(pool->buffer[pool->count]);
+            pool->buffer[pool->count] = NULL;
+            pool->data[pool->count] = NULL;
+
+            DEBUG_PRINT(DEBUG_PRINT_GENERAL, "staging buffers: released unused buffer (%u in pool) with size %u\n", pool->count, pool->num_bytes);
+        }
+    }
+}
+
+void _spUpdateUBODynamic(void) {
+    _SPStagingBufferPool* pool = &(_sp_state.buffers.uniform.dynamic_staging);
+    _spUpdateStagingPool(pool, _spUpdateStagingPoolDynamicCallback);
+    uint32_t index = 0;
+    for(size_t i = 1; i < _sp_state.pools.instance_pool.size; i++) {
+        SPMeshID mesh_id = _sp_state.pools.instances[i].mesh;
+        SPMaterialID mat_id = _sp_state.pools.instances[i].material;
+        if(mesh_id.id == SP_INVALID_ID || mat_id.id == SP_INVALID_ID) {
+            continue;
+        }
+        SPInstance* instance = &(_sp_state.pools.instances[i]);
+        UBODynamic ubo = {
+            .model = GLM_MAT4_IDENTITY_INIT,
+        };
+        mat4 scale = GLM_MAT4_IDENTITY_INIT;
+        glm_scale(scale, instance->transform.scale);
+        vec3 rot_rad = {
+            glm_rad(instance->transform.rot[0]),
+            glm_rad(instance->transform.rot[1]),
+            glm_rad(instance->transform.rot[2])
+        };
+        mat4 rot = GLM_MAT4_IDENTITY_INIT;
+        glm_euler_zxy(rot_rad, rot);
+        glm_mat4_mul(rot, scale, rot);
+        glm_translate(ubo.model, instance->transform.pos);
+        glm_mat4_mul(ubo.model, rot, ubo.model);
+        uint64_t offset = index * _sp_state.dynamic_alignment;
+
+        memcpy((void*)((uint64_t)(pool->data[pool->cur]) + offset), &ubo, sizeof(UBODynamic));
+        
+        index++;
+    }
+    wgpuBufferUnmap(pool->buffer[pool->cur]);
+    pool->data[pool->cur] = NULL;
+}
+
+void _spUpdateUBOCommon(void) {
+    _SPStagingBufferPool* pool = &(_sp_state.buffers.uniform.common_staging);
+    _spUpdateStagingPool(pool, _spUpdateStagingPoolCommonCallback);
+
+    UBOCommon ubo = {
+        .view = GLM_MAT4_IDENTITY_INIT,
+        .proj = GLM_MAT4_IDENTITY_INIT,
+    };
+    memcpy(ubo.view, _sp_state.active_cam._view, sizeof(mat4));
+    memcpy(ubo.proj, _sp_state.active_cam._proj, sizeof(mat4));
+
+    memcpy(pool->data[pool->cur], &ubo, sizeof(UBOCommon));
+
+    wgpuBufferUnmap(pool->buffer[pool->cur]);
+    pool->data[pool->cur] = NULL;
+}
+
+void _spUpdate(void) {
+    _spUpdateView();
+    _spUpdateProjection();
+    _spUpdateUBOCommon();
+    _spUpdateUBODynamic();
+}
+
+
+void _spSubmit(void) {
+    WGPUCommandBuffer commands = wgpuCommandEncoderFinish(_sp_state.cmd_enc, NULL);
+    wgpuCommandEncoderRelease(_sp_state.cmd_enc);
+    _sp_state.cmd_enc = NULL;
+
+    wgpuQueueSubmit(_sp_state.queue, 1, &commands);
+    wgpuCommandBufferRelease(commands);
+
+    _sp_state.cmd_enc = wgpuDeviceCreateCommandEncoder(_sp_state.device, NULL);
+} 
 
 #endif // SPIDER_H_

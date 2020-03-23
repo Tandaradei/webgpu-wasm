@@ -128,6 +128,9 @@ void frame(void) {
     time_elapsed_total_s += delta_time_s;
     for(int i = 0; i < INSTANCES_COUNT; i++) {
         SPInstance* instance = spGetInstance(instance_ids[i]);
+        if(!instance) {
+            continue;
+        }
         instance->transform.rot[1] += 2.0f * i * delta_time_s;
         if(instance->transform.rot[1] >= 360.0f) {
             instance->transform.rot[1] -= 360.0f; 
@@ -163,8 +166,8 @@ int main() {
     vec3 dir = {0.0f, 0.0f, 1.0f};
     vec3 pos = {0.0f, 0.0f, -10.0f};
     vec3 center = {0.0f, 0.0f, 0.0f};
-    //glm_vec3_sub(center, pos, dir);
-    //glm_vec3_norm(dir);
+    glm_vec3_sub(center, pos, dir);
+    glm_vec3_norm(dir);
 
     SPInitDesc init = {
         .surface_size = {

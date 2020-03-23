@@ -196,7 +196,7 @@ Module['FS_createPath']('/src/shaders', 'compiled', true, true);
     }
   
    }
-   loadPackage({"files": [{"start": 0, "audio": 0, "end": 1980, "filename": "/src/shaders/compiled/frag.spv"}, {"start": 1980, "audio": 0, "end": 4536, "filename": "/src/shaders/compiled/vert.spv"}], "remote_package_size": 4536, "package_uuid": "2bf92278-74fe-4015-9ca3-e03379532f3c"});
+   loadPackage({"files": [{"start": 0, "audio": 0, "end": 1980, "filename": "/src/shaders/compiled/frag.spv"}, {"start": 1980, "audio": 0, "end": 4536, "filename": "/src/shaders/compiled/vert.spv"}], "remote_package_size": 4536, "package_uuid": "6694d94d-8e53-47ea-8928-6bb3cb1b2370"});
   
   })();
   
@@ -2193,10 +2193,10 @@ var tempI64;
 // === Body ===
 
 var ASM_CONSTS = {
-  10456: function() {return _emscripten_with_builtin_malloc(function () { return allocateUTF8(Module['UBSAN_OPTIONS'] || 0); });},  
- 17338: function() {return STACK_BASE;},  
- 17361: function() {return STACK_MAX;},  
- 31404: function() {var setting = Module['printWithColors']; if (setting != null) { return setting; } else { return ENVIRONMENT_IS_NODE && process.stderr.isTTY; }}
+  10424: function() {return _emscripten_with_builtin_malloc(function () { return allocateUTF8(Module['UBSAN_OPTIONS'] || 0); });},  
+ 17306: function() {return STACK_BASE;},  
+ 17329: function() {return STACK_MAX;},  
+ 31372: function() {var setting = Module['printWithColors']; if (setting != null) { return setting; } else { return ENVIRONMENT_IS_NODE && process.stderr.isTTY; }}
 };
 
 function _emscripten_asm_const_iii(code, sigPtr, argbuf) {

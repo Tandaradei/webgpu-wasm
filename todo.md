@@ -1,4 +1,5 @@
-- Quaternions
-- Lighting
-- Shadow
-- Z-PrePass
+* Quaternions
+* Lighting
+    * Make dynamic
+* Shadow
+* Z-PrePass
