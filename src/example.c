@@ -2,10 +2,10 @@
 #include "spider.h"
 
 const Vertex vertices[] = {
-    {{-0.5f,  0.0f,  0.5f}, {1.0f, 1.0f, 1.0f}, {0.0f, 1.0f, 0.0f}}, // TL
-    {{ 0.5f,  0.0f,  0.5f}, {1.0f, 1.0f, 1.0f}, {0.0f, 1.0f, 0.0f}}, // TR
-    {{ 0.5f,  0.0f, -0.5f}, {1.0f, 1.0f, 1.0f}, {0.0f, 1.0f, 0.0f}}, // BR
-    {{-0.5f,  0.0f, -0.5f}, {1.0f, 1.0f, 1.0f}, {0.0f, 1.0f, 0.0f}}, // BL
+    {{-0.5f,  0.0f,  0.5f}, {1.0f, 1.0f, 1.0f}, {0.0f, 1.0f, 0.0f}, {0.0f, 0.0f}}, // TL
+    {{ 0.5f,  0.0f,  0.5f}, {1.0f, 1.0f, 1.0f}, {0.0f, 1.0f, 0.0f}, {1.0f, 0.0f}}, // TR
+    {{ 0.5f,  0.0f, -0.5f}, {1.0f, 1.0f, 1.0f}, {0.0f, 1.0f, 0.0f}, {1.0f, 1.0f}}, // BR
+    {{-0.5f,  0.0f, -0.5f}, {1.0f, 1.0f, 1.0f}, {0.0f, 1.0f, 0.0f}, {0.0f, 1.0f}}, // BL
 };
 
 const uint16_t indices[] = {
@@ -15,14 +15,14 @@ const uint16_t indices[] = {
 #define NORM(x, y, z) {x / 1.732f, y / 1.732f, z / 1.732f}
 
 const Vertex vertices_box[] = {
-    {{-0.5f,  0.5f,  0.5f}, {1.0f, 0.0f, 0.0f}, NORM(-1.0f,  1.0f,  1.0f)}, // LTB 0
-    {{ 0.5f,  0.5f,  0.5f}, {0.0f, 1.0f, 0.0f}, NORM( 1.0f,  1.0f,  1.0f)}, // RTB 1
-    {{ 0.5f,  0.5f, -0.5f}, {0.0f, 0.0f, 1.0f}, NORM( 1.0f,  1.0f, -1.0f)}, // RTF 2
-    {{-0.5f,  0.5f, -0.5f}, {1.0f, 1.0f, 1.0f}, NORM(-1.0f,  1.0f, -1.0f)}, // LTF 3
-    {{-0.5f, -0.5f,  0.5f}, {1.0f, 0.0f, 0.0f}, NORM(-1.0f, -1.0f,  1.0f)}, // LBB 4
-    {{ 0.5f, -0.5f,  0.5f}, {0.0f, 1.0f, 0.0f}, NORM( 1.0f, -1.0f,  1.0f)}, // RBB 5
-    {{ 0.5f, -0.5f, -0.5f}, {0.0f, 0.0f, 1.0f}, NORM( 1.0f, -1.0f, -1.0f)}, // RBF 6
-    {{-0.5f, -0.5f, -0.5f}, {1.0f, 1.0f, 1.0f}, NORM(-1.0f, -1.0f, -1.0f)}, // LBF 7
+    {{-0.5f,  0.5f,  0.5f}, {1.0f, 0.0f, 0.0f}, NORM(-1.0f,  1.0f,  1.0f), {0.0f, 0.0f}}, // LTB 0
+    {{ 0.5f,  0.5f,  0.5f}, {0.0f, 1.0f, 0.0f}, NORM( 1.0f,  1.0f,  1.0f), {1.0f, 0.0f}}, // RTB 1
+    {{ 0.5f,  0.5f, -0.5f}, {0.0f, 0.0f, 1.0f}, NORM( 1.0f,  1.0f, -1.0f), {1.0f, 1.0f}}, // RTF 2
+    {{-0.5f,  0.5f, -0.5f}, {1.0f, 1.0f, 1.0f}, NORM(-1.0f,  1.0f, -1.0f), {0.0f, 1.0f}}, // LTF 3
+    {{-0.5f, -0.5f,  0.5f}, {1.0f, 0.0f, 0.0f}, NORM(-1.0f, -1.0f,  1.0f), {1.0f, 1.0f}}, // LBB 4
+    {{ 0.5f, -0.5f,  0.5f}, {0.0f, 1.0f, 0.0f}, NORM( 1.0f, -1.0f,  1.0f), {0.0f, 1.0f}}, // RBB 5
+    {{ 0.5f, -0.5f, -0.5f}, {0.0f, 0.0f, 1.0f}, NORM( 1.0f, -1.0f, -1.0f), {0.0f, 0.0f}}, // RBF 6
+    {{-0.5f, -0.5f, -0.5f}, {1.0f, 1.0f, 1.0f}, NORM(-1.0f, -1.0f, -1.0f), {1.0f, 0.0f}}, // LBF 7
 };
 
 const uint16_t indices_box[] = {
@@ -34,7 +34,7 @@ const uint16_t indices_box[] = {
     6, 5, 4, 4, 7, 6, // bottom
 };
 
-#define INSTANCES_COUNT 64
+#define INSTANCES_COUNT 1000
 SPInstanceID instance_ids[INSTANCES_COUNT];
 SPInstanceID look_at_cube_id;
 clock_t start_clock;
@@ -74,10 +74,22 @@ void createObjects(void) {
 
     SPMaterialID rough = spCreateMaterial(&(SPMaterialDesc){
             .specular = 0.05f,
+            .diffuse_tex = {
+                .name = "assets/textures/ConcreteDirty0356_9_seamless_S.png",
+                .width = 512,
+                .height = 512,
+                .channel_count = 4,
+            },
         }
     );
     SPMaterialID shiny = spCreateMaterial(&(SPMaterialDesc){
             .specular = 0.8f,
+            .diffuse_tex = {
+                .name = "assets/textures/MarbleBase0051_1_seamless_S.png",
+                .width = 512,
+                .height = 512,
+                .channel_count = 4,
+            },
         }
     );
 
@@ -85,7 +97,7 @@ void createObjects(void) {
         return;
     }
     
-    const float spacing = 4.0f;
+    const float spacing = 8.0f;
 
     for(int i = 0; i < INSTANCES_COUNT; i++) {
         instance_ids[i] = spCreateInstance(&(SPInstanceDesc){
@@ -93,7 +105,7 @@ void createObjects(void) {
                 .material = (rand() % 2) ? shiny : rough,
                 .transform = &(SPTransform){
                     .pos = {randFloatRange(-spacing, spacing), randFloatRange(-spacing, spacing), randFloatRange(-spacing, spacing)},
-                    .scale = {randFloatRange(0.5f, 1.5f), randFloatRange(0.5f, 1.5f), randFloatRange(0.5f, 1.5f)},
+                    .scale = {randFloatRange(0.2f, 0.5f), randFloatRange(0.2f, 0.5f), randFloatRange(0.2f, 0.5f)},
                     .rot = {randFloatRange(0.0f, 360.0f), randFloatRange(0.0f, 360.0f), randFloatRange(0.0f, 360.0f)},
                 }
             }
@@ -134,7 +146,7 @@ void frame(void) {
         if(!instance) {
             continue;
         }
-        instance->transform.rot[1] += 2.0f * i * delta_time_s;
+        instance->transform.rot[1] += 0.1f * i * delta_time_s;
         if(instance->transform.rot[1] >= 360.0f) {
             instance->transform.rot[1] -= 360.0f; 
         }
@@ -154,7 +166,9 @@ void frame(void) {
     );
 
     SPInstance* look_at_cube = spGetInstance(look_at_cube_id);
-    memcpy(look_at_cube->transform.pos, camera->look_at, sizeof(vec3));
+    if(look_at_cube) {
+        memcpy(look_at_cube->transform.pos, camera->look_at, sizeof(vec3));
+    }
     spSetLightPos(camera->look_at);
 
     camera->fovy = glm_rad(60.0f - depth * 5.0f);
@@ -181,7 +195,7 @@ int main() {
         .camera = {
             .pos = {pos[0], pos[1], pos[2]},
             .dir = {dir[0], dir[1], dir[2]},
-            .look_at = {center[0], center[1], center[3]},
+            .look_at = {center[0], center[1], center[2]},
             .mode = SPCameraMode_LookAt,
             .fovy = glm_rad(60.0f),
             .aspect = (float)surface_width / (float) surface_height,
@@ -191,12 +205,13 @@ int main() {
         .pools.capacities = {
             .meshes = 8,
             .materials = 8,
-            .instances = 256,
+            .instances = 4096,
         },
     };
     spInit(&init);
     createObjects();
     start_clock = clock();
-    emscripten_set_main_loop(frame, 60, false);
+
+    emscripten_set_main_loop(frame, 120, false);
     return 0;
 }
