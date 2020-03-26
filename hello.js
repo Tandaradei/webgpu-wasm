@@ -195,7 +195,7 @@ Module['FS_createPath']('/assets', 'textures', true, true);
     }
   
    }
-   loadPackage({"files": [{"start": 0, "audio": 0, "end": 3024, "filename": "/src/shaders/compiled/standard.frag.spv"}, {"start": 3024, "audio": 0, "end": 5952, "filename": "/src/shaders/compiled/standard.vert.spv"}, {"start": 5952, "audio": 0, "end": 603845, "filename": "/assets/textures/ConcreteDirty0356_9_seamless_S.png"}, {"start": 603845, "audio": 0, "end": 2042316, "filename": "/assets/textures/MarbleBase0051_1_seamless_S.png"}, {"start": 2042316, "audio": 0, "end": 2204368, "filename": "/assets/textures/test.png"}], "remote_package_size": 2204368, "package_uuid": "1f383e21-cfca-4855-978d-7956d805fbe5"});
+   loadPackage({"files": [{"start": 0, "audio": 0, "end": 3024, "filename": "/src/shaders/compiled/standard.frag.spv"}, {"start": 3024, "audio": 0, "end": 5952, "filename": "/src/shaders/compiled/standard.vert.spv"}, {"start": 5952, "audio": 0, "end": 603845, "filename": "/assets/textures/ConcreteDirty0356_9_seamless_S.png"}, {"start": 603845, "audio": 0, "end": 2042316, "filename": "/assets/textures/MarbleBase0051_1_seamless_S.png"}, {"start": 2042316, "audio": 0, "end": 2204368, "filename": "/assets/textures/test.png"}], "remote_package_size": 2204368, "package_uuid": "7cbb0939-7abc-4676-95a1-10a189669cda"});
   
   })();
   
@@ -818,8 +818,8 @@ var wasmMemory;
 // In the wasm backend, we polyfill the WebAssembly object,
 // so this creates a (non-native-wasm) table for us.
 var wasmTable = new WebAssembly.Table({
-  'initial': 149,
-  'maximum': 149 + 0,
+  'initial': 150,
+  'maximum': 150 + 0,
   'element': 'anyfunc'
 });
 
@@ -1420,11 +1420,11 @@ function updateGlobalBufferAndViews(buf) {
 }
 
 var STATIC_BASE = 1073741824,
-    STACK_BASE = 1083656112,
+    STACK_BASE = 1083653296,
     STACKTOP = STACK_BASE,
-    STACK_MAX = 1078413232,
-    DYNAMIC_BASE = 1083656112,
-    DYNAMICTOP_PTR = 1078413072;
+    STACK_MAX = 1078410416,
+    DYNAMIC_BASE = 1083653296,
+    DYNAMICTOP_PTR = 1078410256;
 
 assert(STACK_BASE % 16 === 0, 'stack must start aligned');
 assert(DYNAMIC_BASE % 16 === 0, 'heap must start aligned');
@@ -2103,12 +2103,12 @@ var tempI64;
 // === Body ===
 
 var ASM_CONSTS = {
-  1073800473: function() {return _emscripten_with_builtin_malloc(function () { return allocateUTF8(Module['ASAN_OPTIONS'] || 0); });},  
- 1073800585: function() {return _emscripten_with_builtin_malloc(function () { return allocateUTF8(Module['LSAN_OPTIONS'] || 0); });},  
- 1073800696: function() {return _emscripten_with_builtin_malloc(function () { return allocateUTF8(Module['UBSAN_OPTIONS'] || 0); });},  
- 1073819034: function() {return STACK_BASE;},  
- 1073819057: function() {return STACK_MAX;},  
- 1073834263: function() {var setting = Module['printWithColors']; if (setting != null) { return setting; } else { return ENVIRONMENT_IS_NODE && process.stderr.isTTY; }}
+  1073798233: function() {return _emscripten_with_builtin_malloc(function () { return allocateUTF8(Module['ASAN_OPTIONS'] || 0); });},  
+ 1073798345: function() {return _emscripten_with_builtin_malloc(function () { return allocateUTF8(Module['LSAN_OPTIONS'] || 0); });},  
+ 1073798456: function() {return _emscripten_with_builtin_malloc(function () { return allocateUTF8(Module['UBSAN_OPTIONS'] || 0); });},  
+ 1073816794: function() {return STACK_BASE;},  
+ 1073816817: function() {return STACK_MAX;},  
+ 1073832023: function() {var setting = Module['printWithColors']; if (setting != null) { return setting; } else { return ENVIRONMENT_IS_NODE && process.stderr.isTTY; }}
 };
 
 function _emscripten_asm_const_iii(code, sigPtr, argbuf) {
@@ -2118,7 +2118,7 @@ function _emscripten_asm_const_iii(code, sigPtr, argbuf) {
 
 
 
-// STATICTOP = STATIC_BASE + 4671408;
+// STATICTOP = STATIC_BASE + 4668592;
 /* global initializers */  __ATINIT__.push({ func: function() { ___wasm_call_ctors() } });
 
 
@@ -5248,7 +5248,7 @@ function _emscripten_asm_const_iii(code, sigPtr, argbuf) {
     }
 
   function _emscripten_get_sbrk_ptr() {
-      return 1078413072;
+      return 1078410256;
     }
 
   function _emscripten_memcpy_big(dest, src, num) {
