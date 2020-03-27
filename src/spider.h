@@ -27,6 +27,8 @@
 #define DEBUG_PRINT_RENDER 0
 #define DEBUG_PRINT_METRICS 1
 
+#define _SP_RELEASE_RESOURCE(Type, Name) if(Name) {wgpu##Type##Release(Name); Name = NULL;}
+
 #include <cglm/cglm.h>
 
 typedef struct SPVertex {
@@ -234,13 +236,11 @@ typedef struct _SPState {
     WGPUCommandEncoder cmd_enc;
     WGPURenderPassEncoder pass_enc;
 
+    WGPUTextureView depth_view;
+
     _SPPools pools;
     _SPBuffers buffers;
     SPCamera active_cam;
-
-    SPInstanceID active_instance;
-
-    WGPUTextureView depth_view;
 
     struct {
         uint32_t width;
@@ -254,15 +254,14 @@ typedef struct _SPState {
     struct {
         struct {
             _SPRenderPipeline forward;
-            struct {
-                _SPRenderPipeline directional;
-            } shadow;
+            _SPRenderPipeline shadow;
         } render;
     } pipelines;
 
     uint32_t* instance_counts_per_mat;
     SPInstanceID* sorted_instances;
     
+    // TODO move to _SPRenderPipeline (?)
     WGPUBindGroup shadow_dir_bind_group;
     WGPUBuffer ubo_common_light;
     WGPUTexture shadow_dir_texture;
@@ -275,7 +274,7 @@ _SPState _sp_state;
 
 #define DEBUG_PRINT_MAT4(should_print, name, mat) \
 do{ \
-    if(should_print){\
+    if(DEBUG_PRINT_ALLOWED && should_print){\
         printf("[%u] %s:\n", _sp_state.frame_index, name); \
         printf("     %.2f %.2f %.2f %.2f\n", mat[0][0], mat[0][1], mat[0][2], mat[0][3]); \
         printf("     %.2f %.2f %.2f %.2f\n", mat[1][0], mat[1][1], mat[1][2], mat[1][3]); \
@@ -293,6 +292,11 @@ void errorCallback(WGPUErrorType type, char const * message, void * userdata) {
 Initializes the application and creates all static resources
 */
 void spInit(const SPInitDesc* desc);
+
+/*
+Releases all remaining resources
+*/
+void spShutdown(void);
 /* 
 Updates the model, view and projection matrices and copies them
 in a mapped staging buffer
@@ -497,7 +501,7 @@ void spInit(const SPInitDesc* desc) {
     // Shadow map pipeline
     // ***
     {
-        _SPRenderPipeline* pipeline = &(_sp_state.pipelines.render.shadow.directional);
+        _SPRenderPipeline* pipeline = &(_sp_state.pipelines.render.shadow);
         {
             FileReadResult vertShader;
             readFile("src/shaders/compiled/shadow_dir.vert.spv", &vertShader);
@@ -585,8 +589,6 @@ void spInit(const SPInitDesc* desc) {
         );
         memcpy(result.data, &light_ubo, result.dataLength);
         wgpuBufferUnmap(result.buffer);
-        DEBUG_PRINT_MAT4(DEBUG_PRINT_GENERAL, "view", light_ubo.view);
-        DEBUG_PRINT_MAT4(DEBUG_PRINT_GENERAL, "proj", light_ubo.proj);
 
         WGPUBindGroupBinding vert_bindings[] = {
             {
@@ -1019,6 +1021,78 @@ void spInit(const SPInitDesc* desc) {
     // ***
 }
 
+void spShutdown(void) {
+    for(uint32_t i = 0; i < _sp_state.pools.mesh_pool.size; i++) {
+        SPMesh* mesh = &(_sp_state.pools.meshes[i]);
+        if(!mesh) {
+            continue;
+        }
+        _SP_RELEASE_RESOURCE(Buffer, mesh->vertex_buffer)
+        _SP_RELEASE_RESOURCE(Buffer, mesh->index_buffer)
+    }
+    _spDiscardPool(&_sp_state.pools.mesh_pool);
+    free(_sp_state.pools.meshes);
+    _sp_state.pools.meshes = NULL;
+
+    for(uint32_t i = 0; i < _sp_state.pools.material_pool.size; i++) {
+        SPMaterial* material = &(_sp_state.pools.materials[i]);
+        if(!material) {
+            continue;
+        }
+        _SP_RELEASE_RESOURCE(BindGroup, material->bind_groups.vert)
+        _SP_RELEASE_RESOURCE(BindGroup, material->bind_groups.frag)
+        _SP_RELEASE_RESOURCE(Sampler, material->diffuse.sampler)
+        _SP_RELEASE_RESOURCE(Texture, material->diffuse.texture)
+        _SP_RELEASE_RESOURCE(TextureView, material->diffuse.view)
+    }
+    _spDiscardPool(&_sp_state.pools.material_pool);
+    free(_sp_state.pools.materials);
+    _sp_state.pools.materials = NULL;
+
+    // Instances don't have resources that need to be released/freed
+    _spDiscardPool(&_sp_state.pools.instance_pool);
+    free(_sp_state.pools.instances);
+    _sp_state.pools.instances = NULL;
+
+    free(_sp_state.sorted_instances);
+    _sp_state.sorted_instances = NULL;
+    free(_sp_state.instance_counts_per_mat);
+    _sp_state.instance_counts_per_mat = NULL;
+
+    _spDiscardStagingBuffers();
+    wgpuBufferRelease(_sp_state.buffers.uniform.common);
+    wgpuBufferRelease(_sp_state.buffers.uniform.dynamic);
+    wgpuBufferRelease(_sp_state.buffers.uniform.material);
+
+    _SP_RELEASE_RESOURCE(Device, _sp_state.device)
+    _SP_RELEASE_RESOURCE(Queue, _sp_state.queue)
+    _SP_RELEASE_RESOURCE(Instance, _sp_state.instance)
+    _SP_RELEASE_RESOURCE(Surface, _sp_state.surface)
+    _SP_RELEASE_RESOURCE(SwapChain, _sp_state.swap_chain)
+    _SP_RELEASE_RESOURCE(CommandEncoder, _sp_state.cmd_enc)
+
+    _SP_RELEASE_RESOURCE(RenderPipeline, _sp_state.pipelines.render.forward.pipeline)
+    _SP_RELEASE_RESOURCE(BindGroup, _sp_state.pipelines.render.forward.bind_group)
+    _SP_RELEASE_RESOURCE(ShaderModule, _sp_state.pipelines.render.forward.vert.module)
+    _SP_RELEASE_RESOURCE(BindGroupLayout, _sp_state.pipelines.render.forward.vert.bind_group_layout)
+    _SP_RELEASE_RESOURCE(ShaderModule, _sp_state.pipelines.render.forward.frag.module)
+    _SP_RELEASE_RESOURCE(BindGroupLayout, _sp_state.pipelines.render.forward.frag.bind_group_layout)
+
+    _SP_RELEASE_RESOURCE(RenderPipeline, _sp_state.pipelines.render.shadow.pipeline)
+    _SP_RELEASE_RESOURCE(BindGroup, _sp_state.pipelines.render.shadow.bind_group)
+    _SP_RELEASE_RESOURCE(ShaderModule, _sp_state.pipelines.render.shadow.vert.module)
+    _SP_RELEASE_RESOURCE(BindGroupLayout, _sp_state.pipelines.render.shadow.vert.bind_group_layout)
+    _SP_RELEASE_RESOURCE(ShaderModule, _sp_state.pipelines.render.shadow.frag.module)
+    _SP_RELEASE_RESOURCE(BindGroupLayout, _sp_state.pipelines.render.shadow.frag.bind_group_layout)
+
+    _SP_RELEASE_RESOURCE(BindGroup, _sp_state.shadow_dir_bind_group)
+    _SP_RELEASE_RESOURCE(Buffer, _sp_state.ubo_common_light)
+    _SP_RELEASE_RESOURCE(Texture, _sp_state.shadow_dir_texture)
+    _SP_RELEASE_RESOURCE(TextureView, _sp_state.shadow_dir_view)
+    _SP_RELEASE_RESOURCE(TextureView, _sp_state.shadow_dir_color_view)
+
+}
+
 void spUpdate(void) {
     _spUpdate();
 }
@@ -1080,7 +1154,7 @@ void spRender(void) {
             .depthStencilAttachment = &depth_attachment,
         };
         WGPURenderPassEncoder shadow_pass_enc = wgpuCommandEncoderBeginRenderPass(_sp_state.cmd_enc, &render_pass);
-        wgpuRenderPassEncoderSetPipeline(shadow_pass_enc, _sp_state.pipelines.render.shadow.directional.pipeline);
+        wgpuRenderPassEncoderSetPipeline(shadow_pass_enc, _sp_state.pipelines.render.shadow.pipeline);
         _spDrawAllInstances(shadow_pass_enc);
         wgpuRenderPassEncoderEndPass(shadow_pass_enc);
         wgpuRenderPassEncoderRelease(shadow_pass_enc);

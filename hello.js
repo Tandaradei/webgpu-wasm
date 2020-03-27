@@ -195,7 +195,7 @@ Module['FS_createPath']('/assets', 'textures', true, true);
     }
   
    }
-   loadPackage({"files": [{"start": 0, "audio": 0, "end": 6428, "filename": "/src/shaders/compiled/forward.frag.spv"}, {"start": 6428, "audio": 0, "end": 10392, "filename": "/src/shaders/compiled/forward.vert.spv"}, {"start": 10392, "audio": 0, "end": 11296, "filename": "/src/shaders/compiled/shadow_dir.frag.spv"}, {"start": 11296, "audio": 0, "end": 13116, "filename": "/src/shaders/compiled/shadow_dir.vert.spv"}, {"start": 13116, "audio": 0, "end": 1464417, "filename": "/assets/textures/BrickRound0109_1_seamless_S.jpg"}, {"start": 1464417, "audio": 0, "end": 2062310, "filename": "/assets/textures/ConcreteDirty0356_9_seamless_S.png"}, {"start": 2062310, "audio": 0, "end": 3245433, "filename": "/assets/textures/GravelCobble0027_1_seamless_S.jpg"}, {"start": 3245433, "audio": 0, "end": 4683904, "filename": "/assets/textures/MarbleBase0051_1_seamless_S.png"}, {"start": 4683904, "audio": 0, "end": 5976257, "filename": "/assets/textures/Plastic0027_1_seamless_S.jpg"}, {"start": 5976257, "audio": 0, "end": 6138309, "filename": "/assets/textures/test.png"}], "remote_package_size": 6138309, "package_uuid": "185e1682-e906-4a30-8972-4852a5a52fd3"});
+   loadPackage({"files": [{"start": 0, "audio": 0, "end": 6428, "filename": "/src/shaders/compiled/forward.frag.spv"}, {"start": 6428, "audio": 0, "end": 10392, "filename": "/src/shaders/compiled/forward.vert.spv"}, {"start": 10392, "audio": 0, "end": 11296, "filename": "/src/shaders/compiled/shadow_dir.frag.spv"}, {"start": 11296, "audio": 0, "end": 13116, "filename": "/src/shaders/compiled/shadow_dir.vert.spv"}, {"start": 13116, "audio": 0, "end": 1464417, "filename": "/assets/textures/BrickRound0109_1_seamless_S.jpg"}, {"start": 1464417, "audio": 0, "end": 2647540, "filename": "/assets/textures/GravelCobble0027_1_seamless_S.jpg"}, {"start": 2647540, "audio": 0, "end": 3939893, "filename": "/assets/textures/Plastic0027_1_seamless_S.jpg"}, {"start": 3939893, "audio": 0, "end": 4101945, "filename": "/assets/textures/test.png"}], "remote_package_size": 4101945, "package_uuid": "69015f34-7c2b-4e37-831b-c86db354dc52"});
   
   })();
   
@@ -1420,11 +1420,11 @@ function updateGlobalBufferAndViews(buf) {
 }
 
 var STATIC_BASE = 1073741824,
-    STACK_BASE = 1083651888,
+    STACK_BASE = 1083651312,
     STACKTOP = STACK_BASE,
-    STACK_MAX = 1078409008,
-    DYNAMIC_BASE = 1083651888,
-    DYNAMICTOP_PTR = 1078408848;
+    STACK_MAX = 1078408432,
+    DYNAMIC_BASE = 1083651312,
+    DYNAMICTOP_PTR = 1078408272;
 
 assert(STACK_BASE % 16 === 0, 'stack must start aligned');
 assert(DYNAMIC_BASE % 16 === 0, 'heap must start aligned');
@@ -2103,12 +2103,12 @@ var tempI64;
 // === Body ===
 
 var ASM_CONSTS = {
-  1073801113: function() {return _emscripten_with_builtin_malloc(function () { return allocateUTF8(Module['ASAN_OPTIONS'] || 0); });},  
- 1073801225: function() {return _emscripten_with_builtin_malloc(function () { return allocateUTF8(Module['LSAN_OPTIONS'] || 0); });},  
- 1073801336: function() {return _emscripten_with_builtin_malloc(function () { return allocateUTF8(Module['UBSAN_OPTIONS'] || 0); });},  
- 1073819674: function() {return STACK_BASE;},  
- 1073819697: function() {return STACK_MAX;},  
- 1073834903: function() {var setting = Module['printWithColors']; if (setting != null) { return setting; } else { return ENVIRONMENT_IS_NODE && process.stderr.isTTY; }}
+  1073800665: function() {return _emscripten_with_builtin_malloc(function () { return allocateUTF8(Module['ASAN_OPTIONS'] || 0); });},  
+ 1073800777: function() {return _emscripten_with_builtin_malloc(function () { return allocateUTF8(Module['LSAN_OPTIONS'] || 0); });},  
+ 1073800888: function() {return _emscripten_with_builtin_malloc(function () { return allocateUTF8(Module['UBSAN_OPTIONS'] || 0); });},  
+ 1073819226: function() {return STACK_BASE;},  
+ 1073819249: function() {return STACK_MAX;},  
+ 1073834455: function() {var setting = Module['printWithColors']; if (setting != null) { return setting; } else { return ENVIRONMENT_IS_NODE && process.stderr.isTTY; }}
 };
 
 function _emscripten_asm_const_iii(code, sigPtr, argbuf) {
@@ -2118,7 +2118,7 @@ function _emscripten_asm_const_iii(code, sigPtr, argbuf) {
 
 
 
-// STATICTOP = STATIC_BASE + 4667184;
+// STATICTOP = STATIC_BASE + 4666608;
 /* global initializers */  __ATINIT__.push({ func: function() { ___wasm_call_ctors() } });
 
 
@@ -5248,7 +5248,7 @@ function _emscripten_asm_const_iii(code, sigPtr, argbuf) {
     }
 
   function _emscripten_get_sbrk_ptr() {
-      return 1078408848;
+      return 1078408272;
     }
 
   function _emscripten_memcpy_big(dest, src, num) {
