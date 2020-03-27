@@ -1,7 +1,7 @@
 #define SPIDER_DEBUG 1
 #include "spider.h"
 
-const Vertex vertices[] = {
+const SPVertex vertices[] = {
     {{-0.5f,  0.0f,  0.5f}, {1.0f, 1.0f, 1.0f}, {0.0f, 1.0f, 0.0f}, {0.0f, 0.0f}}, // TL
     {{ 0.5f,  0.0f,  0.5f}, {1.0f, 1.0f, 1.0f}, {0.0f, 1.0f, 0.0f}, {1.0f, 0.0f}}, // TR
     {{ 0.5f,  0.0f, -0.5f}, {1.0f, 1.0f, 1.0f}, {0.0f, 1.0f, 0.0f}, {1.0f, 1.0f}}, // BR
@@ -14,7 +14,7 @@ const uint16_t indices[] = {
 
 #define NORM(x, y, z) {x / 1.732f, y / 1.732f, z / 1.732f}
 
-const Vertex vertices_box[] = {
+const SPVertex vertices_box[] = {
     {{-0.5f,  0.5f,  0.5f}, {1.0f, 0.0f, 0.0f}, NORM(-1.0f,  1.0f,  1.0f), {0.0f, 0.0f}}, // LTB 0
     {{ 0.5f,  0.5f,  0.5f}, {0.0f, 1.0f, 0.0f}, NORM( 1.0f,  1.0f,  1.0f), {1.0f, 0.0f}}, // RTB 1
     {{ 0.5f,  0.5f, -0.5f}, {0.0f, 0.0f, 1.0f}, NORM( 1.0f,  1.0f, -1.0f), {1.0f, 1.0f}}, // RTF 2
@@ -34,7 +34,7 @@ const uint16_t indices_box[] = {
     6, 5, 4, 4, 7, 6, // bottom
 };
 
-#define INSTANCES_COUNT 1000
+#define INSTANCES_COUNT 40
 SPInstanceID instance_ids[INSTANCES_COUNT];
 SPInstanceID look_at_cube_id;
 clock_t start_clock;
@@ -72,40 +72,52 @@ void createObjects(void) {
         }
     );
 
-    SPMaterialID rough = spCreateMaterial(&(SPMaterialDesc){
+    SPMaterialID brick = spCreateMaterial(&(SPMaterialDesc){
             .specular = 0.05f,
             .diffuse_tex = {
-                .name = "assets/textures/ConcreteDirty0356_9_seamless_S.png",
-                .width = 512,
-                .height = 512,
-                .channel_count = 4,
+                .name = "assets/textures/BrickRound0109_1_seamless_S.jpg",
+                .width = 1024,
+                .height = 1024,
+                .channel_count = 3,
             },
         }
     );
-    SPMaterialID shiny = spCreateMaterial(&(SPMaterialDesc){
+    SPMaterialID plastic = spCreateMaterial(&(SPMaterialDesc){
             .specular = 0.8f,
             .diffuse_tex = {
-                .name = "assets/textures/MarbleBase0051_1_seamless_S.png",
-                .width = 512,
-                .height = 512,
-                .channel_count = 4,
+                .name = "assets/textures/Plastic0027_1_seamless_S.jpg",
+                .width = 1024,
+                .height = 1024,
+                .channel_count = 3,
             },
         }
     );
 
-    if(!mesh.id || !rough.id || !shiny.id) {
+    SPMaterialID gravel = spCreateMaterial(&(SPMaterialDesc){
+            .specular = 0.8f,
+            .diffuse_tex = {
+                .name = "assets/textures/GravelCobble0027_1_seamless_S.jpg",
+                .width = 1024,
+                .height = 1024,
+                .channel_count = 3,
+            },
+        }
+    );
+
+    if(!mesh.id || !brick.id || !plastic.id) {
         return;
     }
     
-    const float spacing = 8.0f;
+    const float spacing = 4.0f;
 
     for(int i = 0; i < INSTANCES_COUNT; i++) {
+        float scale = randFloatRange(0.5f, 1.0f);
         instance_ids[i] = spCreateInstance(&(SPInstanceDesc){
                 .mesh = mesh_box, 
-                .material = (rand() % 2) ? shiny : rough,
+                .material = (rand() % 2) ? plastic : brick,
                 .transform = &(SPTransform){
                     .pos = {randFloatRange(-spacing, spacing), randFloatRange(-spacing, spacing), randFloatRange(-spacing, spacing)},
-                    .scale = {randFloatRange(0.2f, 0.5f), randFloatRange(0.2f, 0.5f), randFloatRange(0.2f, 0.5f)},
+                    .scale = {scale, scale, scale},
                     .rot = {randFloatRange(0.0f, 360.0f), randFloatRange(0.0f, 360.0f), randFloatRange(0.0f, 360.0f)},
                 }
             }
@@ -114,17 +126,17 @@ void createObjects(void) {
 
     spCreateInstance(&(SPInstanceDesc){
             .mesh = mesh, 
-            .material = rough,
+            .material = gravel,
             .transform = &(SPTransform){
                 .pos = {0.0f, -spacing, 0.0f},
-                .scale = {spacing * 2.0f, 1.0f, spacing * 2.0f},
+                .scale = {spacing * 4.0f, 1.0f, spacing * 4.0f},
                 .rot = {0.0f, 0.0f, 0.0f},
             }
         }
     );
     look_at_cube_id = spCreateInstance(&(SPInstanceDesc){
             .mesh = mesh_box, 
-            .material = shiny,
+            .material = plastic,
             .transform = &(SPTransform){
                 .pos = {0.0f, 0.0f, 0.0f},
                 .scale = {0.2f, 0.2f, 0.2f},
@@ -146,7 +158,7 @@ void frame(void) {
         if(!instance) {
             continue;
         }
-        instance->transform.rot[1] += 0.1f * i * delta_time_s;
+        instance->transform.rot[1] += (180.0f / INSTANCES_COUNT) * i * delta_time_s;
         if(instance->transform.rot[1] >= 360.0f) {
             instance->transform.rot[1] -= 360.0f; 
         }
@@ -154,7 +166,8 @@ void frame(void) {
     SPCamera* camera = spGetActiveCamera();
     const float radius = 10.0f;
     const float depth = sin(time_elapsed_total_s * 0.12f) * 6.0f;
-
+    
+    /*
     memcpy(
         camera->look_at, 
         (vec3){
@@ -164,15 +177,15 @@ void frame(void) {
         }, 
         sizeof(vec3)
     );
+    */
 
     SPInstance* look_at_cube = spGetInstance(look_at_cube_id);
     if(look_at_cube) {
         memcpy(look_at_cube->transform.pos, camera->look_at, sizeof(vec3));
     }
-    spSetLightPos(camera->look_at);
 
-    camera->fovy = glm_rad(60.0f - depth * 5.0f);
-    //memcpy(camera->pos, (vec3){sin(time_elapsed_total_s) * radius, 0.0f, cos(time_elapsed_total_s) * -radius}, sizeof(vec3));
+    //camera->fovy = glm_rad(60.0f - depth * 5.0f);
+
     spUpdate();
     spRender();
 }
@@ -182,8 +195,8 @@ int main() {
     const uint16_t surface_width = 1280;
     const uint16_t surface_height = 720;
     vec3 dir = {0.0f, 0.0f, 1.0f};
-    vec3 pos = {0.0f, 0.0f, -10.0f};
-    vec3 center = {0.0f, 0.0f, 0.0f};
+    vec3 pos = {0.0f, 5.0f, -8.0f};
+    vec3 center = {0.0f, -4.0f, 0.0f};
     glm_vec3_sub(center, pos, dir);
     glm_vec3_norm(dir);
 
@@ -212,6 +225,6 @@ int main() {
     createObjects();
     start_clock = clock();
 
-    emscripten_set_main_loop(frame, 120, false);
+    emscripten_set_main_loop(frame, 60, false);
     return 0;
 }

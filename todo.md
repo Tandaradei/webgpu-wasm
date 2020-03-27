@@ -1,5 +1,9 @@
+In no particular order
 * Quaternions
-* Lighting
-    * Make dynamic
-* Shadow
+* Lights
+    * Directional
+    * Point
+    * (Spot)
 * Z-PrePass
+* MipMaps & Anisotropic filtering
+* Model loading

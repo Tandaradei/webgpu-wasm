@@ -15,7 +15,6 @@
 #include <stb_image.h>
 
 #include "helper.h"
-#include "vertex.h"
 
 #define SPIDER_ASSERT(assertion) assert(assertion)
 #define SPIDER_MALLOC(size) malloc(size)
@@ -28,6 +27,14 @@
 #define DEBUG_PRINT_RENDER 0
 #define DEBUG_PRINT_METRICS 1
 
+#include <cglm/cglm.h>
+
+typedef struct SPVertex {
+    vec3 pos;
+    vec3 color;
+    vec3 normal;
+    vec2 tex_coords;
+} SPVertex;
 
 typedef enum SPCameraMode {
     SPCameraMode_Direction,
@@ -84,7 +91,7 @@ typedef struct SPMesh {
 
 typedef struct SPMeshDesc {
     struct {
-        const Vertex* data;
+        const SPVertex* data;
         const size_t count;
     } vertices;
     struct {
@@ -143,6 +150,16 @@ typedef struct SPMaterialDesc {
 typedef struct SPMaterialID {
     uint32_t id;
 } SPMaterialID;
+
+typedef struct _SPUboCommon {
+    mat4 view;
+    mat4 proj;
+} _SPUboCommon;
+
+
+typedef struct _SPUboDynamic {
+    mat4 model;
+} _SPUboDynamic;
 
 typedef struct SPTransform {
     vec3 pos; // 12 bytes
@@ -236,13 +253,21 @@ typedef struct _SPState {
 
     struct {
         struct {
-            _SPRenderPipeline standard;
+            _SPRenderPipeline forward;
+            struct {
+                _SPRenderPipeline directional;
+            } shadow;
         } render;
     } pipelines;
 
-    vec3 light_pos; // TODO: shouldn't be here
     uint32_t* instance_counts_per_mat;
     SPInstanceID* sorted_instances;
+    
+    WGPUBindGroup shadow_dir_bind_group;
+    WGPUBuffer ubo_common_light;
+    WGPUTexture shadow_dir_texture;
+    WGPUTextureView shadow_dir_view;
+    WGPUTextureView shadow_dir_color_view;
 } _SPState;
 _SPState _sp_state;
 
@@ -251,7 +276,7 @@ _SPState _sp_state;
 #define DEBUG_PRINT_MAT4(should_print, name, mat) \
 do{ \
     if(should_print){\
-        printf("[%u] %s:\n", name); \
+        printf("[%u] %s:\n", _sp_state.frame_index, name); \
         printf("     %.2f %.2f %.2f %.2f\n", mat[0][0], mat[0][1], mat[0][2], mat[0][3]); \
         printf("     %.2f %.2f %.2f %.2f\n", mat[1][0], mat[1][1], mat[1][2], mat[1][3]); \
         printf("     %.2f %.2f %.2f %.2f\n", mat[2][0], mat[2][1], mat[2][2], mat[2][3]); \
@@ -302,11 +327,6 @@ NULL if not a valid id
 */
 SPInstance* spGetInstance(SPInstanceID instance_id);
 
-// TODO: change / remove
-void spSetLightPos(const vec3 pos) {
-    memcpy(_sp_state.light_pos, pos, sizeof(vec3));
-}
-
 // PRIVATE
 // Pools from https://github.com/floooh/sokol/
 /* Setup all pools */
@@ -356,7 +376,7 @@ void _spUpdateStagingPool(_SPStagingBufferPool* pool, WGPUBufferMapWriteCallback
 and copies them to the current mapped 'dynamic' staging buffer */
 void _spUpdateUBODynamic(void);
 /* Copies the view and projection matrices to the current mapped 'common' staging buffer  */
-void _spUpdateUBOCommon(void);
+void _spUpdate_SPUBOCommon(void);
 /* Copies the material properties for each material to the current mapped 'material' staging buffer  */
 void _spUpdateUBOMaterial(void);
 
@@ -373,6 +393,8 @@ Recreates the command encoder
 void _spSubmit(void);
 
 void _spSortInstances(void);
+
+void _spDrawAllInstances(WGPURenderPassEncoder render_pass);
 
 // IMPLEMENTATION
 
@@ -420,7 +442,7 @@ void spInit(const SPInitDesc* desc) {
     {
         WGPUBufferDescriptor buffer_desc = {
             .usage = WGPUBufferUsage_Uniform | WGPUBufferUsage_CopyDst,
-            .size = sizeof(UBOCommon),
+            .size = sizeof(_SPUboCommon),
         };
 
        _sp_state.buffers.uniform.common = wgpuDeviceCreateBuffer(_sp_state.device, &buffer_desc);
@@ -428,9 +450,9 @@ void spInit(const SPInitDesc* desc) {
     
     _sp_state.buffers.uniform.common_staging.count = 0;
     _sp_state.buffers.uniform.common_staging.cur = 0;
-    _sp_state.buffers.uniform.common_staging.num_bytes = sizeof(UBOCommon);
+    _sp_state.buffers.uniform.common_staging.num_bytes = sizeof(_SPUboCommon);
 
-    _sp_state.dynamic_alignment = 256;// sizeof(UBODynamic);
+    _sp_state.dynamic_alignment = 256;// sizeof(_SPUboDynamic);
     const uint32_t instance_count = (_sp_state.pools.instance_pool.size - 1);
 
     // Uniform buffer creation
@@ -472,29 +494,13 @@ void spInit(const SPInitDesc* desc) {
     };
     _sp_state.depth_view = wgpuTextureCreateView(depth_texture, &view_desc);
 
-    // Default render pipeline
+    // Shadow map pipeline
     // ***
     {
-        // Uniform buffer creation
-        uint32_t material_count = _sp_state.pools.material_pool.size - 1;
-        {
-            WGPUBufferDescriptor buffer_desc = {
-                .usage = WGPUBufferUsage_Uniform | WGPUBufferUsage_CopyDst,
-                .size = _sp_state.dynamic_alignment * material_count,
-            };
-
-            _sp_state.buffers.uniform.material = wgpuDeviceCreateBuffer(_sp_state.device, &buffer_desc);
-        }
-        _sp_state.buffers.uniform.material_staging.count = 0;
-        _sp_state.buffers.uniform.material_staging.cur = 0;
-        _sp_state.buffers.uniform.material_staging.num_bytes = _sp_state.dynamic_alignment * material_count;
-
-        DEBUG_PRINT(DEBUG_PRINT_TYPE_INIT, "init: created uniform_buffer with size %u\n", _sp_state.buffers.uniform.material_staging.num_bytes);
-        
-        _SPRenderPipeline* pipeline = &(_sp_state.pipelines.render.standard);
+        _SPRenderPipeline* pipeline = &(_sp_state.pipelines.render.shadow.directional);
         {
             FileReadResult vertShader;
-            readFile("src/shaders/compiled/standard.vert.spv", &vertShader);
+            readFile("src/shaders/compiled/shadow_dir.vert.spv", &vertShader);
             DEBUG_PRINT(DEBUG_PRINT_TYPE_CREATE_MATERIAL, "read file: size: %d\n", vertShader.size);
             WGPUShaderModuleDescriptor sm_desc = {
                 .codeSize = vertShader.size / sizeof(uint32_t),
@@ -502,10 +508,11 @@ void spInit(const SPInitDesc* desc) {
             };
             pipeline->vert.module = wgpuDeviceCreateShaderModule(_sp_state.device, &sm_desc);
         }
-        DEBUG_PRINT(DEBUG_PRINT_TYPE_INIT, "init: standard render: created vert shader\n");
+        DEBUG_PRINT(DEBUG_PRINT_TYPE_INIT, "init: shadow dir: created vert shader\n");
+
         {
             FileReadResult fragShader;
-            readFile("src/shaders/compiled/standard.frag.spv", &fragShader);
+            readFile("src/shaders/compiled/shadow_dir.frag.spv", &fragShader);
             DEBUG_PRINT(DEBUG_PRINT_TYPE_CREATE_MATERIAL, "read file: size: %d\n", fragShader.size);
             WGPUShaderModuleDescriptor sm_desc = {
                 .codeSize = fragShader.size / sizeof(uint32_t),
@@ -513,7 +520,7 @@ void spInit(const SPInitDesc* desc) {
             };
             pipeline->frag.module = wgpuDeviceCreateShaderModule(_sp_state.device, &sm_desc);
         }
-        DEBUG_PRINT(DEBUG_PRINT_TYPE_INIT, "init: standard render: created frag shader\n");
+        DEBUG_PRINT(DEBUG_PRINT_TYPE_INIT, "init: shadow dir: created frag shader\n");
 
         WGPUBindGroupLayoutBinding vert_bglbs[] = {
             {
@@ -541,7 +548,311 @@ void spInit(const SPInitDesc* desc) {
             .bindings = vert_bglbs
         };
         pipeline->vert.bind_group_layout = wgpuDeviceCreateBindGroupLayout(_sp_state.device, &vert_bgl_desc);
-        DEBUG_PRINT(DEBUG_PRINT_TYPE_INIT, "init: standard render: created vert bind group layout\n");
+        DEBUG_PRINT(DEBUG_PRINT_TYPE_INIT, "init: forward render: created vert bind group layout\n");
+
+        WGPUBindGroupLayout bgls[] = {
+            pipeline->vert.bind_group_layout
+        };
+
+        WGPUPipelineLayoutDescriptor pipeline_layout_desc = {
+            .bindGroupLayoutCount = ARRAY_LEN(bgls),
+            .bindGroupLayouts = bgls
+        };
+        
+        WGPUBufferDescriptor buffer_desc = {
+            .usage = WGPUBufferUsage_Uniform,
+            .size = sizeof(_SPUboCommon),
+        };
+
+        WGPUCreateBufferMappedResult result = wgpuDeviceCreateBufferMapped(_sp_state.device, &buffer_desc);
+        _sp_state.ubo_common_light = result.buffer;
+        _SPUboCommon light_ubo = {
+            .view = GLM_MAT4_IDENTITY_INIT,
+            .proj = GLM_MAT4_IDENTITY_INIT
+        };
+        glm_lookat(
+            (vec3){-10.0f, 10.0f, 0.0f},
+            (vec3){0.0f, 0.0f, 0.0f},
+            (vec3){0.0f, 1.0f, 0.0f},
+            light_ubo.view
+        );
+        glm_perspective(
+            glm_rad(60.0f),
+            1.0f,
+            0.1f,
+            100.0f,
+            light_ubo.proj
+        );
+        memcpy(result.data, &light_ubo, result.dataLength);
+        wgpuBufferUnmap(result.buffer);
+        DEBUG_PRINT_MAT4(DEBUG_PRINT_GENERAL, "view", light_ubo.view);
+        DEBUG_PRINT_MAT4(DEBUG_PRINT_GENERAL, "proj", light_ubo.proj);
+
+        WGPUBindGroupBinding vert_bindings[] = {
+            {
+                .binding = 0,
+                .buffer = _sp_state.buffers.uniform.dynamic,
+                .offset = 0,
+                .size = sizeof(_SPUboDynamic),
+                .sampler = NULL,
+                .textureView = NULL,
+            },
+            {
+                .binding = 1,
+                .buffer = _sp_state.ubo_common_light,
+                .offset = 0,
+                .size = sizeof(_SPUboCommon),
+                .sampler = NULL,
+                .textureView = NULL,
+            },
+        };
+
+        WGPUBindGroupDescriptor vert_bg_desc = {
+            .layout = pipeline->vert.bind_group_layout,
+            .bindingCount = ARRAY_LEN(vert_bindings),
+            .bindings = vert_bindings
+        };
+        _sp_state.shadow_dir_bind_group = wgpuDeviceCreateBindGroup(_sp_state.device, &vert_bg_desc);
+
+        WGPUVertexAttributeDescriptor vertex_attribute_descs[] = {
+            {
+                .format = WGPUVertexFormat_Float3,
+                .offset = offsetof(SPVertex, pos),
+                .shaderLocation = 0
+            },
+            {
+                .format = WGPUVertexFormat_Float3,
+                .offset = offsetof(SPVertex, color),
+                .shaderLocation = 1
+            },
+            {
+                .format = WGPUVertexFormat_Float3,
+                .offset = offsetof(SPVertex, normal),
+                .shaderLocation = 2
+            },
+            {
+                .format = WGPUVertexFormat_Float2,
+                .offset = offsetof(SPVertex, tex_coords),
+                .shaderLocation = 3
+            }
+        };
+
+        WGPUVertexBufferLayoutDescriptor vert_buffer_layout_descs[] = {
+            {
+                .arrayStride = sizeof(SPVertex),
+                .stepMode = WGPUInputStepMode_Vertex,
+                .attributeCount = ARRAY_LEN(vertex_attribute_descs),
+                .attributes = vertex_attribute_descs
+            }
+        };
+
+        WGPUVertexStateDescriptor vert_state_desc = {
+            .indexFormat = WGPUIndexFormat_Uint16,
+            .vertexBufferCount = ARRAY_LEN(vert_buffer_layout_descs),
+            .vertexBuffers = vert_buffer_layout_descs
+        };
+
+        WGPUProgrammableStageDescriptor frag_stage_desc = {
+            .module = pipeline->frag.module,
+            .entryPoint = "main"
+        };
+
+        WGPUDepthStencilStateDescriptor depth_stencil_state_desc = {
+            .depthWriteEnabled = true,
+            .format = WGPUTextureFormat_Depth32Float,
+            .depthCompare = WGPUCompareFunction_Less,
+            .stencilFront = {
+                .compare = WGPUCompareFunction_Always,
+                .failOp = WGPUStencilOperation_Keep,
+                .depthFailOp = WGPUStencilOperation_Keep,
+                .passOp = WGPUStencilOperation_Keep,
+            },
+            .stencilBack = {
+                .compare = WGPUCompareFunction_Always,
+                .failOp = WGPUStencilOperation_Keep,
+                .depthFailOp = WGPUStencilOperation_Keep,
+                .passOp = WGPUStencilOperation_Keep,
+            },
+            .stencilReadMask = 0xFFFFFFFF,
+            .stencilWriteMask = 0xFFFFFFFF,
+        };
+
+        WGPURasterizationStateDescriptor rast_state_desc = {
+            .nextInChain = NULL,
+            .frontFace = WGPUFrontFace_CW,
+            .cullMode = WGPUCullMode_Front,
+            .depthBias = 1,
+            .depthBiasSlopeScale = 1.75f,
+            .depthBiasClamp = 0.0f,
+        };
+
+        WGPUColorStateDescriptor color_state_desc = {
+            .format = WGPUTextureFormat_R32Float,
+            .alphaBlend = {
+                .operation = WGPUBlendOperation_Add,
+                .srcFactor = WGPUBlendFactor_One,
+                .dstFactor = WGPUBlendFactor_Zero,
+            },
+            .colorBlend = {
+                .operation = WGPUBlendOperation_Add,
+                .srcFactor = WGPUBlendFactor_One,
+                .dstFactor = WGPUBlendFactor_Zero,
+            },
+            .writeMask = WGPUColorWriteMask_All
+        };
+
+        WGPURenderPipelineDescriptor pipeline_desc = {
+            .layout = wgpuDeviceCreatePipelineLayout(_sp_state.device, &pipeline_layout_desc),
+            .vertexStage.module = pipeline->vert.module,
+            .vertexStage.entryPoint = "main",
+            .vertexState = &vert_state_desc,
+            .fragmentStage = &frag_stage_desc,
+            .rasterizationState = &rast_state_desc,
+            .sampleCount = 1,
+            .depthStencilState = &depth_stencil_state_desc,
+            .colorStateCount = 1,
+            .colorStates = &color_state_desc,
+            .primitiveTopology = WGPUPrimitiveTopology_TriangleList,
+            .sampleMask = 0xFFFFFFFF
+        };
+        pipeline->pipeline = wgpuDeviceCreateRenderPipeline(_sp_state.device, &pipeline_desc);
+        DEBUG_PRINT(DEBUG_PRINT_TYPE_CREATE_MATERIAL, "mat_creation: created shadow dir pipeline\n");
+
+        WGPUExtent3D texture_size = {
+            .width = 1024,
+            .height = 1024,
+            .depth = 1,
+        };
+
+        WGPUTextureDescriptor tex_desc = {
+            .usage = WGPUTextureUsage_Sampled | WGPUTextureUsage_OutputAttachment,
+            .dimension = WGPUTextureDimension_2D,
+            .size = texture_size,
+            .arrayLayerCount = 1,
+            .format = WGPUTextureFormat_Depth32Float,
+            .mipLevelCount = 1,
+            .sampleCount = 1,
+        };
+
+        _sp_state.shadow_dir_texture = wgpuDeviceCreateTexture(_sp_state.device, &tex_desc);
+
+        WGPUTextureViewDescriptor tex_view_desc = {
+            .format = WGPUTextureFormat_Depth32Float,
+            .dimension = WGPUTextureViewDimension_2D,
+            .baseMipLevel = 0,
+            .mipLevelCount = 0,
+            .baseArrayLayer = 0,
+            .arrayLayerCount = 0,
+            .aspect = WGPUTextureAspect_All,
+        };
+
+        _sp_state.shadow_dir_view = wgpuTextureCreateView(_sp_state.shadow_dir_texture, &tex_view_desc);
+
+        WGPUTextureDescriptor tex_color_desc = {
+            .usage = WGPUTextureUsage_Sampled | WGPUTextureUsage_OutputAttachment,
+            .dimension = WGPUTextureDimension_2D,
+            .size = texture_size,
+            .arrayLayerCount = 1,
+            .format = WGPUTextureFormat_R32Float,
+            .mipLevelCount = 1,
+            .sampleCount = 1,
+        };
+
+        WGPUTexture color_tex = wgpuDeviceCreateTexture(_sp_state.device, &tex_color_desc);
+
+        WGPUTextureViewDescriptor tex_color_view_desc = {
+            .format = WGPUTextureFormat_R32Float,
+            .dimension = WGPUTextureViewDimension_2D,
+            .baseMipLevel = 0,
+            .mipLevelCount = 0,
+            .baseArrayLayer = 0,
+            .arrayLayerCount = 0,
+            .aspect = WGPUTextureAspect_All,
+        };
+
+        _sp_state.shadow_dir_color_view = wgpuTextureCreateView(color_tex, &tex_color_view_desc);
+    }
+    // ***
+
+    // Default render pipeline
+    // ***
+    {
+        // Uniform buffer creation
+        uint32_t material_count = _sp_state.pools.material_pool.size - 1;
+        {
+            WGPUBufferDescriptor buffer_desc = {
+                .usage = WGPUBufferUsage_Uniform | WGPUBufferUsage_CopyDst,
+                .size = _sp_state.dynamic_alignment * material_count,
+            };
+
+            _sp_state.buffers.uniform.material = wgpuDeviceCreateBuffer(_sp_state.device, &buffer_desc);
+        }
+        _sp_state.buffers.uniform.material_staging.count = 0;
+        _sp_state.buffers.uniform.material_staging.cur = 0;
+        _sp_state.buffers.uniform.material_staging.num_bytes = _sp_state.dynamic_alignment * material_count;
+
+        DEBUG_PRINT(DEBUG_PRINT_TYPE_INIT, "init: created uniform_buffer with size %u\n", _sp_state.buffers.uniform.material_staging.num_bytes);
+        
+        _SPRenderPipeline* pipeline = &(_sp_state.pipelines.render.forward);
+        {
+            FileReadResult vertShader;
+            readFile("src/shaders/compiled/forward.vert.spv", &vertShader);
+            DEBUG_PRINT(DEBUG_PRINT_TYPE_CREATE_MATERIAL, "read file: size: %d\n", vertShader.size);
+            WGPUShaderModuleDescriptor sm_desc = {
+                .codeSize = vertShader.size / sizeof(uint32_t),
+                .code = (const uint32_t*)vertShader.data
+            };
+            pipeline->vert.module = wgpuDeviceCreateShaderModule(_sp_state.device, &sm_desc);
+        }
+        DEBUG_PRINT(DEBUG_PRINT_TYPE_INIT, "init: forward render: created vert shader\n");
+        {
+            FileReadResult fragShader;
+            readFile("src/shaders/compiled/forward.frag.spv", &fragShader);
+            DEBUG_PRINT(DEBUG_PRINT_TYPE_CREATE_MATERIAL, "read file: size: %d\n", fragShader.size);
+            WGPUShaderModuleDescriptor sm_desc = {
+                .codeSize = fragShader.size / sizeof(uint32_t),
+                .code = (const uint32_t*)fragShader.data
+            };
+            pipeline->frag.module = wgpuDeviceCreateShaderModule(_sp_state.device, &sm_desc);
+        }
+        DEBUG_PRINT(DEBUG_PRINT_TYPE_INIT, "init: forward render: created frag shader\n");
+
+        WGPUBindGroupLayoutBinding vert_bglbs[] = {
+            {
+                .binding = 0,
+                .visibility = WGPUShaderStage_Vertex,
+                .type = WGPUBindingType_UniformBuffer,
+                .hasDynamicOffset = true,
+                .multisampled = false,
+                .textureDimension = WGPUTextureViewDimension_Undefined,
+                .textureComponentType = WGPUTextureComponentType_Float,
+            },
+            {
+                .binding = 1,
+                .visibility = WGPUShaderStage_Vertex,
+                .type = WGPUBindingType_UniformBuffer,
+                .hasDynamicOffset = false,
+                .multisampled = false,
+                .textureDimension = WGPUTextureViewDimension_Undefined,
+                .textureComponentType = WGPUTextureComponentType_Float,
+            },
+            {
+                .binding = 2,
+                .visibility = WGPUShaderStage_Vertex,
+                .type = WGPUBindingType_UniformBuffer,
+                .hasDynamicOffset = false,
+                .multisampled = false,
+                .textureDimension = WGPUTextureViewDimension_Undefined,
+                .textureComponentType = WGPUTextureComponentType_Float,
+            },
+        };
+
+        WGPUBindGroupLayoutDescriptor vert_bgl_desc = {
+            .bindingCount = ARRAY_LEN(vert_bglbs),
+            .bindings = vert_bglbs
+        };
+        pipeline->vert.bind_group_layout = wgpuDeviceCreateBindGroupLayout(_sp_state.device, &vert_bgl_desc);
+        DEBUG_PRINT(DEBUG_PRINT_TYPE_INIT, "init: forward render: created vert bind group layout\n");
         
         WGPUBindGroupLayoutBinding frag_bglbs[] = {
             {
@@ -571,6 +882,15 @@ void spInit(const SPInitDesc* desc) {
                 .textureDimension = WGPUTextureViewDimension_2D,
                 .textureComponentType = WGPUTextureComponentType_Float,
             },
+            {
+                .binding = 3,
+                .visibility = WGPUShaderStage_Fragment,
+                .type = WGPUBindingType_SampledTexture,
+                .hasDynamicOffset = false,
+                .multisampled = false,
+                .textureDimension = WGPUTextureViewDimension_2D,
+                .textureComponentType = WGPUTextureComponentType_Float,
+            },
         };
 
         WGPUBindGroupLayoutDescriptor frag_bgl_desc = {
@@ -578,7 +898,7 @@ void spInit(const SPInitDesc* desc) {
             .bindings = frag_bglbs
         };
         pipeline->frag.bind_group_layout = wgpuDeviceCreateBindGroupLayout(_sp_state.device, &frag_bgl_desc);
-        DEBUG_PRINT(DEBUG_PRINT_TYPE_INIT, "init: standard render: created frag bind group layout\n");
+        DEBUG_PRINT(DEBUG_PRINT_TYPE_INIT, "init: forward render: created frag bind group layout\n");
 
         WGPUBindGroupLayout bgls[] = {
             pipeline->vert.bind_group_layout,
@@ -613,29 +933,29 @@ void spInit(const SPInitDesc* desc) {
         WGPUVertexAttributeDescriptor vertex_attribute_descs[] = {
             {
                 .format = WGPUVertexFormat_Float3,
-                .offset = offsetof(Vertex, pos),
+                .offset = offsetof(SPVertex, pos),
                 .shaderLocation = 0
             },
             {
                 .format = WGPUVertexFormat_Float3,
-                .offset = offsetof(Vertex, color),
+                .offset = offsetof(SPVertex, color),
                 .shaderLocation = 1
             },
             {
                 .format = WGPUVertexFormat_Float3,
-                .offset = offsetof(Vertex, normal),
+                .offset = offsetof(SPVertex, normal),
                 .shaderLocation = 2
             },
             {
                 .format = WGPUVertexFormat_Float2,
-                .offset = offsetof(Vertex, tex_coords),
+                .offset = offsetof(SPVertex, tex_coords),
                 .shaderLocation = 3
             }
         };
 
         WGPUVertexBufferLayoutDescriptor vert_buffer_layout_descs[] = {
             {
-                .arrayStride = sizeof(Vertex),
+                .arrayStride = sizeof(SPVertex),
                 .stepMode = WGPUInputStepMode_Vertex,
                 .attributeCount = ARRAY_LEN(vertex_attribute_descs),
                 .attributes = vertex_attribute_descs
@@ -692,12 +1012,11 @@ void spInit(const SPInitDesc* desc) {
             .sampleMask = 0xFFFFFFFF
         };
         pipeline->pipeline = wgpuDeviceCreateRenderPipeline(_sp_state.device, &pipeline_desc);
-        DEBUG_PRINT(DEBUG_PRINT_TYPE_CREATE_MATERIAL, "mat_creation: created standard render pipeline\n");
+        DEBUG_PRINT(DEBUG_PRINT_TYPE_CREATE_MATERIAL, "mat_creation: created forward render pipeline\n");
         _sp_state.instance_counts_per_mat = SPIDER_MALLOC(sizeof(uint32_t) * desc->pools.capacities.materials);
-        _sp_state.sorted_instances = SPIDER_MALLOC(sizeof(SPInstanceID) * desc->pools.capacities.instances * desc->pools.capacities.materials);
+        _sp_state.sorted_instances = SPIDER_MALLOC((sizeof(SPInstanceID) * desc->pools.capacities.materials) * desc->pools.capacities.instances);
     }
     // ***
-    
 }
 
 void spUpdate(void) {
@@ -734,65 +1053,105 @@ void spRender(void) {
     WGPUTextureView view = wgpuSwapChainGetCurrentTextureView(_sp_state.swap_chain);
     
     _spSortInstances();
+
+    // shadow dir
+    // ***
+    {
+        WGPURenderPassColorAttachmentDescriptor color_attachment = {
+            .attachment = _sp_state.shadow_dir_color_view,
+            .loadOp = WGPULoadOp_Clear,
+            .storeOp = WGPUStoreOp_Store,
+            .clearColor = (WGPUColor){1.0f, 1.0f, 1.0f, 1.0f}
+        };
+
+        WGPURenderPassDepthStencilAttachmentDescriptor depth_attachment = {
+            .attachment = _sp_state.shadow_dir_view,
+            .depthLoadOp = WGPULoadOp_Clear,
+            .depthStoreOp = WGPUStoreOp_Store,
+            .clearDepth = 1.0f,
+            .stencilLoadOp = WGPULoadOp_Clear,
+            .stencilStoreOp = WGPUStoreOp_Store,
+            .clearStencil = 0,
+        };
+
+        WGPURenderPassDescriptor render_pass = {
+            .colorAttachmentCount = 1,
+            .colorAttachments = &color_attachment,
+            .depthStencilAttachment = &depth_attachment,
+        };
+        WGPURenderPassEncoder shadow_pass_enc = wgpuCommandEncoderBeginRenderPass(_sp_state.cmd_enc, &render_pass);
+        wgpuRenderPassEncoderSetPipeline(shadow_pass_enc, _sp_state.pipelines.render.shadow.directional.pipeline);
+        _spDrawAllInstances(shadow_pass_enc);
+        wgpuRenderPassEncoderEndPass(shadow_pass_enc);
+        wgpuRenderPassEncoderRelease(shadow_pass_enc);
+        DEBUG_PRINT(DEBUG_PRINT_RENDER, "render: finished render pass\n");
+        _spSubmit();
+    }
+    // ***
+
     // main pass
     // ***
-    WGPURenderPassColorAttachmentDescriptor color_attachment = {
-        .attachment = view,
-        .loadOp = WGPULoadOp_Clear,
-        .storeOp = WGPUStoreOp_Store,
-        .clearColor = (WGPUColor){0.0f, 0.0f, 0.0f, 1.0f}
-    };
+    #define MAIN_PASS 1
+    #if MAIN_PASS
+    {
+        WGPURenderPassColorAttachmentDescriptor color_attachment = {
+            .attachment = view,
+            .loadOp = WGPULoadOp_Clear,
+            .storeOp = WGPUStoreOp_Store,
+            .clearColor = (WGPUColor){0.0f, 0.0f, 0.0f, 1.0f}
+        };
 
-    WGPURenderPassDepthStencilAttachmentDescriptor depth_attachment = {
-        .attachment = _sp_state.depth_view,
-        .depthLoadOp = WGPULoadOp_Clear,
-        .depthStoreOp = WGPUStoreOp_Store,
-        .clearDepth = 1.0f,
-        .stencilLoadOp = WGPULoadOp_Clear,
-        .stencilStoreOp = WGPUStoreOp_Store,
-        .clearStencil = 0,
-    };
+        WGPURenderPassDepthStencilAttachmentDescriptor depth_attachment = {
+            .attachment = _sp_state.depth_view,
+            .depthLoadOp = WGPULoadOp_Clear,
+            .depthStoreOp = WGPUStoreOp_Store,
+            .clearDepth = 1.0f,
+            .stencilLoadOp = WGPULoadOp_Clear,
+            .stencilStoreOp = WGPUStoreOp_Store,
+            .clearStencil = 0,
+        };
 
-    WGPURenderPassDescriptor render_pass = {
-        .colorAttachmentCount = 1,
-        .colorAttachments = &color_attachment,
-        .depthStencilAttachment = &depth_attachment,
-    };
-    _sp_state.pass_enc = wgpuCommandEncoderBeginRenderPass(_sp_state.cmd_enc, &render_pass);
-    wgpuRenderPassEncoderSetPipeline(_sp_state.pass_enc, _sp_state.pipelines.render.standard.pipeline);
+        WGPURenderPassDescriptor render_pass = {
+            .colorAttachmentCount = 1,
+            .colorAttachments = &color_attachment,
+            .depthStencilAttachment = &depth_attachment,
+        };
+        _sp_state.pass_enc = wgpuCommandEncoderBeginRenderPass(_sp_state.cmd_enc, &render_pass);
+        wgpuRenderPassEncoderSetPipeline(_sp_state.pass_enc, _sp_state.pipelines.render.forward.pipeline);
 
-    uint32_t instances_count = _sp_state.pools.instance_pool.size - 1;
-    for(uint32_t mat_id = 1; mat_id < _sp_state.pools.material_pool.size; mat_id++) {
-        if(_sp_state.instance_counts_per_mat[mat_id - 1] == 0) {
-            continue;
+        uint32_t instances_count = _sp_state.pools.instance_pool.size - 1;
+        for(uint32_t mat_id = 1; mat_id < _sp_state.pools.material_pool.size; mat_id++) {
+            if(_sp_state.instance_counts_per_mat[mat_id - 1] == 0) {
+                continue;
+            }
+            SPMaterial* material = &(_sp_state.pools.materials[mat_id]);
+            uint32_t offsets_frag[] = { (mat_id - 1) * _sp_state.dynamic_alignment};
+            wgpuRenderPassEncoderSetBindGroup(_sp_state.pass_enc, 1, material->bind_groups.frag, ARRAY_LEN(offsets_frag), offsets_frag);
+            SPMeshID last_mesh_id = {0};
+            uint32_t instance_count = _sp_state.instance_counts_per_mat[mat_id - 1];
+            for(uint32_t i = 0; i < instance_count; i++) {
+                SPInstanceID ins_id = _sp_state.sorted_instances[(mat_id - 1) * (_sp_state.pools.instance_pool.size - 1) + i];
+                SPInstance* instance = &(_sp_state.pools.instances[ins_id.id]);
+                SPMeshID mesh_id = instance->mesh;
+                SPMesh* mesh = &(_sp_state.pools.meshes[mesh_id.id]);
+                if(last_mesh_id.id != mesh_id.id) {
+                    wgpuRenderPassEncoderSetVertexBuffer(_sp_state.pass_enc, 0, mesh->vertex_buffer, 0);
+                    wgpuRenderPassEncoderSetIndexBuffer(_sp_state.pass_enc, mesh->index_buffer, 0);
+                    last_mesh_id = mesh_id;
+                }
+                uint32_t offsets_vert[] = { (ins_id.id - 1) * _sp_state.dynamic_alignment};
+                wgpuRenderPassEncoderSetBindGroup(_sp_state.pass_enc, 0, material->bind_groups.vert, ARRAY_LEN(offsets_vert), offsets_vert);
+                wgpuRenderPassEncoderDrawIndexed(_sp_state.pass_enc, mesh->indices_count, 1, 0, 0, 0);
+            }
         }
-        SPMaterial* material = &(_sp_state.pools.materials[mat_id]);
-        uint32_t offsets_frag[] = { (mat_id - 1) * _sp_state.dynamic_alignment};
-        wgpuRenderPassEncoderSetBindGroup(_sp_state.pass_enc, 1, material->bind_groups.frag, ARRAY_LEN(offsets_frag), offsets_frag);
-        SPMeshID last_mesh_id = {0};
-        uint32_t instance_count = _sp_state.instance_counts_per_mat[mat_id - 1];
-        for(uint32_t i = 0; i < instance_count; i++) {
-            SPInstanceID ins_id = _sp_state.sorted_instances[(mat_id - 1) * instances_count + i];
-            SPInstance* instance = &(_sp_state.pools.instances[ins_id.id]);
-            SPMeshID mesh_id = instance->mesh;
-            SPMesh* mesh = &(_sp_state.pools.meshes[mesh_id.id]);
-            //if(last_mesh_id.id != mesh_id.id) {
-                wgpuRenderPassEncoderSetVertexBuffer(_sp_state.pass_enc, 0, mesh->vertex_buffer, 0);
-                wgpuRenderPassEncoderSetIndexBuffer(_sp_state.pass_enc, mesh->index_buffer, 0);
-            //    last_mesh_id = mesh_id;
-            //}
-            uint32_t offsets_vert[] = { (ins_id.id - 1) * _sp_state.dynamic_alignment};
-            wgpuRenderPassEncoderSetBindGroup(_sp_state.pass_enc, 0, material->bind_groups.vert, ARRAY_LEN(offsets_vert), offsets_vert);
-            wgpuRenderPassEncoderDrawIndexed(_sp_state.pass_enc, mesh->indices_count, 1, 0, 0, 0);
-        }
-        //printf("draw %u instances with material %u [%p]\n", instance_count, mat_id, (void*)material);
+
+        wgpuRenderPassEncoderEndPass(_sp_state.pass_enc);
+        wgpuRenderPassEncoderRelease(_sp_state.pass_enc);
+        DEBUG_PRINT(DEBUG_PRINT_RENDER, "render: finished render pass\n");
+        _spSubmit();
+        wgpuTextureViewRelease(view);
     }
-
-    wgpuRenderPassEncoderEndPass(_sp_state.pass_enc);
-    wgpuRenderPassEncoderRelease(_sp_state.pass_enc);
-    DEBUG_PRINT(DEBUG_PRINT_RENDER, "render: finished render pass\n");
-    _spSubmit();
-    wgpuTextureViewRelease(view);
+    #endif
     // ***
     
     _sp_state.frame_index++;
@@ -805,11 +1164,11 @@ SPMeshID spCreateMesh(const SPMeshDesc* desc) {
     }
     int id = mesh_id.id;
     SPMesh* mesh = &(_sp_state.pools.meshes[id]);
-    // Vertex buffer creation
+    // SPVertex buffer creation
     {
         WGPUBufferDescriptor buffer_desc = {
             .usage = WGPUBufferUsage_Vertex,
-            .size = sizeof(Vertex) * desc->vertices.count
+            .size = sizeof(SPVertex) * desc->vertices.count
         };
 
         WGPUCreateBufferMappedResult result = wgpuDeviceCreateBufferMapped(_sp_state.device, &buffer_desc);
@@ -883,8 +1242,8 @@ SPMaterialID spCreateMaterial(const SPMaterialDesc* desc) {
         .minFilter = WGPUFilterMode_Linear,
         .mipmapFilter = WGPUFilterMode_Linear,
         .lodMinClamp = 0.0f,
-        .lodMaxClamp = 1000.0f,
-        .compare = WGPUCompareFunction_Never,
+        .lodMaxClamp = 1.0f,
+        .compare = WGPUCompareFunction_LessEqual,
     };
 
     material->diffuse.sampler = wgpuDeviceCreateSampler(_sp_state.device, &sampler_desc);
@@ -895,7 +1254,7 @@ SPMaterialID spCreateMaterial(const SPMaterialDesc* desc) {
             .binding = 0,
             .buffer = _sp_state.buffers.uniform.dynamic,
             .offset = 0,
-            .size = sizeof(UBODynamic),
+            .size = sizeof(_SPUboDynamic),
             .sampler = NULL,
             .textureView = NULL,
         },
@@ -903,14 +1262,22 @@ SPMaterialID spCreateMaterial(const SPMaterialDesc* desc) {
             .binding = 1,
             .buffer = _sp_state.buffers.uniform.common,
             .offset = 0,
-            .size = sizeof(UBOCommon),
+            .size = sizeof(_SPUboCommon),
+            .sampler = NULL,
+            .textureView = NULL,
+        },
+        {
+            .binding = 2,
+            .buffer = _sp_state.ubo_common_light,
+            .offset = 0,
+            .size = sizeof(_SPUboCommon),
             .sampler = NULL,
             .textureView = NULL,
         },
     };
 
     WGPUBindGroupDescriptor vert_bg_desc = {
-        .layout = _sp_state.pipelines.render.standard.vert.bind_group_layout,
+        .layout = _sp_state.pipelines.render.forward.vert.bind_group_layout,
         .bindingCount = ARRAY_LEN(vert_bindings),
         .bindings = vert_bindings
     };
@@ -942,9 +1309,17 @@ SPMaterialID spCreateMaterial(const SPMaterialDesc* desc) {
             .sampler = NULL,
             .textureView = material->diffuse.view,
         },
+        {
+            .binding = 3,
+            .buffer = NULL,
+            .offset = 0,
+            .size = 0,
+            .sampler = NULL,
+            .textureView = _sp_state.shadow_dir_color_view,
+        },
     };
     WGPUBindGroupDescriptor frag_bg_desc = {
-        .layout = _sp_state.pipelines.render.standard.frag.bind_group_layout,
+        .layout = _sp_state.pipelines.render.forward.frag.bind_group_layout,
         .bindingCount = ARRAY_LEN(frag_bindings),
         .bindings = frag_bindings
     };
@@ -1266,7 +1641,7 @@ void _spUpdateUBODynamic(void) {
             continue;
         }
         SPInstance* instance = &(_sp_state.pools.instances[i]);
-        UBODynamic ubo = {
+        _SPUboDynamic ubo = {
             .model = GLM_MAT4_IDENTITY_INIT,
         };
 
@@ -1285,27 +1660,25 @@ void _spUpdateUBODynamic(void) {
 
         uint64_t offset = (i - 1) * _sp_state.dynamic_alignment;
 
-        memcpy((void*)((uint64_t)(pool->data[pool->cur]) + offset), &ubo, sizeof(UBODynamic));
+        memcpy((void*)((uint64_t)(pool->data[pool->cur]) + offset), &ubo, sizeof(_SPUboDynamic));
     }
     wgpuBufferUnmap(pool->buffer[pool->cur]);
     pool->data[pool->cur] = NULL;
 }
 
-void _spUpdateUBOCommon(void) {
+void _spUpdate_SPUBOCommon(void) {
     _SPStagingBufferPool* pool = &(_sp_state.buffers.uniform.common_staging);
     _spUpdateStagingPool(pool, _spUpdateStagingPoolCommonCallback);
     SPIDER_ASSERT(pool->cur < pool->count && pool->buffer[pool->cur] && pool->buffer[pool->cur]);
 
-    UBOCommon ubo = {
+    _SPUboCommon ubo = {
         .view = GLM_MAT4_IDENTITY_INIT,
         .proj = GLM_MAT4_IDENTITY_INIT,
-        .light_pos = {0.0f, 0.0f, 0.0f},
     };
     memcpy(ubo.view, _sp_state.active_cam._view, sizeof(mat4));
     memcpy(ubo.proj, _sp_state.active_cam._proj, sizeof(mat4));
-    memcpy(ubo.light_pos, _sp_state.light_pos, sizeof(vec3));
 
-    memcpy(pool->data[pool->cur], &ubo, sizeof(UBOCommon));
+    memcpy(pool->data[pool->cur], &ubo, sizeof(_SPUboCommon));
 
     wgpuBufferUnmap(pool->buffer[pool->cur]);
     pool->data[pool->cur] = NULL;
@@ -1318,11 +1691,6 @@ void _spUpdateUBOMaterial(void) {
     
     for(uint32_t i = 1; i < _sp_state.pools.material_pool.last_index_plus_1; i++) {
         SPMaterial* material = &(_sp_state.pools.materials[i]);
-        /*
-        if(!material->pipeline) {
-            continue;
-        }
-        */
         uint64_t offset = (i - 1) * _sp_state.dynamic_alignment;
 
         memcpy((void*)((uint64_t)(pool->data[pool->cur]) + offset), &(material->props), sizeof(SPMaterialProperties));
@@ -1335,7 +1703,7 @@ void _spUpdateUBOMaterial(void) {
 void _spUpdate(void) {
     _spUpdateView();
     _spUpdateProjection();
-    _spUpdateUBOCommon();
+    _spUpdate_SPUBOCommon();
     _spUpdateUBODynamic();
     _spUpdateUBOMaterial();
 }
@@ -1353,7 +1721,6 @@ void _spSubmit(void) {
 }
 
 void _spSortInstances(void) {
-    uint32_t instances_count = _sp_state.pools.instance_pool.size - 1;
     uint32_t materials_count = _sp_state.pools.material_pool.size - 1;
     memset(_sp_state.instance_counts_per_mat, 0, sizeof(uint32_t) * materials_count);
     //memset(_sp_state.sorted_instances, 0, sizeof(SPInstanceID) * (_sp_state.pools.instance_pool.size - 1) * materials_size);
@@ -1364,7 +1731,27 @@ void _spSortInstances(void) {
         if(mesh_id.id == SP_INVALID_ID || mat_id.id == SP_INVALID_ID) {
             continue;
         }
-        _sp_state.sorted_instances[(mat_id.id - 1) * instances_count + _sp_state.instance_counts_per_mat[mat_id.id - 1]++] = (SPInstanceID){i};
+        _sp_state.sorted_instances[(mat_id.id - 1) * (_sp_state.pools.instance_pool.size - 1) + _sp_state.instance_counts_per_mat[mat_id.id - 1]++] = (SPInstanceID){i};
+    }
+}
+
+void _spDrawAllInstances(WGPURenderPassEncoder render_pass_enc) {
+    SPMeshID last_mesh_id = {0};
+    for(uint32_t ins_id = 1; ins_id < _sp_state.pools.instance_pool.size; ins_id++) {
+        SPInstance* instance = &(_sp_state.pools.instances[ins_id]);
+        SPMeshID mesh_id = instance->mesh;
+        if(mesh_id.id == SP_INVALID_ID) {
+            continue;
+        }
+        SPMesh* mesh = &(_sp_state.pools.meshes[mesh_id.id]);
+        if(last_mesh_id.id != mesh_id.id) {
+            wgpuRenderPassEncoderSetVertexBuffer(render_pass_enc, 0, mesh->vertex_buffer, 0);
+            wgpuRenderPassEncoderSetIndexBuffer(render_pass_enc, mesh->index_buffer, 0);
+            last_mesh_id = mesh_id;
+        }
+        uint32_t offsets_vert[] = { (ins_id - 1) * _sp_state.dynamic_alignment};
+        wgpuRenderPassEncoderSetBindGroup(render_pass_enc, 0, _sp_state.shadow_dir_bind_group, ARRAY_LEN(offsets_vert), offsets_vert);
+        wgpuRenderPassEncoderDrawIndexed(render_pass_enc, mesh->indices_count, 1, 0, 0, 0);
     }
 }
 
