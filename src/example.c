@@ -36,7 +36,7 @@ const uint16_t indices_box[] = {
 
 #define INSTANCES_COUNT 40
 SPInstanceID instance_ids[INSTANCES_COUNT];
-SPInstanceID look_at_cube_id;
+SPLightID spot_light_id;
 clock_t start_clock;
 
 float randFloat(void) {
@@ -72,9 +72,28 @@ void createObjects(void) {
         }
     );
 
+    // TODO: lights have to be created before materials right now 
+    vec3 light_direction = {0.0f, -1.0f, 0.0f};
+    glm_vec3_normalize(light_direction);
+
+    spot_light_id = spCreateSpotLight(&(SPSpotLightDesc){
+            .pos = {0.0f, 8.0f, 0.0f},
+            .range = 20.0f,
+            .color = {.r = 255, .g = 255, .b = 255},
+            .dir = {light_direction[0], light_direction[1], light_direction[2]},
+            .fov = glm_rad(50.0f),
+            .power = 20.0f,
+            .shadow_casting = &(SPLightShadowCastDesc){
+                .shadow_map_size = 1024,
+            },
+        }
+    );
+    SPIDER_ASSERT(spot_light_id.id != SP_INVALID_ID);
+
     SPMaterialID brick = spCreateMaterial(&(SPMaterialDesc){
+            .ambient = 0.05f,
             .specular = 0.05f,
-            .diffuse_tex = {
+            .albedo_tex = {
                 .name = "assets/textures/BrickRound0109_1_seamless_S.jpg",
                 .width = 1024,
                 .height = 1024,
@@ -83,8 +102,9 @@ void createObjects(void) {
         }
     );
     SPMaterialID plastic = spCreateMaterial(&(SPMaterialDesc){
+            .ambient = 0.05f,
             .specular = 0.8f,
-            .diffuse_tex = {
+            .albedo_tex = {
                 .name = "assets/textures/Plastic0027_1_seamless_S.jpg",
                 .width = 1024,
                 .height = 1024,
@@ -94,8 +114,9 @@ void createObjects(void) {
     );
 
     SPMaterialID gravel = spCreateMaterial(&(SPMaterialDesc){
+            .ambient = 0.05f,
             .specular = 0.8f,
-            .diffuse_tex = {
+            .albedo_tex = {
                 .name = "assets/textures/GravelCobble0027_1_seamless_S.jpg",
                 .width = 1024,
                 .height = 1024,
@@ -103,11 +124,6 @@ void createObjects(void) {
             },
         }
     );
-
-    if(!mesh.id || !brick.id || !plastic.id) {
-        return;
-    }
-    
     const float spacing = 4.0f;
 
     for(int i = 0; i < INSTANCES_COUNT; i++) {
@@ -134,16 +150,6 @@ void createObjects(void) {
             }
         }
     );
-    look_at_cube_id = spCreateInstance(&(SPInstanceDesc){
-            .mesh = mesh_box, 
-            .material = plastic,
-            .transform = &(SPTransform){
-                .pos = {0.0f, 0.0f, 0.0f},
-                .scale = {0.2f, 0.2f, 0.2f},
-                .rot = {0.0f, 0.0f, 0.0f},
-            }
-        }
-    );
 }
 
 float time_elapsed_total_s = 0.0f;
@@ -166,25 +172,19 @@ void frame(void) {
     SPCamera* camera = spGetActiveCamera();
     const float radius = 10.0f;
     const float depth = sin(time_elapsed_total_s * 0.12f) * 6.0f;
-    
-    /*
-    memcpy(
-        camera->look_at, 
-        (vec3){
-            sin(time_elapsed_total_s * 0.49f) * 2.0f, 
-            sin(23.5f + time_elapsed_total_s * 0.27f), 
-            depth,
-        }, 
-        sizeof(vec3)
-    );
-    */
 
-    SPInstance* look_at_cube = spGetInstance(look_at_cube_id);
-    if(look_at_cube) {
-        memcpy(look_at_cube->transform.pos, camera->look_at, sizeof(vec3));
+    SPLight* spot_light = spGetLight(spot_light_id);
+    float angle = sin(glm_rad(30.0f));
+    if(spot_light) {
+        spot_light->pos[0] = sin(time_elapsed_total_s * 1.0f) * 3.0f;
+        spot_light->color = (SPColorRGB8){
+            127 + (uint8_t)(sin(time_elapsed_total_s) * 127),
+            127 + (uint8_t)(sin(time_elapsed_total_s * 2.3f) * 127),
+            127 + (uint8_t)(sin(time_elapsed_total_s * 0.6f) * 54)
+        };
     }
+    
 
-    //camera->fovy = glm_rad(60.0f - depth * 5.0f);
 
     spUpdate();
     spRender();
@@ -192,13 +192,13 @@ void frame(void) {
 
 int main() {
     srand(0);
-    const uint16_t surface_width = 1280;
-    const uint16_t surface_height = 720;
-    vec3 dir = {0.0f, 0.0f, 1.0f};
-    vec3 pos = {0.0f, 5.0f, -8.0f};
+    const uint16_t surface_width = 1024;
+    const uint16_t surface_height = 768;
+    vec3 dir = {0.0f, -1.0f, -1.0f};
+    vec3 pos = {0.0f, 5.0f, 8.0f};
     vec3 center = {0.0f, -4.0f, 0.0f};
-    glm_vec3_sub(center, pos, dir);
-    glm_vec3_norm(dir);
+    //glm_vec3_sub(center, pos, dir);
+    glm_vec3_normalize(dir);
 
     SPInitDesc init = {
         .surface_size = {
@@ -209,7 +209,7 @@ int main() {
             .pos = {pos[0], pos[1], pos[2]},
             .dir = {dir[0], dir[1], dir[2]},
             .look_at = {center[0], center[1], center[2]},
-            .mode = SPCameraMode_LookAt,
+            .mode = SPCameraMode_Direction,
             .fovy = glm_rad(60.0f),
             .aspect = (float)surface_width / (float) surface_height,
             .near = 0.1f,
@@ -219,6 +219,7 @@ int main() {
             .meshes = 8,
             .materials = 8,
             .instances = 4096,
+            .lights = 1,
         },
     };
     spInit(&init);

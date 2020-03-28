@@ -195,7 +195,7 @@ Module['FS_createPath']('/assets', 'textures', true, true);
     }
   
    }
-   loadPackage({"files": [{"start": 0, "audio": 0, "end": 6428, "filename": "/src/shaders/compiled/forward.frag.spv"}, {"start": 6428, "audio": 0, "end": 10392, "filename": "/src/shaders/compiled/forward.vert.spv"}, {"start": 10392, "audio": 0, "end": 11296, "filename": "/src/shaders/compiled/shadow_dir.frag.spv"}, {"start": 11296, "audio": 0, "end": 13116, "filename": "/src/shaders/compiled/shadow_dir.vert.spv"}, {"start": 13116, "audio": 0, "end": 1464417, "filename": "/assets/textures/BrickRound0109_1_seamless_S.jpg"}, {"start": 1464417, "audio": 0, "end": 2647540, "filename": "/assets/textures/GravelCobble0027_1_seamless_S.jpg"}, {"start": 2647540, "audio": 0, "end": 3939893, "filename": "/assets/textures/Plastic0027_1_seamless_S.jpg"}, {"start": 3939893, "audio": 0, "end": 4101945, "filename": "/assets/textures/test.png"}], "remote_package_size": 4101945, "package_uuid": "69015f34-7c2b-4e37-831b-c86db354dc52"});
+   loadPackage({"files": [{"start": 0, "audio": 0, "end": 8776, "filename": "/src/shaders/compiled/forward.frag.spv"}, {"start": 8776, "audio": 0, "end": 11548, "filename": "/src/shaders/compiled/forward.vert.spv"}, {"start": 11548, "audio": 0, "end": 12072, "filename": "/src/shaders/compiled/shadow.frag.spv"}, {"start": 12072, "audio": 0, "end": 14096, "filename": "/src/shaders/compiled/shadow.vert.spv"}, {"start": 14096, "audio": 0, "end": 1465397, "filename": "/assets/textures/BrickRound0109_1_seamless_S.jpg"}, {"start": 1465397, "audio": 0, "end": 2648520, "filename": "/assets/textures/GravelCobble0027_1_seamless_S.jpg"}, {"start": 2648520, "audio": 0, "end": 3940873, "filename": "/assets/textures/Plastic0027_1_seamless_S.jpg"}, {"start": 3940873, "audio": 0, "end": 4102925, "filename": "/assets/textures/test.png"}], "remote_package_size": 4102925, "package_uuid": "c5f30247-eb9d-40ca-baa2-95d25ac2749f"});
   
   })();
   
@@ -818,8 +818,8 @@ var wasmMemory;
 // In the wasm backend, we polyfill the WebAssembly object,
 // so this creates a (non-native-wasm) table for us.
 var wasmTable = new WebAssembly.Table({
-  'initial': 151,
-  'maximum': 151 + 0,
+  'initial': 154,
+  'maximum': 154 + 0,
   'element': 'anyfunc'
 });
 
@@ -1420,11 +1420,11 @@ function updateGlobalBufferAndViews(buf) {
 }
 
 var STATIC_BASE = 1073741824,
-    STACK_BASE = 1083651312,
+    STACK_BASE = 1083657648,
     STACKTOP = STACK_BASE,
-    STACK_MAX = 1078408432,
-    DYNAMIC_BASE = 1083651312,
-    DYNAMICTOP_PTR = 1078408272;
+    STACK_MAX = 1078414768,
+    DYNAMIC_BASE = 1083657648,
+    DYNAMICTOP_PTR = 1078414608;
 
 assert(STACK_BASE % 16 === 0, 'stack must start aligned');
 assert(DYNAMIC_BASE % 16 === 0, 'heap must start aligned');
@@ -2103,12 +2103,12 @@ var tempI64;
 // === Body ===
 
 var ASM_CONSTS = {
-  1073800665: function() {return _emscripten_with_builtin_malloc(function () { return allocateUTF8(Module['ASAN_OPTIONS'] || 0); });},  
- 1073800777: function() {return _emscripten_with_builtin_malloc(function () { return allocateUTF8(Module['LSAN_OPTIONS'] || 0); });},  
- 1073800888: function() {return _emscripten_with_builtin_malloc(function () { return allocateUTF8(Module['UBSAN_OPTIONS'] || 0); });},  
- 1073819226: function() {return STACK_BASE;},  
- 1073819249: function() {return STACK_MAX;},  
- 1073834455: function() {var setting = Module['printWithColors']; if (setting != null) { return setting; } else { return ENVIRONMENT_IS_NODE && process.stderr.isTTY; }}
+  1073804793: function() {return _emscripten_with_builtin_malloc(function () { return allocateUTF8(Module['ASAN_OPTIONS'] || 0); });},  
+ 1073804905: function() {return _emscripten_with_builtin_malloc(function () { return allocateUTF8(Module['LSAN_OPTIONS'] || 0); });},  
+ 1073805016: function() {return _emscripten_with_builtin_malloc(function () { return allocateUTF8(Module['UBSAN_OPTIONS'] || 0); });},  
+ 1073823354: function() {return STACK_BASE;},  
+ 1073823377: function() {return STACK_MAX;},  
+ 1073838583: function() {var setting = Module['printWithColors']; if (setting != null) { return setting; } else { return ENVIRONMENT_IS_NODE && process.stderr.isTTY; }}
 };
 
 function _emscripten_asm_const_iii(code, sigPtr, argbuf) {
@@ -2118,7 +2118,7 @@ function _emscripten_asm_const_iii(code, sigPtr, argbuf) {
 
 
 
-// STATICTOP = STATIC_BASE + 4666608;
+// STATICTOP = STATIC_BASE + 4672944;
 /* global initializers */  __ATINIT__.push({ func: function() { ___wasm_call_ctors() } });
 
 
@@ -5248,7 +5248,7 @@ function _emscripten_asm_const_iii(code, sigPtr, argbuf) {
     }
 
   function _emscripten_get_sbrk_ptr() {
-      return 1078408272;
+      return 1078414608;
     }
 
   function _emscripten_memcpy_big(dest, src, num) {
