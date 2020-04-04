@@ -123,6 +123,12 @@ Module['FS_createPath']('/src', 'shaders', true, true);
 Module['FS_createPath']('/src/shaders', 'compiled', true, true);
 Module['FS_createPath']('/', 'assets', true, true);
 Module['FS_createPath']('/assets', 'textures', true, true);
+Module['FS_createPath']('/assets/textures', 'Bricks038_2K', true, true);
+Module['FS_createPath']('/assets/textures', 'Marble006_2K', true, true);
+Module['FS_createPath']('/assets/textures', 'Metal003_2K', true, true);
+Module['FS_createPath']('/assets/textures', 'Planks021_2K', true, true);
+Module['FS_createPath']('/assets/textures', 'Rock028_2K', true, true);
+Module['FS_createPath']('/assets/textures', 'Wood027_2K', true, true);
 
       function DataRequest(start, end, audio) {
         this.start = start;
@@ -195,7 +201,7 @@ Module['FS_createPath']('/assets', 'textures', true, true);
     }
   
    }
-   loadPackage({"files": [{"start": 0, "audio": 0, "end": 8776, "filename": "/src/shaders/compiled/forward.frag.spv"}, {"start": 8776, "audio": 0, "end": 11548, "filename": "/src/shaders/compiled/forward.vert.spv"}, {"start": 11548, "audio": 0, "end": 12072, "filename": "/src/shaders/compiled/shadow.frag.spv"}, {"start": 12072, "audio": 0, "end": 14096, "filename": "/src/shaders/compiled/shadow.vert.spv"}, {"start": 14096, "audio": 0, "end": 1465397, "filename": "/assets/textures/BrickRound0109_1_seamless_S.jpg"}, {"start": 1465397, "audio": 0, "end": 2648520, "filename": "/assets/textures/GravelCobble0027_1_seamless_S.jpg"}, {"start": 2648520, "audio": 0, "end": 3940873, "filename": "/assets/textures/Plastic0027_1_seamless_S.jpg"}, {"start": 3940873, "audio": 0, "end": 4102925, "filename": "/assets/textures/test.png"}], "remote_package_size": 4102925, "package_uuid": "c5f30247-eb9d-40ca-baa2-95d25ac2749f"});
+   loadPackage({"files": [{"start": 0, "audio": 0, "end": 9592, "filename": "/src/shaders/compiled/forward.frag.spv"}, {"start": 9592, "audio": 0, "end": 12484, "filename": "/src/shaders/compiled/forward.vert.spv"}, {"start": 12484, "audio": 0, "end": 27744, "filename": "/src/shaders/compiled/forward_pbr.frag.spv"}, {"start": 27744, "audio": 0, "end": 28268, "filename": "/src/shaders/compiled/shadow.frag.spv"}, {"start": 28268, "audio": 0, "end": 30296, "filename": "/src/shaders/compiled/shadow.vert.spv"}, {"start": 30296, "audio": 0, "end": 1481597, "filename": "/assets/textures/BrickRound0109_1_seamless_S.jpg"}, {"start": 1481597, "audio": 0, "end": 1482120, "filename": "/assets/textures/default_black.png"}, {"start": 1482120, "audio": 0, "end": 1483221, "filename": "/assets/textures/default_normal.png"}, {"start": 1483221, "audio": 0, "end": 1483972, "filename": "/assets/textures/default_white.png"}, {"start": 1483972, "audio": 0, "end": 2667095, "filename": "/assets/textures/GravelCobble0027_1_seamless_S.jpg"}, {"start": 2667095, "audio": 0, "end": 3959448, "filename": "/assets/textures/Plastic0027_1_seamless_S.jpg"}, {"start": 3959448, "audio": 0, "end": 4121500, "filename": "/assets/textures/test.png"}, {"start": 4121500, "audio": 0, "end": 5502452, "filename": "/assets/textures/Bricks038_2K/Bricks038_2K_AmbientOcclusion.jpg"}, {"start": 5502452, "audio": 0, "end": 10971810, "filename": "/assets/textures/Bricks038_2K/Bricks038_2K_Color.jpg"}, {"start": 10971810, "audio": 0, "end": 18791366, "filename": "/assets/textures/Bricks038_2K/Bricks038_2K_Normal.jpg"}, {"start": 18791366, "audio": 0, "end": 21047028, "filename": "/assets/textures/Bricks038_2K/Bricks038_2K_Roughness.jpg"}, {"start": 21047028, "audio": 0, "end": 25803225, "filename": "/assets/textures/Marble006_2K/Marble006_2K_Color.jpg"}, {"start": 25803225, "audio": 0, "end": 27171094, "filename": "/assets/textures/Marble006_2K/Marble006_2K_Normal.jpg"}, {"start": 27171094, "audio": 0, "end": 29445519, "filename": "/assets/textures/Marble006_2K/Marble006_2K_Roughness.jpg"}, {"start": 29445519, "audio": 0, "end": 33000100, "filename": "/assets/textures/Metal003_2K/Metal003_2K_Color.jpg"}, {"start": 33000100, "audio": 0, "end": 34280138, "filename": "/assets/textures/Metal003_2K/Metal003_2K_Metalness.jpg"}, {"start": 34280138, "audio": 0, "end": 38197605, "filename": "/assets/textures/Metal003_2K/Metal003_2K_Normal.jpg"}, {"start": 38197605, "audio": 0, "end": 40378345, "filename": "/assets/textures/Metal003_2K/Metal003_2K_Roughness.jpg"}, {"start": 40378345, "audio": 0, "end": 41660447, "filename": "/assets/textures/Planks021_2K/Planks021_2K_AmbientOcclusion.jpg"}, {"start": 41660447, "audio": 0, "end": 46045643, "filename": "/assets/textures/Planks021_2K/Planks021_2K_Color.jpg"}, {"start": 46045643, "audio": 0, "end": 52472333, "filename": "/assets/textures/Planks021_2K/Planks021_2K_Normal.jpg"}, {"start": 52472333, "audio": 0, "end": 54690455, "filename": "/assets/textures/Planks021_2K/Planks021_2K_Roughness.jpg"}, {"start": 54690455, "audio": 0, "end": 56624321, "filename": "/assets/textures/Rock028_2K/Rock028_2K_AmbientOcclusion.jpg"}, {"start": 56624321, "audio": 0, "end": 61908907, "filename": "/assets/textures/Rock028_2K/Rock028_2K_Color.jpg"}, {"start": 61908907, "audio": 0, "end": 71328124, "filename": "/assets/textures/Rock028_2K/Rock028_2K_Normal.jpg"}, {"start": 71328124, "audio": 0, "end": 74239435, "filename": "/assets/textures/Rock028_2K/Rock028_2K_Roughness.jpg"}, {"start": 74239435, "audio": 0, "end": 78138553, "filename": "/assets/textures/Wood027_2K/Wood027_2K_Color.jpg"}, {"start": 78138553, "audio": 0, "end": 84154176, "filename": "/assets/textures/Wood027_2K/Wood027_2K_Normal.jpg"}, {"start": 84154176, "audio": 0, "end": 86476211, "filename": "/assets/textures/Wood027_2K/Wood027_2K_Roughness.jpg"}], "remote_package_size": 86476211, "package_uuid": "1eafc31b-68aa-4e02-aa5c-5cbe64210398"});
   
   })();
   
@@ -818,8 +824,8 @@ var wasmMemory;
 // In the wasm backend, we polyfill the WebAssembly object,
 // so this creates a (non-native-wasm) table for us.
 var wasmTable = new WebAssembly.Table({
-  'initial': 154,
-  'maximum': 154 + 0,
+  'initial': 155,
+  'maximum': 155 + 0,
   'element': 'anyfunc'
 });
 
@@ -1420,11 +1426,11 @@ function updateGlobalBufferAndViews(buf) {
 }
 
 var STATIC_BASE = 1073741824,
-    STACK_BASE = 1083657648,
+    STACK_BASE = 1083681520,
     STACKTOP = STACK_BASE,
-    STACK_MAX = 1078414768,
-    DYNAMIC_BASE = 1083657648,
-    DYNAMICTOP_PTR = 1078414608;
+    STACK_MAX = 1078438640,
+    DYNAMIC_BASE = 1083681520,
+    DYNAMICTOP_PTR = 1078438480;
 
 assert(STACK_BASE % 16 === 0, 'stack must start aligned');
 assert(DYNAMIC_BASE % 16 === 0, 'heap must start aligned');
@@ -2103,12 +2109,12 @@ var tempI64;
 // === Body ===
 
 var ASM_CONSTS = {
-  1073804793: function() {return _emscripten_with_builtin_malloc(function () { return allocateUTF8(Module['ASAN_OPTIONS'] || 0); });},  
- 1073804905: function() {return _emscripten_with_builtin_malloc(function () { return allocateUTF8(Module['LSAN_OPTIONS'] || 0); });},  
- 1073805016: function() {return _emscripten_with_builtin_malloc(function () { return allocateUTF8(Module['UBSAN_OPTIONS'] || 0); });},  
- 1073823354: function() {return STACK_BASE;},  
- 1073823377: function() {return STACK_MAX;},  
- 1073838583: function() {var setting = Module['printWithColors']; if (setting != null) { return setting; } else { return ENVIRONMENT_IS_NODE && process.stderr.isTTY; }}
+  1073823065: function() {return _emscripten_with_builtin_malloc(function () { return allocateUTF8(Module['ASAN_OPTIONS'] || 0); });},  
+ 1073823177: function() {return _emscripten_with_builtin_malloc(function () { return allocateUTF8(Module['LSAN_OPTIONS'] || 0); });},  
+ 1073823288: function() {return _emscripten_with_builtin_malloc(function () { return allocateUTF8(Module['UBSAN_OPTIONS'] || 0); });},  
+ 1073841642: function() {return STACK_BASE;},  
+ 1073841665: function() {return STACK_MAX;},  
+ 1073856887: function() {var setting = Module['printWithColors']; if (setting != null) { return setting; } else { return ENVIRONMENT_IS_NODE && process.stderr.isTTY; }}
 };
 
 function _emscripten_asm_const_iii(code, sigPtr, argbuf) {
@@ -2118,7 +2124,7 @@ function _emscripten_asm_const_iii(code, sigPtr, argbuf) {
 
 
 
-// STATICTOP = STATIC_BASE + 4672944;
+// STATICTOP = STATIC_BASE + 4696816;
 /* global initializers */  __ATINIT__.push({ func: function() { ___wasm_call_ctors() } });
 
 
@@ -5248,7 +5254,7 @@ function _emscripten_asm_const_iii(code, sigPtr, argbuf) {
     }
 
   function _emscripten_get_sbrk_ptr() {
-      return 1078414608;
+      return 1078438480;
     }
 
   function _emscripten_memcpy_big(dest, src, num) {

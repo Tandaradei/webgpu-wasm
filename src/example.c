@@ -1,37 +1,134 @@
 #define SPIDER_DEBUG 1
 #include "spider.h"
 
-const SPVertex vertices[] = {
-    {{-0.5f,  0.0f,  0.5f}, {1.0f, 1.0f, 1.0f}, {0.0f, 1.0f, 0.0f}, {0.0f, 0.0f}}, // TL
-    {{ 0.5f,  0.0f,  0.5f}, {1.0f, 1.0f, 1.0f}, {0.0f, 1.0f, 0.0f}, {1.0f, 0.0f}}, // TR
-    {{ 0.5f,  0.0f, -0.5f}, {1.0f, 1.0f, 1.0f}, {0.0f, 1.0f, 0.0f}, {1.0f, 1.0f}}, // BR
-    {{-0.5f,  0.0f, -0.5f}, {1.0f, 1.0f, 1.0f}, {0.0f, 1.0f, 0.0f}, {0.0f, 1.0f}}, // BL
+vec3 plane_vertices[] = {
+    {-0.5f,  0.0f,  0.5f},
+    { 0.5f,  0.0f,  0.5f},
+    { 0.5f,  0.0f, -0.5f},
+    {-0.5f,  0.0f, -0.5f},
 };
 
-const uint16_t indices[] = {
-    0, 1, 2, 2, 3, 0,
+vec2 plane_tex_coords[] = {
+    {0.0f, 0.0f},
+    {1.0f, 0.0f},
+    {1.0f, 1.0f},
+    {0.0f, 1.0f}
 };
 
-#define NORM(x, y, z) {x / 1.732f, y / 1.732f, z / 1.732f}
-
-const SPVertex vertices_box[] = {
-    {{-0.5f,  0.5f,  0.5f}, {1.0f, 0.0f, 0.0f}, NORM(-1.0f,  1.0f,  1.0f), {0.0f, 0.0f}}, // LTB 0
-    {{ 0.5f,  0.5f,  0.5f}, {0.0f, 1.0f, 0.0f}, NORM( 1.0f,  1.0f,  1.0f), {1.0f, 0.0f}}, // RTB 1
-    {{ 0.5f,  0.5f, -0.5f}, {0.0f, 0.0f, 1.0f}, NORM( 1.0f,  1.0f, -1.0f), {1.0f, 1.0f}}, // RTF 2
-    {{-0.5f,  0.5f, -0.5f}, {1.0f, 1.0f, 1.0f}, NORM(-1.0f,  1.0f, -1.0f), {0.0f, 1.0f}}, // LTF 3
-    {{-0.5f, -0.5f,  0.5f}, {1.0f, 0.0f, 0.0f}, NORM(-1.0f, -1.0f,  1.0f), {1.0f, 1.0f}}, // LBB 4
-    {{ 0.5f, -0.5f,  0.5f}, {0.0f, 1.0f, 0.0f}, NORM( 1.0f, -1.0f,  1.0f), {0.0f, 1.0f}}, // RBB 5
-    {{ 0.5f, -0.5f, -0.5f}, {0.0f, 0.0f, 1.0f}, NORM( 1.0f, -1.0f, -1.0f), {0.0f, 0.0f}}, // RBF 6
-    {{-0.5f, -0.5f, -0.5f}, {1.0f, 1.0f, 1.0f}, NORM(-1.0f, -1.0f, -1.0f), {1.0f, 0.0f}}, // LBF 7
+SPTriangle plane_faces[] = {
+    {
+        .vertex_indices = {0, 1, 2},
+        .tex_coord_indices = {0, 1, 2}
+    },
+    {
+        .vertex_indices = {2, 3, 0},
+        .tex_coord_indices = {2, 3, 0}
+    },
 };
 
-const uint16_t indices_box[] = {
-    0, 1, 2, 2, 3, 0, // top
-    3, 2, 6, 6, 7, 3, // front
-    0, 3, 7, 7, 4, 0, // left
-    1, 0, 4, 4, 5, 1, // back
-    2, 1, 5, 5, 6, 2, // right
-    6, 5, 4, 4, 7, 6, // bottom
+const SPMeshInitializer plane = {
+    .vertices = {
+        .data = plane_vertices,
+        .count = ARRAY_LEN(plane_vertices),
+    },
+    .tex_coords = {
+        .data = plane_tex_coords,
+        .count = ARRAY_LEN(plane_tex_coords),
+    },
+    .faces = {
+        .data = plane_faces,
+        .count = ARRAY_LEN(plane_faces)
+    }
+};
+
+vec3 cube_vertices[] = {
+    {-0.5f,  0.5f,  0.5f}, // LTB 0
+    { 0.5f,  0.5f,  0.5f}, // RTB 1
+    { 0.5f,  0.5f, -0.5f}, // RTF 2
+    {-0.5f,  0.5f, -0.5f}, // LTF 3
+    {-0.5f, -0.5f,  0.5f}, // LBB 4
+    { 0.5f, -0.5f,  0.5f}, // RBB 5
+    { 0.5f, -0.5f, -0.5f}, // RBF 6
+    {-0.5f, -0.5f, -0.5f}, // LBF 7
+};
+
+vec2 cube_tex_coords[] = {
+    {0.0f, 0.0f},
+    {1.0f, 0.0f},
+    {1.0f, 1.0f},
+    {0.0f, 1.0f}
+};
+
+SPTriangle cube_faces[] = {
+    // Top
+    {
+        .vertex_indices = {0, 1, 2},
+        .tex_coord_indices = {0, 1, 2}
+    },
+    {
+        .vertex_indices = {2, 3, 0},
+        .tex_coord_indices = {2, 3, 0}
+    },
+    // Front
+    {
+        .vertex_indices = {1, 0, 4},
+        .tex_coord_indices = {0, 1, 2}
+    },
+    {
+        .vertex_indices = {4, 5, 1},
+        .tex_coord_indices = {2, 3, 0}
+    },
+    // Left
+    {
+        .vertex_indices = {0, 3, 7},
+        .tex_coord_indices = {0, 1, 2}
+    },
+    {
+        .vertex_indices = {7, 4, 0},
+        .tex_coord_indices = {2, 3, 0}
+    },
+    // Back
+    {
+        .vertex_indices = {3, 2, 6},
+        .tex_coord_indices = {0, 1, 2}
+    },
+    {
+        .vertex_indices = {6, 7, 3},
+        .tex_coord_indices = {2, 3, 0}
+    },
+    // Right
+    {
+        .vertex_indices = {2, 1, 5},
+        .tex_coord_indices = {0, 1, 2}
+    },
+    {
+        .vertex_indices = {5, 6, 2},
+        .tex_coord_indices = {2, 3, 0}
+    },
+    // Bottom
+    {
+        .vertex_indices = {6, 5, 4},
+        .tex_coord_indices = {0, 1, 2}
+    },
+    {
+        .vertex_indices = {4, 7, 6},
+        .tex_coord_indices = {2, 3, 0}
+    },
+};
+
+const SPMeshInitializer cube = {
+    .vertices = {
+        .data = cube_vertices,
+        .count = ARRAY_LEN(cube_vertices),
+    },
+    .tex_coords = {
+        .data = cube_tex_coords,
+        .count = ARRAY_LEN(cube_tex_coords),
+    },
+    .faces = {
+        .data = cube_faces,
+        .count = ARRAY_LEN(cube_faces)
+    }
 };
 
 #define INSTANCES_COUNT 40
@@ -48,41 +145,20 @@ float randFloatRange(float min, float max) {
 } 
 
 void createObjects(void) {
-    SPMeshID mesh = spCreateMesh(&(SPMeshDesc){
-            .vertices = {
-                .data = vertices,
-                .count = ARRAY_LEN(vertices)
-            },
-            .indices = {
-                .data = indices,
-                .count = ARRAY_LEN(indices)
-            }
-        }
-    );
-
-    SPMeshID mesh_box = spCreateMesh(&(SPMeshDesc){
-            .vertices = {
-                .data = vertices_box,
-                .count = ARRAY_LEN(vertices_box)
-            },
-            .indices = {
-                .data = indices_box,
-                .count = ARRAY_LEN(indices_box)
-            }
-        }
-    );
-
+    SPMeshID mesh = spCreateMeshFromInit(&plane);
+    SPMeshID mesh_cube = spCreateMeshFromInit(&cube);
+    
     // TODO: lights have to be created before materials right now 
     vec3 light_direction = {0.0f, -1.0f, 0.0f};
     glm_vec3_normalize(light_direction);
 
     spot_light_id = spCreateSpotLight(&(SPSpotLightDesc){
-            .pos = {0.0f, 8.0f, 0.0f},
+            .pos = {0.0f, 6.0f, 0.0f},
             .range = 20.0f,
             .color = {.r = 255, .g = 255, .b = 255},
             .dir = {light_direction[0], light_direction[1], light_direction[2]},
-            .fov = glm_rad(50.0f),
-            .power = 20.0f,
+            .fov = glm_rad(90.0f),
+            .power = 150.0f,
             .shadow_casting = &(SPLightShadowCastDesc){
                 .shadow_map_size = 1024,
             },
@@ -90,47 +166,126 @@ void createObjects(void) {
     );
     SPIDER_ASSERT(spot_light_id.id != SP_INVALID_ID);
 
-    SPMaterialID brick = spCreateMaterial(&(SPMaterialDesc){
-            .ambient = 0.05f,
-            .specular = 0.05f,
-            .albedo_tex = {
-                .name = "assets/textures/BrickRound0109_1_seamless_S.jpg",
-                .width = 1024,
-                .height = 1024,
+    SPMaterialID metal = spCreateMaterial(&(SPMaterialDesc){
+            .albedo = {
+                .name = "assets/textures/Metal003_2K/Metal003_2K_Color.jpg",
+                .width = 2048,
+                .height = 2048,
                 .channel_count = 3,
             },
-        }
-    );
-    SPMaterialID plastic = spCreateMaterial(&(SPMaterialDesc){
-            .ambient = 0.05f,
-            .specular = 0.8f,
-            .albedo_tex = {
-                .name = "assets/textures/Plastic0027_1_seamless_S.jpg",
-                .width = 1024,
-                .height = 1024,
+            .normal = {
+                .name = "assets/textures/Metal003_2K/Metal003_2K_Normal.jpg",
+                .width = 2048,
+                .height = 2048,
                 .channel_count = 3,
+            },
+            .roughness = {
+                .name = "assets/textures/Metal003_2K/Metal003_2K_Roughness.jpg",
+                .width = 2048,
+                .height = 2048,
+                .channel_count = 1,
+            },
+            .metallic = {
+                .name = "assets/textures/Metal003_2K/Metal003_2K_Metalness.jpg",
+                .width = 2048,
+                .height = 2048,
+                .channel_count = 1,
             },
         }
     );
 
-    SPMaterialID gravel = spCreateMaterial(&(SPMaterialDesc){
-            .ambient = 0.05f,
-            .specular = 0.8f,
-            .albedo_tex = {
-                .name = "assets/textures/GravelCobble0027_1_seamless_S.jpg",
-                .width = 1024,
-                .height = 1024,
+    SPMaterialID marble = spCreateMaterial(&(SPMaterialDesc){
+            .albedo = {
+                .name = "assets/textures/Marble006_2K/Marble006_2K_Color.jpg",
+                .width = 2048,
+                .height = 2048,
                 .channel_count = 3,
+            },
+            .normal = {
+                .name = "assets/textures/Marble006_2K/Marble006_2K_Normal.jpg",
+                .width = 2048,
+                .height = 2048,
+                .channel_count = 3,
+            },
+            .roughness = {
+                .name = "assets/textures/Marble006_2K/Marble006_2K_Roughness.jpg",
+                .width = 2048,
+                .height = 2048,
+                .channel_count = 1,
             },
         }
     );
+
+    SPMaterialID bricks = spCreateMaterial(&(SPMaterialDesc){
+            .albedo = {
+                .name = "assets/textures/Bricks038_2K/Bricks038_2K_Color.jpg",
+                .width = 2048,
+                .height = 2048,
+                .channel_count = 3,
+            },
+            .normal = {
+                .name = "assets/textures/Bricks038_2K/Bricks038_2K_Normal.jpg",
+                .width = 2048,
+                .height = 2048,
+                .channel_count = 3,
+            },
+            .roughness = {
+                .name = "assets/textures/Bricks038_2K/Bricks038_2K_Roughness.jpg",
+                .width = 2048,
+                .height = 2048,
+                .channel_count = 1,
+            },
+            .ao = {
+                .name = "assets/textures/Bricks038_2K/Bricks038_2K_AmbientOcclusion.jpg",
+                .width = 2048,
+                .height = 2048,
+                .channel_count = 1,
+            },
+        }
+    );
+
+    SPMaterialID planks = spCreateMaterial(&(SPMaterialDesc){
+            .albedo = {
+                .name = "assets/textures/Planks021_2K/Planks021_2K_Color.jpg",
+                .width = 2048,
+                .height = 2048,
+                .channel_count = 3,
+            },
+            .normal = {
+                .name = "assets/textures/Planks021_2K/Planks021_2K_Normal.jpg",
+                .width = 2048,
+                .height = 2048,
+                .channel_count = 3,
+            },
+            .roughness = {
+                .name = "assets/textures/Planks021_2K/Planks021_2K_Roughness.jpg",
+                .width = 2048,
+                .height = 2048,
+                .channel_count = 1,
+            },
+            .ao = {
+                .name = "assets/textures/Planks021_2K/Planks021_2K_AmbientOcclusion.jpg",
+                .width = 2048,
+                .height = 2048,
+                .channel_count = 1,
+            },
+        }
+    );
+   
     const float spacing = 4.0f;
+
+    SPMaterialID mats[] = {
+        marble,
+        metal,
+        bricks,
+        planks
+    };
 
     for(int i = 0; i < INSTANCES_COUNT; i++) {
         float scale = randFloatRange(0.5f, 1.0f);
         instance_ids[i] = spCreateInstance(&(SPInstanceDesc){
-                .mesh = mesh_box, 
-                .material = (rand() % 2) ? plastic : brick,
+                .mesh = mesh_cube, 
+                .material = mats[rand() % ARRAY_LEN(mats)],
                 .transform = &(SPTransform){
                     .pos = {randFloatRange(-spacing, spacing), randFloatRange(-spacing, spacing), randFloatRange(-spacing, spacing)},
                     .scale = {scale, scale, scale},
@@ -142,7 +297,7 @@ void createObjects(void) {
 
     spCreateInstance(&(SPInstanceDesc){
             .mesh = mesh, 
-            .material = gravel,
+            .material = bricks,
             .transform = &(SPTransform){
                 .pos = {0.0f, -spacing, 0.0f},
                 .scale = {spacing * 4.0f, 1.0f, spacing * 4.0f},
@@ -176,15 +331,9 @@ void frame(void) {
     SPLight* spot_light = spGetLight(spot_light_id);
     float angle = sin(glm_rad(30.0f));
     if(spot_light) {
-        spot_light->pos[0] = sin(time_elapsed_total_s * 1.0f) * 3.0f;
-        spot_light->color = (SPColorRGB8){
-            127 + (uint8_t)(sin(time_elapsed_total_s) * 127),
-            127 + (uint8_t)(sin(time_elapsed_total_s * 2.3f) * 127),
-            127 + (uint8_t)(sin(time_elapsed_total_s * 0.6f) * 54)
-        };
+        spot_light->pos[0] = sin(time_elapsed_total_s * 0.4f) * 2.0f;
+        spot_light->pos[2] = sin(time_elapsed_total_s * 1.0f) * 5.0f;
     }
-    
-
 
     spUpdate();
     spRender();
@@ -192,8 +341,8 @@ void frame(void) {
 
 int main() {
     srand(0);
-    const uint16_t surface_width = 1024;
-    const uint16_t surface_height = 768;
+    const uint16_t surface_width = 1280;
+    const uint16_t surface_height = 720;
     vec3 dir = {0.0f, -1.0f, -1.0f};
     vec3 pos = {0.0f, 5.0f, 8.0f};
     vec3 center = {0.0f, -4.0f, 0.0f};

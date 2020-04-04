@@ -15,9 +15,9 @@ layout(set = 0, binding = 1) uniform Light {
 } light;  // TODO: support more than 1 light
 
 layout(location = 0) in vec3 inPosition;
-layout(location = 1) in vec3 inColor;
+layout(location = 1) in vec2 inTexCoords;
 layout(location = 2) in vec3 inNormal;
-layout(location = 3) in vec2 inTexCoords;
+layout(location = 3) in vec3 inTangent;
 
 void main() {
     gl_Position = light.proj * light.view * model * vec4(inPosition, 1.0);

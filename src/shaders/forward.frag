@@ -27,10 +27,10 @@ layout(set = 1, binding = 3) uniform texture2D albedo_tex;
 layout(set = 1, binding = 4) uniform texture2D shadow_map; // TODO: support more than 1 shadow map
 
 
-layout(location = 0) in vec3 fragColor;
-layout(location = 1) in vec3 fragPosWorld;
+layout(location = 0) in vec3 fragPosWorld;
+layout(location = 1) in vec2 fragTexCoords;
 layout(location = 2) in vec3 fragNormal;
-layout(location = 3) in vec2 fragTexCoords;
+layout(location = 3) in vec3 fragTangent;
 
 layout(location = 0) out vec4 outColor;
 
@@ -67,18 +67,18 @@ void main() {
 
     const vec3 pos_to_light = light_pos - fragPosWorld;
     const vec3 pos_to_light_norm = normalize(pos_to_light);
-    float light_power = light.area2_power1_padding1.z;
+    float light_fov = 1.0 - (light.dir3_fov1.w / 3.14);
+    float light_power = light.area2_power1_padding1.z * (light_fov * light_fov);
     light_power *= max(1.0 - length(pos_to_light) / light.pos3_range1.w, 0.0);
     
     // For spot lights
     if(light.color3_type1.w == 1.0) {
         const float light_angle_rad = acos(dot(light_dir, -pos_to_light_norm));
-        light_power *= max(light.dir3_fov1.w * 0.5 - light_angle_rad, 0.0) / 3.14;
+        light_power *= pow(max(light.dir3_fov1.w * 0.5 - light_angle_rad, 0.0) / 3.14, 1.0 - (light_fov * light_fov));
     }
-
     // If still in light area
     if(light_power > 0.0) {
-         // Shadow calculation
+        // Shadow calculation
         const vec4 pos_shadow_map = light.proj * light.view * vec4(fragPosWorld, 1.0);
         vec4 pos_in_light_clip_space = pos_shadow_map / pos_shadow_map.w;
         pos_in_light_clip_space.xyz = pos_in_light_clip_space.xyz * 0.5 + 0.5; // [-1,1] to [0,1]
@@ -100,11 +100,20 @@ void main() {
         // Calculate specular factor
         const vec3 view_dir_norm = normalize(cam.pos - fragPosWorld);
         const vec3 reflect_dir = reflect(-pos_to_light_norm, norm);  
-        const float spec_factor = pow(max(dot(view_dir_norm, reflect_dir), 0.0), 128);
+        const float spec_factor = pow(max(dot(view_dir_norm, reflect_dir), 0.0), 32);
         const float specular = mat.specular * spec_factor; 
         // Calculate pixel color
         color = (mat.ambient + light_power * light.color3_type1.rgb * (diffuse + specular)) * albedo_color;
     }
 
-    outColor = vec4(color, 1.0);
+    vec3 ldrColor = color;
+    if(gl_FragCoord.x >= 960) {
+        // reinhard tone mapping
+        vec3 mapped = color / (color + vec3(1.0));
+        // gamma correction 
+        const float gamma = 2.2;
+        ldrColor = pow(mapped, vec3(1.0 / gamma));
+    }
+
+    outColor = vec4(ldrColor, 1.0);
 }

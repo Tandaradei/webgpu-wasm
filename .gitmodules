@@ -10,3 +10,6 @@
 [submodule "external/cglm"]
 	path = external/cglm
 	url = https://github.com/recp/cglm
+[submodule "external/cgltf"]
+	path = external/cgltf
+	url = https://github.com/jkuhlmann/cgltf

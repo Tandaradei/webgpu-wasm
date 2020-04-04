@@ -14,18 +14,21 @@
 #define STB_IMAGE_IMPLEMENTATION
 #include <stb_image.h>
 
-#include "helper.h"
+#define CGLTF_IMPLEMENTATION
+#include <cgltf.h>
 
 #define SPIDER_ASSERT(assertion) assert(assertion)
 #define SPIDER_MALLOC(size) malloc(size)
+#define ARRAY_LEN(arr) sizeof(arr) / sizeof(arr[0])
 
-#define DEBUG_PRINT_ALLOWED 0
-#define DEBUG_PRINT_TYPE_INIT 1
-#define DEBUG_PRINT_TYPE_CREATE_MATERIAL 1
+#define DEBUG_PRINT_ALLOWED 1
+#define DEBUG_PRINT_TYPE_INIT 0
+#define DEBUG_PRINT_TYPE_CREATE_MATERIAL 0
 #define DEBUG_PRINT_WARNING 1
-#define DEBUG_PRINT_GENERAL 1
+#define DEBUG_PRINT_GENERAL 0
+#define DEBUG_PRINT_MESH 0
 #define DEBUG_PRINT_RENDER 0
-#define DEBUG_PRINT_METRICS 1
+#define DEBUG_PRINT_METRICS 0
 
 #define _SP_RELEASE_RESOURCE(Type, Name) if(Name) {wgpu##Type##Release(Name); Name = NULL;}
 
@@ -33,10 +36,30 @@
 
 typedef struct SPVertex {
     vec3 pos;
-    vec3 color;
-    vec3 normal;
     vec2 tex_coords;
+    vec3 normal;
+    vec3 tangent;
 } SPVertex;
+
+typedef struct SPTriangle {
+    uint16_t vertex_indices[3];
+    uint16_t tex_coord_indices[3];
+} SPTriangle;
+
+typedef struct SPMeshInitializer {
+    struct {
+        vec3* data;
+        uint16_t count;
+    } vertices;
+    struct {
+        vec2* data;
+        uint16_t count;
+    } tex_coords;
+    struct {
+        SPTriangle* data;
+        uint32_t count;
+    } faces;
+} SPMeshInitializer;
 
 typedef enum SPCameraMode {
     SPCameraMode_Direction,
@@ -119,16 +142,20 @@ typedef struct _SPRenderPipeline {
     WGPURenderPipeline pipeline;
 } _SPRenderPipeline;
 
-typedef struct SPMaterialProperties {
-    float ambient;
-    float specular;
-} SPMaterialProperties;
-
 typedef struct _SPMaterialTexture {
     WGPUTexture texture;
     WGPUTextureView view;
-    WGPUSampler sampler;
 } _SPMaterialTexture;
+
+typedef struct SPMaterialProperties {
+    float roughness;
+    float metallic;
+    float ao;
+} SPMaterialProperties;
+
+typedef struct _SPUboMaterialProperties {
+    vec4 rmap; // roughness, metallic, ao, padding
+} _SPUboMaterialProperties;
 
 typedef struct SPMaterial {
     struct {
@@ -137,6 +164,11 @@ typedef struct SPMaterial {
     } bind_groups;
     SPMaterialProperties props;
     _SPMaterialTexture albedo;
+    _SPMaterialTexture normal;
+    _SPMaterialTexture roughness;
+    _SPMaterialTexture metallic;
+    _SPMaterialTexture ao;
+    WGPUSampler sampler;
 } SPMaterial;
 
 typedef struct SPTextureFileDesc {
@@ -147,9 +179,11 @@ typedef struct SPTextureFileDesc {
 } SPTextureFileDesc;
 
 typedef struct SPMaterialDesc {
-    const float ambient;
-    const float specular;
-    SPTextureFileDesc albedo_tex;
+    SPTextureFileDesc albedo;
+    SPTextureFileDesc normal;
+    SPTextureFileDesc roughness;
+    SPTextureFileDesc metallic;
+    SPTextureFileDesc ao;
 } SPMaterialDesc;
 
 typedef struct SPMaterialID {
@@ -356,8 +390,21 @@ typedef struct _SPState {
     // TODO: move (but don't know where yet)
     WGPUBindGroup light_bind_group;
 
+    struct {
+        _SPMaterialTexture normal;
+        _SPMaterialTexture roughness;
+        _SPMaterialTexture metallic;
+        _SPMaterialTexture ao;
+    } default_textures;
+
 } _SPState;
 _SPState _sp_state;
+
+
+typedef struct _SPFileReadResult {
+    uint32_t size;
+    char* data;
+} _SPFileReadResult;
 
 #define DEBUG_PRINT(should_print, ...) do{if(DEBUG_PRINT_ALLOWED && should_print){ printf("[%u] ", _sp_state.frame_index);printf(__VA_ARGS__); }}while(0)
 
@@ -401,6 +448,7 @@ void spRender(void);
 Creates a mesh and returns an identifier to it
 */
 SPMeshID spCreateMesh(const SPMeshDesc* desc);
+SPMeshID spCreateMeshFromInit(const SPMeshInitializer* init);
 /*
 Creates a material and returns an identifier to it
 */
@@ -425,6 +473,11 @@ Returns a temporary pointer to the instance with the specified id
 NULL if not a valid id
 */
 SPInstance* spGetInstance(SPInstanceID instance_id);
+/*
+Returns a temporary pointer to the light with the specified id
+NULL if not a valid id
+*/
+SPLight* spGetLight(SPLightID light_id);
 
 // PRIVATE
 // Pools from https://github.com/floooh/sokol/
@@ -462,6 +515,8 @@ void _spUpdateStagingPoolDynamicCallback(WGPUBufferMapAsyncStatus status, void* 
 void _spUpdateStagingPoolCameraCallback(WGPUBufferMapAsyncStatus status, void* data, uint64_t dataLength, void * userdata);
 /* Callback for wgpuBufferMapWriteAsync for the staging buffer pool containing material data */
 void _spUpdateStagingPoolMaterialCallback(WGPUBufferMapAsyncStatus status, void* data, uint64_t dataLength, void * userdata);
+/* Callback for wgpuBufferMapWriteAsync for the staging buffer pool containing light data */
+void _spUpdateStagingPoolLightCallback(WGPUBufferMapAsyncStatus status, void* data, uint64_t dataLength, void * userdata);
 /* Releases all staging buffers */
 void _spDiscardStagingBuffers();
 /* Updates a pool
@@ -501,6 +556,8 @@ void _spSortInstances(void);
 Converts a 8-byte uint color component to an 32-bit float color component
 */ 
 float _spColorComponent8ToFloat(uint8_t component);
+
+void _spReadFile(const char* filename, _SPFileReadResult* result);
 
 // IMPLEMENTATION
 
@@ -622,8 +679,8 @@ void spInit(const SPInitDesc* desc) {
     {
         _SPRenderPipeline* pipeline = &(_sp_state.pipelines.render.shadow);
         {
-            FileReadResult vertShader;
-            readFile("src/shaders/compiled/shadow.vert.spv", &vertShader);
+            _SPFileReadResult vertShader;
+            _spReadFile("src/shaders/compiled/shadow.vert.spv", &vertShader);
             DEBUG_PRINT(DEBUG_PRINT_TYPE_CREATE_MATERIAL, "read file: size: %d\n", vertShader.size);
             WGPUShaderModuleDescriptor sm_desc = {
                 .codeSize = vertShader.size / sizeof(uint32_t),
@@ -634,8 +691,8 @@ void spInit(const SPInitDesc* desc) {
         DEBUG_PRINT(DEBUG_PRINT_TYPE_INIT, "init: shadow: created vert shader\n");
 
         {
-            FileReadResult fragShader;
-            readFile("src/shaders/compiled/shadow.frag.spv", &fragShader);
+            _SPFileReadResult fragShader;
+            _spReadFile("src/shaders/compiled/shadow.frag.spv", &fragShader);
             DEBUG_PRINT(DEBUG_PRINT_TYPE_CREATE_MATERIAL, "read file: size: %d\n", fragShader.size);
             WGPUShaderModuleDescriptor sm_desc = {
                 .codeSize = fragShader.size / sizeof(uint32_t),
@@ -715,8 +772,8 @@ void spInit(const SPInitDesc* desc) {
                 .shaderLocation = 0
             },
             {
-                .format = WGPUVertexFormat_Float3,
-                .offset = offsetof(SPVertex, color),
+                .format = WGPUVertexFormat_Float2,
+                .offset = offsetof(SPVertex, tex_coords),
                 .shaderLocation = 1
             },
             {
@@ -725,8 +782,8 @@ void spInit(const SPInitDesc* desc) {
                 .shaderLocation = 2
             },
             {
-                .format = WGPUVertexFormat_Float2,
-                .offset = offsetof(SPVertex, tex_coords),
+                .format = WGPUVertexFormat_Float3,
+                .offset = offsetof(SPVertex, tangent),
                 .shaderLocation = 3
             }
         };
@@ -835,8 +892,8 @@ void spInit(const SPInitDesc* desc) {
         
         _SPRenderPipeline* pipeline = &(_sp_state.pipelines.render.forward);
         {
-            FileReadResult vertShader;
-            readFile("src/shaders/compiled/forward.vert.spv", &vertShader);
+            _SPFileReadResult vertShader;
+            _spReadFile("src/shaders/compiled/forward.vert.spv", &vertShader);
             DEBUG_PRINT(DEBUG_PRINT_TYPE_CREATE_MATERIAL, "read file: size: %d\n", vertShader.size);
             WGPUShaderModuleDescriptor sm_desc = {
                 .codeSize = vertShader.size / sizeof(uint32_t),
@@ -846,8 +903,8 @@ void spInit(const SPInitDesc* desc) {
         }
         DEBUG_PRINT(DEBUG_PRINT_TYPE_INIT, "init: forward render: created vert shader\n");
         {
-            FileReadResult fragShader;
-            readFile("src/shaders/compiled/forward.frag.spv", &fragShader);
+            _SPFileReadResult fragShader;
+            _spReadFile("src/shaders/compiled/forward_pbr.frag.spv", &fragShader);
             DEBUG_PRINT(DEBUG_PRINT_TYPE_CREATE_MATERIAL, "read file: size: %d\n", fragShader.size);
             WGPUShaderModuleDescriptor sm_desc = {
                 .codeSize = fragShader.size / sizeof(uint32_t),
@@ -886,6 +943,7 @@ void spInit(const SPInitDesc* desc) {
         DEBUG_PRINT(DEBUG_PRINT_TYPE_INIT, "init: forward render: created vert bind group layout\n");
         
         WGPUBindGroupLayoutBinding frag_bglbs[] = {
+            /*
             {
                 .binding = 0,
                 .visibility = WGPUShaderStage_Fragment,
@@ -895,8 +953,9 @@ void spInit(const SPInitDesc* desc) {
                 .textureDimension = WGPUTextureViewDimension_Undefined,
                 .textureComponentType = WGPUTextureComponentType_Float,
             },
+            */
             {
-                .binding = 1,
+                .binding = 0,
                 .visibility = WGPUShaderStage_Fragment,
                 .type = WGPUBindingType_UniformBuffer,
                 .hasDynamicOffset = false,
@@ -905,9 +964,18 @@ void spInit(const SPInitDesc* desc) {
                 .textureComponentType = WGPUTextureComponentType_Float,
             },
             {
-                .binding = 2,
+                .binding = 1,
                 .visibility = WGPUShaderStage_Fragment,
                 .type = WGPUBindingType_Sampler,
+                .hasDynamicOffset = false,
+                .multisampled = false,
+                .textureDimension = WGPUTextureViewDimension_2D,
+                .textureComponentType = WGPUTextureComponentType_Float,
+            },
+            {
+                .binding = 2,
+                .visibility = WGPUShaderStage_Fragment,
+                .type = WGPUBindingType_SampledTexture,
                 .hasDynamicOffset = false,
                 .multisampled = false,
                 .textureDimension = WGPUTextureViewDimension_2D,
@@ -924,6 +992,33 @@ void spInit(const SPInitDesc* desc) {
             },
             {
                 .binding = 4,
+                .visibility = WGPUShaderStage_Fragment,
+                .type = WGPUBindingType_SampledTexture,
+                .hasDynamicOffset = false,
+                .multisampled = false,
+                .textureDimension = WGPUTextureViewDimension_2D,
+                .textureComponentType = WGPUTextureComponentType_Float,
+            },
+            {
+                .binding = 5,
+                .visibility = WGPUShaderStage_Fragment,
+                .type = WGPUBindingType_SampledTexture,
+                .hasDynamicOffset = false,
+                .multisampled = false,
+                .textureDimension = WGPUTextureViewDimension_2D,
+                .textureComponentType = WGPUTextureComponentType_Float,
+            },
+            {
+                .binding = 6,
+                .visibility = WGPUShaderStage_Fragment,
+                .type = WGPUBindingType_SampledTexture,
+                .hasDynamicOffset = false,
+                .multisampled = false,
+                .textureDimension = WGPUTextureViewDimension_2D,
+                .textureComponentType = WGPUTextureComponentType_Float,
+            },
+            {
+                .binding = 7,
                 .visibility = WGPUShaderStage_Fragment,
                 .type = WGPUBindingType_SampledTexture,
                 .hasDynamicOffset = false,
@@ -977,8 +1072,8 @@ void spInit(const SPInitDesc* desc) {
                 .shaderLocation = 0
             },
             {
-                .format = WGPUVertexFormat_Float3,
-                .offset = offsetof(SPVertex, color),
+                .format = WGPUVertexFormat_Float2,
+                .offset = offsetof(SPVertex, tex_coords),
                 .shaderLocation = 1
             },
             {
@@ -987,10 +1082,10 @@ void spInit(const SPInitDesc* desc) {
                 .shaderLocation = 2
             },
             {
-                .format = WGPUVertexFormat_Float2,
-                .offset = offsetof(SPVertex, tex_coords),
+                .format = WGPUVertexFormat_Float3,
+                .offset = offsetof(SPVertex, tangent),
                 .shaderLocation = 3
-            }
+            },
         };
 
         WGPUVertexBufferLayoutDescriptor vert_buffer_layout_descs[] = {
@@ -1057,6 +1152,75 @@ void spInit(const SPInitDesc* desc) {
         _sp_state.sorted_instances = SPIDER_MALLOC((sizeof(SPInstanceID) * desc->pools.capacities.materials) * desc->pools.capacities.instances);
     }
     // ***
+
+    WGPUBuffer temp_buffers[] = {
+        NULL, // normal
+        NULL, // roughness
+        NULL, // metallic
+        NULL, // ao
+    };
+    WGPUCommandEncoder texture_load_enc = wgpuDeviceCreateCommandEncoder(_sp_state.device, NULL);
+
+    SPTextureFileDesc tex_file_desc_normal = {
+        .name = "assets/textures/default_normal.png",
+        .width = 256,
+        .height = 256,
+        .channel_count = 4,
+    };
+
+    SPTextureFileDesc tex_file_desc_black = {
+        .name = "assets/textures/default_black.png",
+        .width = 256,
+        .height = 256,
+        .channel_count = 1,
+    };
+
+    SPTextureFileDesc tex_file_desc_white = {
+        .name = "assets/textures/default_white.png",
+        .width = 256,
+        .height = 256,
+        .channel_count = 1,
+    };
+
+    _spCreateAndLoadTexture(&(_sp_state.default_textures.normal), tex_file_desc_normal, &temp_buffers[0], texture_load_enc);
+    _spCreateAndLoadTexture(&(_sp_state.default_textures.roughness), tex_file_desc_black, &temp_buffers[1], texture_load_enc);
+    _spCreateAndLoadTexture(&(_sp_state.default_textures.metallic), tex_file_desc_black, &temp_buffers[2], texture_load_enc);
+    _spCreateAndLoadTexture(&(_sp_state.default_textures.ao), tex_file_desc_white, &temp_buffers[3], texture_load_enc);
+
+    WGPUCommandBuffer cmd_buffer = wgpuCommandEncoderFinish(texture_load_enc, NULL);
+   _SP_RELEASE_RESOURCE(CommandEncoder, texture_load_enc)
+    wgpuQueueSubmit(_sp_state.queue, 1, &cmd_buffer);
+    _SP_RELEASE_RESOURCE(CommandBuffer, cmd_buffer)
+    for(uint8_t i = 0; i < ARRAY_LEN(temp_buffers); i++) {
+        _SP_RELEASE_RESOURCE(Buffer, temp_buffers[i]);
+    }
+    DEBUG_PRINT(DEBUG_PRINT_TYPE_CREATE_MATERIAL, "init: submitted default texture copies\n");
+
+    WGPUTextureViewDescriptor tex_view_desc_8 = {
+        .format = WGPUTextureFormat_R8Unorm,
+        .dimension = WGPUTextureViewDimension_2D,
+        .baseMipLevel = 0,
+        .mipLevelCount = 0,
+        .baseArrayLayer = 0,
+        .arrayLayerCount = 0,
+        .aspect = WGPUTextureAspect_All,
+    };
+
+    WGPUTextureViewDescriptor tex_view_desc_32 = {
+        .format = WGPUTextureFormat_RGBA8UnormSrgb,
+        .dimension = WGPUTextureViewDimension_2D,
+        .baseMipLevel = 0,
+        .mipLevelCount = 0,
+        .baseArrayLayer = 0,
+        .arrayLayerCount = 0,
+        .aspect = WGPUTextureAspect_All,
+    };
+
+    _sp_state.default_textures.normal.view = wgpuTextureCreateView(_sp_state.default_textures.normal.texture, &tex_view_desc_32);
+    _sp_state.default_textures.roughness.view = wgpuTextureCreateView(_sp_state.default_textures.roughness.texture, &tex_view_desc_8);
+    _sp_state.default_textures.metallic.view = wgpuTextureCreateView(_sp_state.default_textures.metallic.texture, &tex_view_desc_8);
+    _sp_state.default_textures.ao.view = wgpuTextureCreateView(_sp_state.default_textures.ao.texture, &tex_view_desc_8);
+    DEBUG_PRINT(DEBUG_PRINT_TYPE_CREATE_MATERIAL, "init: created default texture views\n");
 }
 
 void spShutdown(void) {
@@ -1079,9 +1243,15 @@ void spShutdown(void) {
         }
         _SP_RELEASE_RESOURCE(BindGroup, material->bind_groups.vert)
         _SP_RELEASE_RESOURCE(BindGroup, material->bind_groups.frag)
-        _SP_RELEASE_RESOURCE(Sampler, material->albedo.sampler)
+        _SP_RELEASE_RESOURCE(Sampler, material->sampler)
         _SP_RELEASE_RESOURCE(Texture, material->albedo.texture)
         _SP_RELEASE_RESOURCE(TextureView, material->albedo.view)
+        _SP_RELEASE_RESOURCE(Texture, material->roughness.texture)
+        _SP_RELEASE_RESOURCE(TextureView, material->roughness.view)
+        _SP_RELEASE_RESOURCE(Texture, material->metallic.texture)
+        _SP_RELEASE_RESOURCE(TextureView, material->metallic.view)
+        _SP_RELEASE_RESOURCE(Texture, material->ao.texture)
+        _SP_RELEASE_RESOURCE(TextureView, material->ao.view)
     }
     _spDiscardPool(&_sp_state.pools.material_pool);
     free(_sp_state.pools.materials);
@@ -1156,6 +1326,7 @@ void spRender(void) {
     );
     DEBUG_PRINT(DEBUG_PRINT_RENDER, "render: recorded copy dynamic ubo\n");
 
+    /*
     wgpuCommandEncoderCopyBufferToBuffer(
         _sp_state.cmd_enc, 
         _sp_state.buffers.uniform.material_staging.buffer[_sp_state.buffers.uniform.material_staging.cur], 0, 
@@ -1163,6 +1334,7 @@ void spRender(void) {
         _sp_state.buffers.uniform.material_staging.num_bytes
     );
     DEBUG_PRINT(DEBUG_PRINT_RENDER, "render: recorded copy material ubo\n");
+    */
 
     wgpuCommandEncoderCopyBufferToBuffer(
         _sp_state.cmd_enc, 
@@ -1264,8 +1436,8 @@ void spRender(void) {
                 continue;
             }
             SPMaterial* material = &(_sp_state.pools.materials[mat_id]);
-            uint32_t offsets_frag[] = { (mat_id - 1) * _sp_state.dynamic_alignment};
-            wgpuRenderPassEncoderSetBindGroup(_sp_state.pass_enc, 1, material->bind_groups.frag, ARRAY_LEN(offsets_frag), offsets_frag);
+            //uint32_t offsets_frag[] = { (mat_id - 1) * _sp_state.dynamic_alignment};
+            wgpuRenderPassEncoderSetBindGroup(_sp_state.pass_enc, 1, material->bind_groups.frag, 0, NULL /*ARRAY_LEN(offsets_frag), offsets_frag*/);
             SPMeshID last_mesh_id = {0};
             uint32_t instance_count = _sp_state.instance_counts_per_mat[mat_id - 1];
             for(uint32_t i = 0; i < instance_count; i++) {
@@ -1335,6 +1507,143 @@ SPMeshID spCreateMesh(const SPMeshDesc* desc) {
     return mesh_id;
 }
 
+SPMeshID spCreateMeshFromInit(const SPMeshInitializer* init) {
+    typedef struct Element {
+        uint16_t v;
+        uint16_t t;
+    } Element;
+    
+    vec3* normals = calloc(init->vertices.count, sizeof *normals);
+    
+    Element* elements = calloc(init->faces.count * 3, sizeof *elements);
+    uint16_t vertex_count = 0;
+    uint16_t* indices = SPIDER_MALLOC(sizeof *indices * init->faces.count * 3);
+    uint32_t index_count = 0;
+
+    for(uint32_t f = 0; f < init->faces.count; f++) {
+        vec3 face_normal = {0.0f, 0.0f, 0.0f};
+        vec3 v01, v02;
+        glm_vec3_sub(
+            init->vertices.data[init->faces.data[f].vertex_indices[1]],
+            init->vertices.data[init->faces.data[f].vertex_indices[0]],
+            v01
+        );
+        glm_vec3_sub(
+            init->vertices.data[init->faces.data[f].vertex_indices[2]],
+            init->vertices.data[init->faces.data[f].vertex_indices[0]],
+            v02
+        );
+        glm_cross(v01, v02, face_normal);
+        glm_vec3_normalize(face_normal);
+        DEBUG_PRINT(DEBUG_PRINT_MESH, "face %2d -> n: %f, %f, %f\n", f, face_normal[0], face_normal[1], face_normal[2]);
+        for(uint8_t i = 0; i < 3; i++) {
+            uint16_t v = init->faces.data[f].vertex_indices[i];
+            uint16_t t = init->faces.data[f].tex_coord_indices[i];
+
+            float d01 = glm_vec3_distance2(init->vertices.data[v], init->vertices.data[init->faces.data[f].vertex_indices[(i + 1) % 3]]);
+            float d02 = glm_vec3_distance2(init->vertices.data[v], init->vertices.data[init->faces.data[f].vertex_indices[(i + 2) % 3]]);
+            float max_distance = fmax(d01, d02);
+            float scale_factor = 1.0f / max_distance;
+            vec3 normal_add = {0.0f, 0.0f, 0.0f};
+            glm_vec3_scale(face_normal, scale_factor, normal_add);
+            glm_vec3_add(normals[v], normal_add, normals[v]);
+            uint32_t e = 0;
+            for(; e < vertex_count; e++) {
+                if(elements[e].v == v && elements[e].t == t) {
+                    break;
+                }
+            }
+            if(e == vertex_count) {
+                elements[e].v = v;
+                elements[e].t = t;
+                vertex_count++;
+            }
+            indices[index_count++] = e;
+        }
+    }
+
+    for(uint16_t v = 0; v < init->vertices.count; v++) {
+        glm_vec3_normalize(normals[v]);
+    }
+    
+    SPVertex* vertices = SPIDER_MALLOC(sizeof *vertices * init->faces.count * 3);
+    for(uint16_t i = 0; i < vertex_count; i++) {
+        memcpy(vertices[i].pos, init->vertices.data[elements[i].v], sizeof vertices[i].pos);
+        memcpy(vertices[i].tex_coords, init->tex_coords.data[elements[i].t], sizeof vertices[i].tex_coords);
+        memcpy(vertices[i].normal, normals[elements[i].v], sizeof vertices[i].normal);
+        memcpy(vertices[i].tangent , &(vec3){0.0f, 0.0f, 0.0f}, sizeof vertices[i].tangent);
+    }
+
+    for(uint32_t i = 0; i < index_count; i+= 3) {
+        SPVertex* v0 = &(vertices[indices[i + 0]]);
+        SPVertex* v1 = &(vertices[indices[i + 1]]);
+        SPVertex* v2 = &(vertices[indices[i + 2]]);
+
+        vec3 e01, e02;
+        glm_vec3_sub(v1->pos, v0->pos, e01);
+        glm_vec3_sub(v2->pos, v0->pos, e02);
+        DEBUG_PRINT(DEBUG_PRINT_MESH, "e01: %.2f, %.2f, %.2f | e02: %.2f, %.2f, %.2f\n",
+            e01[0], e01[1], e01[2],
+            e02[0], e02[1], e02[2]
+        );
+        float deltaU1 = v1->tex_coords[0] - v0->tex_coords[0];
+        float deltaV1 = v1->tex_coords[1] - v0->tex_coords[1];
+        float deltaU2 = v2->tex_coords[0] - v0->tex_coords[0];
+        float deltaV2 = v2->tex_coords[1] - v0->tex_coords[1];
+        DEBUG_PRINT(DEBUG_PRINT_MESH, "d1: %.2f, %.2f | d2: %.2f, %.2f\n",
+            deltaU1, deltaV1,
+            deltaU2, deltaV2
+        );
+
+        float div = (deltaU1 * deltaV2 - deltaU2 * deltaU1);
+        float f = div == 0.0f ? -1.0f : 1.0f / div;
+        DEBUG_PRINT(DEBUG_PRINT_MESH, "f: %.2f\n", f);
+
+        vec3 tangent = {
+            f * (deltaV2 * e01[0] - deltaV1 * e02[0]),
+            f * (deltaV2 * e01[1] - deltaV1 * e02[1]),
+            f * (deltaV2 * e01[2] - deltaV1 * e02[2])
+        };
+
+        vec3 bitangent = {
+            f * (-deltaU2 * e01[0] - deltaU1 * e02[0]),
+            f * (-deltaU2 * e01[1] - deltaU1 * e02[1]),
+            f * (-deltaU2 * e01[2] - deltaU1 * e02[2])
+        };
+
+        glm_vec3_add(v0->tangent, tangent, v0->tangent);
+        glm_vec3_add(v1->tangent, tangent, v1->tangent);
+        glm_vec3_add(v2->tangent, tangent, v2->tangent);
+
+    }
+
+    for(uint16_t i = 0; i < vertex_count; i++) {
+        glm_vec3_normalize(vertices[i].tangent);
+        DEBUG_PRINT(DEBUG_PRINT_MESH, "vertex %u -> t: %.2f, %.2f, %.2f\n", i, 
+            vertices[i].tangent[0], vertices[i].tangent[1], vertices[i].tangent[2]
+        );
+    }
+
+    SPMeshID mesh_id = spCreateMesh(&(SPMeshDesc){
+        .vertices = {
+            .data = vertices,
+            .count = vertex_count,
+        },
+        .indices = {
+            .data = indices,
+            .count = index_count,
+        }
+    });
+
+    DEBUG_PRINT(DEBUG_PRINT_MESH, "mesh create: created mesh with %d vertices and %d indices\n", vertex_count, index_count);
+
+    free(elements);
+    free(normals);
+    free(vertices);
+    free(indices);
+    return mesh_id;
+}
+
 SPMaterialID spCreateMaterial(const SPMaterialDesc* desc) {
     SPMaterialID material_id = (SPMaterialID){_spAllocPoolIndex(&(_sp_state.pools.material_pool))};
     if(material_id.id == SP_INVALID_ID) {
@@ -1343,25 +1652,39 @@ SPMaterialID spCreateMaterial(const SPMaterialDesc* desc) {
     int id = material_id.id; 
     SPMaterial* material = &(_sp_state.pools.materials[id]);
 
-    material->props.ambient = desc->ambient;
-    material->props.specular = desc->specular;
     WGPUBuffer temp_buffers[] = {
         NULL, // albedo
+        NULL, // normal
+        NULL, // roughness
+        NULL, // metallic
+        NULL, // ao
     };
     WGPUCommandEncoder texture_load_enc = wgpuDeviceCreateCommandEncoder(_sp_state.device, NULL);
 
-    _spCreateAndLoadTexture(&(material->albedo), desc->albedo_tex, &temp_buffers[0], texture_load_enc);
+    _spCreateAndLoadTexture(&(material->albedo), desc->albedo, &temp_buffers[0], texture_load_enc);
+    if(desc->normal.name) {
+        _spCreateAndLoadTexture(&(material->normal), desc->normal, &temp_buffers[1], texture_load_enc);
+    }
+    if(desc->roughness.name) {
+        _spCreateAndLoadTexture(&(material->roughness), desc->roughness, &temp_buffers[2], texture_load_enc);
+    }
+    if(desc->metallic.name) {
+        _spCreateAndLoadTexture(&(material->metallic), desc->metallic, &temp_buffers[3], texture_load_enc);
+    }
+    if(desc->ao.name) {
+        _spCreateAndLoadTexture(&(material->ao), desc->ao, &temp_buffers[4], texture_load_enc);
+    }
 
     WGPUCommandBuffer cmd_buffer = wgpuCommandEncoderFinish(texture_load_enc, NULL);
-    wgpuCommandEncoderRelease(texture_load_enc);
+   _SP_RELEASE_RESOURCE(CommandEncoder, texture_load_enc)
     wgpuQueueSubmit(_sp_state.queue, 1, &cmd_buffer);
-    wgpuCommandBufferRelease(cmd_buffer);
+    _SP_RELEASE_RESOURCE(CommandBuffer, cmd_buffer)
     for(uint8_t i = 0; i < ARRAY_LEN(temp_buffers); i++) {
-        wgpuBufferRelease(temp_buffers[i]);
+        _SP_RELEASE_RESOURCE(Buffer, temp_buffers[i]);
     }
     DEBUG_PRINT(DEBUG_PRINT_TYPE_CREATE_MATERIAL, "mat_creation: submitted texture copies\n");
 
-    WGPUTextureViewDescriptor tex_view_desc = {
+    WGPUTextureViewDescriptor tex_view_desc_32 = {
         .format = WGPUTextureFormat_RGBA8UnormSrgb,
         .dimension = WGPUTextureViewDimension_2D,
         .baseMipLevel = 0,
@@ -1370,9 +1693,30 @@ SPMaterialID spCreateMaterial(const SPMaterialDesc* desc) {
         .arrayLayerCount = 0,
         .aspect = WGPUTextureAspect_All,
     };
+    WGPUTextureViewDescriptor tex_view_desc_8 = {
+        .format = WGPUTextureFormat_R8Unorm,
+        .dimension = WGPUTextureViewDimension_2D,
+        .baseMipLevel = 0,
+        .mipLevelCount = 0,
+        .baseArrayLayer = 0,
+        .arrayLayerCount = 0,
+        .aspect = WGPUTextureAspect_All,
+    };
 
-    material->albedo.view = wgpuTextureCreateView(material->albedo.texture, &tex_view_desc);
-    DEBUG_PRINT(DEBUG_PRINT_TYPE_CREATE_MATERIAL, "mat_creation: created texture view\n");
+    material->albedo.view = wgpuTextureCreateView(material->albedo.texture, &tex_view_desc_32);
+    if(material->normal.texture) {
+        material->normal.view = wgpuTextureCreateView(material->normal.texture, &tex_view_desc_32);
+    }
+    if(material->roughness.texture) {
+        material->roughness.view = wgpuTextureCreateView(material->roughness.texture, &tex_view_desc_8);
+    }
+    if(material->metallic.texture) {
+        material->metallic.view = wgpuTextureCreateView(material->metallic.texture, &tex_view_desc_8);
+    }
+    if(material->ao.texture) {
+        material->ao.view = wgpuTextureCreateView(material->ao.texture, &tex_view_desc_8);
+    }
+    DEBUG_PRINT(DEBUG_PRINT_TYPE_CREATE_MATERIAL, "mat_creation: created texture views\n");
 
     WGPUSamplerDescriptor sampler_desc = {
         .addressModeU = WGPUAddressMode_ClampToEdge,
@@ -1386,7 +1730,7 @@ SPMaterialID spCreateMaterial(const SPMaterialDesc* desc) {
         .compare = WGPUCompareFunction_LessEqual,
     };
 
-    material->albedo.sampler = wgpuDeviceCreateSampler(_sp_state.device, &sampler_desc);
+    material->sampler = wgpuDeviceCreateSampler(_sp_state.device, &sampler_desc);
     DEBUG_PRINT(DEBUG_PRINT_TYPE_CREATE_MATERIAL, "mat_creation: created sampler\n");
     
     WGPUBindGroupBinding vert_bindings[] = {
@@ -1418,16 +1762,18 @@ SPMaterialID spCreateMaterial(const SPMaterialDesc* desc) {
     SPIDER_ASSERT(_sp_state.pools.lights[1].color_view);
     
     WGPUBindGroupBinding frag_bindings[] = {
+        /*
         {
             .binding = 0,
             .buffer = _sp_state.buffers.uniform.material,
             .offset = 0,
-            .size = sizeof(SPMaterialProperties),
+            .size = sizeof(_SPUboMaterialProperties),
             .sampler = NULL,
             .textureView = NULL,
         },
+        */
         {
-            .binding = 1,
+            .binding = 0,
             .buffer = _sp_state.buffers.uniform.light,
             .offset = 0,
             .size = sizeof(_SPUboLight),
@@ -1435,15 +1781,15 @@ SPMaterialID spCreateMaterial(const SPMaterialDesc* desc) {
             .textureView = NULL,
         },
         {
-            .binding = 2,
+            .binding = 1,
             .buffer = NULL,
             .offset = 0,
             .size = 0,
-            .sampler = material->albedo.sampler,
+            .sampler = material->sampler,
             .textureView = NULL,
         },
         {
-            .binding = 3,
+            .binding = 2,
             .buffer = NULL,
             .offset = 0,
             .size = 0,
@@ -1451,7 +1797,39 @@ SPMaterialID spCreateMaterial(const SPMaterialDesc* desc) {
             .textureView = material->albedo.view,
         },
         {
+            .binding = 3,
+            .buffer = NULL,
+            .offset = 0,
+            .size = 0,
+            .sampler = NULL,
+            .textureView = material->normal.view ? material->normal.view :_sp_state.default_textures.normal.view,
+        },
+        {
             .binding = 4,
+            .buffer = NULL,
+            .offset = 0,
+            .size = 0,
+            .sampler = NULL,
+            .textureView = material->roughness.view ? material->roughness.view :_sp_state.default_textures.roughness.view,
+        },
+        {
+            .binding = 5,
+            .buffer = NULL,
+            .offset = 0,
+            .size = 0,
+            .sampler = NULL,
+            .textureView = material->metallic.view ? material->metallic.view : _sp_state.default_textures.metallic.view,
+        },
+        {
+            .binding = 6,
+            .buffer = NULL,
+            .offset = 0,
+            .size = 0,
+            .sampler = NULL,
+            .textureView = material->ao.view ? material->ao.view : _sp_state.default_textures.ao.view,
+        },
+        {
+            .binding = 7,
             .buffer = NULL,
             .offset = 0,
             .size = 0,
@@ -1603,6 +1981,7 @@ SPLight* spGetLight(SPLightID light_id) {
     return &(_sp_state.pools.lights[light_id.id]);
 }
 
+
 // PRIVATE
 // Pool implementation from https://github.com/floooh/sokol/ 
 // ***
@@ -1699,21 +2078,48 @@ void _spFreePoolIndex(_SPPool* pool, int slot_index) {
 
 
 void _spCreateAndLoadTexture(_SPMaterialTexture* mat_tex, SPTextureFileDesc tex_file_desc, WGPUBuffer* out_buffer, WGPUCommandEncoder cmd_enc) {
-    int width = (int)tex_file_desc.width;
-    int height = (int)tex_file_desc.height;
-    int channel_count = (int)tex_file_desc.channel_count;
+    int width = 0;
+    int height = 0;
+    int read_comps = (int)(tex_file_desc.channel_count);
+    int comp_map[5] = {
+        0,
+        1, 
+        2,
+        4,
+        4
+    };
+    uint32_t channels[5] = {
+        STBI_default, // only used for req_comp
+        STBI_grey,
+        STBI_grey_alpha,
+        STBI_rgb_alpha,
+        STBI_rgb_alpha
+    };
+    WGPUTextureFormat formats[5] = {
+        WGPUTextureFormat_Undefined,
+        WGPUTextureFormat_R8Unorm,
+        WGPUTextureFormat_RG8Unorm,
+        WGPUTextureFormat_RGBA8UnormSrgb,
+        WGPUTextureFormat_RGBA8UnormSrgb,
+    };
+
     stbi_uc* pixel_data = stbi_load(
         tex_file_desc.name,
         &width,
         &height,
-        &channel_count,
-        STBI_rgb_alpha
+        &read_comps,
+        channels[read_comps]
     );
+    if(!pixel_data) {
+        DEBUG_PRINT(DEBUG_PRINT_WARNING, "Couldn't load '%s'\n", tex_file_desc.name);
+    }
     SPIDER_ASSERT(pixel_data);
+    int comps = comp_map[read_comps];
+    DEBUG_PRINT(DEBUG_PRINT_GENERAL, "loaded image (%d, %d, %d / %d)\n", width, height, read_comps, comps);
 
     WGPUExtent3D texture_size = {
-        .width = tex_file_desc.width,
-        .height = tex_file_desc.height,
+        .width = width,
+        .height = height,
         .depth = 1,
     };
 
@@ -1722,7 +2128,7 @@ void _spCreateAndLoadTexture(_SPMaterialTexture* mat_tex, SPTextureFileDesc tex_
         .dimension = WGPUTextureDimension_2D,
         .size = texture_size,
         .arrayLayerCount = 1,
-        .format = WGPUTextureFormat_RGBA8UnormSrgb,
+        .format = formats[read_comps],
         .mipLevelCount = 1,
         .sampleCount = 1,
     };
@@ -1731,7 +2137,7 @@ void _spCreateAndLoadTexture(_SPMaterialTexture* mat_tex, SPTextureFileDesc tex_
 
     WGPUBufferDescriptor buffer_desc = {
         .usage = WGPUBufferUsage_CopySrc,
-        .size = tex_file_desc.width * tex_file_desc.height * 4
+        .size = width * height * comps
     };
 
     WGPUCreateBufferMappedResult result = wgpuDeviceCreateBufferMapped(_sp_state.device, &buffer_desc);
@@ -1743,8 +2149,8 @@ void _spCreateAndLoadTexture(_SPMaterialTexture* mat_tex, SPTextureFileDesc tex_
     WGPUBufferCopyView buffer_copy_view = {
         .buffer = result.buffer,
         .offset = 0,
-        .rowPitch = tex_file_desc.width * 4,
-        .imageHeight = tex_file_desc.height,
+        .rowPitch = width * comps,
+        .imageHeight = height,
     };
 
     WGPUTextureCopyView texture_copy_view = {
@@ -1940,8 +2346,16 @@ void _spUpdateUboMaterial(void) {
     for(uint32_t i = 1; i < _sp_state.pools.material_pool.last_index_plus_1; i++) {
         SPMaterial* material = &(_sp_state.pools.materials[i]);
         uint64_t offset = (i - 1) * _sp_state.dynamic_alignment;
+        _SPUboMaterialProperties ubo = {
+            .rmap = {
+                material->props.roughness,
+                material->props.metallic,
+                material->props.ao,
+                0.0f,
+            },
+        };
 
-        memcpy((void*)((uint64_t)(pool->data[pool->cur]) + offset), &(material->props), sizeof(SPMaterialProperties));
+        memcpy((void*)((uint64_t)(pool->data[pool->cur]) + offset), &(material->props), sizeof(_SPUboMaterialProperties));
         
     }
     wgpuBufferUnmap(pool->buffer[pool->cur]);
@@ -1996,7 +2410,7 @@ void _spUpdate(void) {
     _spUpdateProjection();
     _spUpdateUboCamera();
     _spUpdateUboModel();
-    _spUpdateUboMaterial();
+    //_spUpdateUboMaterial();
     _spUpdateUboLight();
 }
 
@@ -2031,4 +2445,15 @@ inline float _spColorComponent8ToFloat(uint8_t component) {
     return (float)component / 255.0f;
 }
 
+void _spReadFile(const char* filename, _SPFileReadResult* result) {
+    FILE *f = fopen(filename, "rb");
+    assert(f != NULL);
+    fseek(f, 0, SEEK_END);
+    result->size = ftell(f);
+    fseek(f, 0, SEEK_SET);  /* same as rewind(f); */
+
+    result->data = malloc(result->size);
+    fread(result->data, 1, result->size, f);
+    fclose(f);
+}
 #endif // SPIDER_H_
