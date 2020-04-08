@@ -11,6 +11,6 @@ emcc src/example.c \
 -fsanitize=address \
 -s ASAN_SHADOW_SIZE=1073741824 \
 -g \
--o hello.html \
+-o out/hello.html \
 --preload-file src/shaders/compiled \
 --preload-file assets \

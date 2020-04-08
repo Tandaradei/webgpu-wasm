@@ -142,23 +142,29 @@ float randFloat(void) {
 
 float randFloatRange(float min, float max) {
     return min + randFloat() * (max - min);
-} 
+}
+
+static const vec3 light_start_pos = {10.0f, 6.0f, 2.0f};
 
 void createObjects(void) {
     SPMeshID mesh = spCreateMeshFromInit(&plane);
     SPMeshID mesh_cube = spCreateMeshFromInit(&cube);
     
     // TODO: lights have to be created before materials right now 
-    vec3 light_direction = {0.0f, -1.0f, 0.0f};
+    vec3 light_look_at = {0.0f, 0.0f, 0.0f};
+    vec3 light_direction = {-1.0, -1.0f, 0.2f};
+    // (float*) cast to prevent compiler warning 'incompatible-pointer-types-discards-qualifiers'
+    // cglm takes no const pointers as arguments, even if it doesn't mutate the vectors
+    glm_vec3_sub(light_look_at, (float*)light_start_pos, light_direction);
     glm_vec3_normalize(light_direction);
 
     spot_light_id = spCreateSpotLight(&(SPSpotLightDesc){
-            .pos = {0.0f, 6.0f, 0.0f},
-            .range = 20.0f,
+            .pos = {light_start_pos[0], light_start_pos[1], light_start_pos[2]},
+            .range = 40.0f,
             .color = {.r = 255, .g = 255, .b = 255},
             .dir = {light_direction[0], light_direction[1], light_direction[2]},
-            .fov = glm_rad(90.0f),
-            .power = 150.0f,
+            .fov = glm_rad(70.0f),
+            .power = 50.0f,
             .shadow_casting = &(SPLightShadowCastDesc){
                 .shadow_map_size = 1024,
             },
@@ -243,7 +249,6 @@ void createObjects(void) {
             },
         }
     );
-
     SPMaterialID planks = spCreateMaterial(&(SPMaterialDesc){
             .albedo = {
                 .name = "assets/textures/Planks021_2K/Planks021_2K_Color.jpg",
@@ -281,6 +286,7 @@ void createObjects(void) {
         planks
     };
 
+    // Create random placed and rotated cubes
     for(int i = 0; i < INSTANCES_COUNT; i++) {
         float scale = randFloatRange(0.5f, 1.0f);
         instance_ids[i] = spCreateInstance(&(SPInstanceDesc){
@@ -294,13 +300,13 @@ void createObjects(void) {
             }
         );
     }
-
+    // Create floor 
     spCreateInstance(&(SPInstanceDesc){
             .mesh = mesh, 
-            .material = bricks,
+            .material = planks,
             .transform = &(SPTransform){
                 .pos = {0.0f, -spacing, 0.0f},
-                .scale = {spacing * 4.0f, 1.0f, spacing * 4.0f},
+                .scale = {50.0f, 1.0f, 50.0f},
                 .rot = {0.0f, 0.0f, 0.0f},
             }
         }
@@ -314,6 +320,7 @@ void frame(void) {
     float delta_time_s = ((float)(cur_clock - start_clock) / CLOCKS_PER_SEC);
     start_clock = clock();
     time_elapsed_total_s += delta_time_s;
+    // Update instance transforms
     for(int i = 0; i < INSTANCES_COUNT; i++) {
         SPInstance* instance = spGetInstance(instance_ids[i]);
         if(!instance) {
@@ -324,15 +331,21 @@ void frame(void) {
             instance->transform.rot[1] -= 360.0f; 
         }
     }
-    SPCamera* camera = spGetActiveCamera();
-    const float radius = 10.0f;
-    const float depth = sin(time_elapsed_total_s * 0.12f) * 6.0f;
-
+    // Update light(s)
     SPLight* spot_light = spGetLight(spot_light_id);
     float angle = sin(glm_rad(30.0f));
+    float light_distance_from_center = 10.0f;
+    float rounds_per_seconds = 0.25f;
+    float rotation_speed = rounds_per_seconds * M_PI;
     if(spot_light) {
-        spot_light->pos[0] = sin(time_elapsed_total_s * 0.4f) * 2.0f;
-        spot_light->pos[2] = sin(time_elapsed_total_s * 1.0f) * 5.0f;
+        spot_light->pos[0] = sin(time_elapsed_total_s * rotation_speed) * light_distance_from_center;
+        spot_light->pos[1] = light_start_pos[1] + sin(time_elapsed_total_s * 0.4f) * 2.0f;
+        spot_light->pos[2] = cos(time_elapsed_total_s * rotation_speed) * light_distance_from_center;
+        vec3 light_look_at = {0.0f, 0.0f, 0.0f};
+        vec3 light_direction = {-1.0, -1.0f, 0.2f};
+        glm_vec3_sub(light_look_at, spot_light->pos, light_direction);
+        glm_vec3_normalize(light_direction);
+        memcpy(spot_light->dir, light_direction, sizeof spot_light->dir);
     }
 
     spUpdate();
@@ -343,11 +356,10 @@ int main() {
     srand(0);
     const uint16_t surface_width = 1280;
     const uint16_t surface_height = 720;
-    vec3 dir = {0.0f, -1.0f, -1.0f};
-    vec3 pos = {0.0f, 5.0f, 8.0f};
-    vec3 center = {0.0f, -4.0f, 0.0f};
-    //glm_vec3_sub(center, pos, dir);
+    vec3 dir = {0.0f, -1.0f, -1.0f}; // for SPCameraMode_Direction
     glm_vec3_normalize(dir);
+    vec3 pos = {0.0f, 5.0f, 8.0f};
+    vec3 center = {0.0f, -4.0f, 0.0f}; // for SPCameraMode_LookAt
 
     SPInitDesc init = {
         .surface_size = {

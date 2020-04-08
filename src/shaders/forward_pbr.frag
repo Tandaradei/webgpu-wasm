@@ -46,8 +46,7 @@ const int sampleSize = 1;
 const float scale = 1.5;
 
 float getLightDepthOnPosSingle(vec2 coords_shadow_map) {
-    float light_depth_on_pos = texture( sampler2D( shadow_map, my_sampler ), coords_shadow_map.xy ).r;
-    return light_depth_on_pos * 0.5 + 0.5; // Convert [-1, 1] to [0, 1]
+    return texture( sampler2D( shadow_map, my_sampler ), coords_shadow_map.xy ).r;
 }
 
 float getLightDepthOnPosSampled(vec2 coords_shadow_map) {
@@ -138,11 +137,13 @@ void main() {
         // Shadow calculation
         const vec4 pos_shadow_map = light.proj * light.view * vec4(fragPosWorld, 1.0);
         vec4 pos_in_light_clip_space = pos_shadow_map / pos_shadow_map.w;
-        pos_in_light_clip_space.xyz = pos_in_light_clip_space.xyz * 0.5 + 0.5; // [-1,1] to [0,1]
+        pos_in_light_clip_space.xy = pos_in_light_clip_space.xy * 0.5 + 0.5; // [-1,1] to [0,1]
         pos_in_light_clip_space.y = 1.0 - pos_in_light_clip_space.y; // bottom-up to top-down
+        // [0, 0] of pos_in_light_clip_space.xy should now be the top left corner and [1, 1] the bottom right --> texture space
+
         if(pos_in_light_clip_space.z > 0.0 && pos_in_light_clip_space.z < 1.0) {
             const float light_depth_on_pos = getLightDepthOnPosSampled(pos_in_light_clip_space.xy);
-            if(pos_in_light_clip_space.w > 0.0 && pos_in_light_clip_space.z > light_depth_on_pos + 0.001) {
+            if(pos_in_light_clip_space.w > 0.0 && pos_in_light_clip_space.z + 0.0001 < light_depth_on_pos) {
                 attenuation = 0.0;
             }
         }
