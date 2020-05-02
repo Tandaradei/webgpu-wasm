@@ -1,0 +1,40 @@
+#version 450
+
+layout(binding = 0) buffer ImageBuffer {
+    uint data[];
+} image_buffer;
+
+layout(binding = 1) uniform Description {
+    uint initial_width;
+    uint initial_height;
+} description;
+
+void main() {
+    uint index = gl_WorkGroupID.x * description.initial_height + gl_WorkGroupID.y;
+    uint pixel = image_buffer.data[index];
+    vec4 read_color = vec4(
+        float(pixel >> 24) / 255.0,
+        float((pixel >> 16) & 255) / 255.0,
+        float((pixel >> 8) & 255) / 255.0,
+        float(pixel & 255) / 255.0
+    );
+    uint cur_dimension = description.initial_width;
+    uint offset = cur_dimension * cur_dimension;
+    float factor = 1.0;
+    while(cur_dimension > 1) {
+        cur_dimension /= 2;
+        factor *= 2.0;
+        uint write_index = offset + uint(gl_WorkGroupID.x / factor) * cur_dimension + uint(gl_WorkGroupID.y / factor);
+        offset += cur_dimension * cur_dimension;
+        vec4 color = read_color / factor;
+        uint bits_8 = 255;
+        uint bits_16 = bits_8 * 256;
+        uint bits_24 = bits_16 * 256;
+        uint bits_32 = bits_24 * 256;
+        image_buffer.data[write_index] += 
+            ((uint(color.r * 255.0) << 24) & bits_32) |
+            ((uint(color.r * 255.0) << 16) & bits_24) |
+            ((uint(color.r * 255.0) << 8) & bits_16) |
+            (uint(color.r * 255.0) & bits_8);
+    }
+}

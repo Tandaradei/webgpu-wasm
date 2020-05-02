@@ -614,17 +614,18 @@ void spInit(const SPInitDesc* desc) {
     DEBUG_PRINT(DEBUG_PRINT_TYPE_INIT, "init: got device\n");
     wgpuDeviceSetUncapturedErrorCallback(_sp_state.device, &errorCallback, NULL);
 
-    _sp_state.queue = wgpuDeviceCreateQueue(_sp_state.device);
+    _sp_state.queue = wgpuDeviceGetDefaultQueue(_sp_state.device);
     DEBUG_PRINT(DEBUG_PRINT_TYPE_INIT, "init: created queue\n");
 
     WGPUSurfaceDescriptorFromHTMLCanvasId canvas_desc = {
-        .nextInChain = NULL,
-        .sType = WGPUSType_SurfaceDescriptorFromHTMLCanvasId,
         .id = "canvas"
     };
 
     WGPUSurfaceDescriptor surf_desc = {
-        .nextInChain = (const WGPUChainedStruct*)&canvas_desc
+        .nextInChain = &(WGPUChainedStruct){
+            (const WGPUChainedStruct*)&canvas_desc, 
+            WGPUSType_SurfaceDescriptorFromHTMLCanvasId
+        }
     };
 
     _sp_state.instance = NULL;  // null instance
@@ -639,7 +640,7 @@ void spInit(const SPInitDesc* desc) {
         .format = WGPUTextureFormat_BGRA8Unorm,
         .width = desc->surface_size.width,
         .height = desc->surface_size.height,
-        .presentMode = WGPUPresentMode_VSync
+        .presentMode = WGPUPresentMode_Fifo
     };
     _sp_state.swap_chain = wgpuDeviceCreateSwapChain(_sp_state.device, _sp_state.surface, &sc_desc);
     DEBUG_PRINT(DEBUG_PRINT_TYPE_INIT, "init: created swapChain\n");
@@ -924,8 +925,8 @@ void spRender(void) {
             }
             SPMesh* mesh = &(_sp_state.pools.meshes[mesh_id.id]);
             if(last_mesh_id.id != mesh_id.id) {
-                wgpuRenderPassEncoderSetVertexBuffer(shadow_pass_enc, 0, mesh->vertex_buffer, 0);
-                wgpuRenderPassEncoderSetIndexBuffer(shadow_pass_enc, mesh->index_buffer, 0);
+                wgpuRenderPassEncoderSetVertexBuffer(shadow_pass_enc, 0, mesh->vertex_buffer, 0, 0);
+                wgpuRenderPassEncoderSetIndexBuffer(shadow_pass_enc, mesh->index_buffer, 0, 0);
                 last_mesh_id = mesh_id;
             }
             uint32_t offsets_vert[] = { (ins_id - 1) * _sp_state.dynamic_alignment};
@@ -984,8 +985,8 @@ void spRender(void) {
                 SPMeshID mesh_id = instance->mesh;
                 SPMesh* mesh = &(_sp_state.pools.meshes[mesh_id.id]);
                 if(last_mesh_id.id != mesh_id.id) {
-                    wgpuRenderPassEncoderSetVertexBuffer(_sp_state.pass_enc, 0, mesh->vertex_buffer, 0);
-                    wgpuRenderPassEncoderSetIndexBuffer(_sp_state.pass_enc, mesh->index_buffer, 0);
+                    wgpuRenderPassEncoderSetVertexBuffer(_sp_state.pass_enc, 0, mesh->vertex_buffer, 0, 0);
+                    wgpuRenderPassEncoderSetIndexBuffer(_sp_state.pass_enc, mesh->index_buffer, 0, 0);
                     last_mesh_id = mesh_id;
                 }
                 uint32_t offsets_vert[] = { (ins_id.id - 1) * _sp_state.dynamic_alignment};
@@ -1248,13 +1249,13 @@ SPMaterialID spCreateMaterial(const SPMaterialDesc* desc) {
         .mipmapFilter = WGPUFilterMode_Linear,
         .lodMinClamp = 0.0f,
         .lodMaxClamp = 1.0f,
-        .compare = WGPUCompareFunction_LessEqual,
+        .compare = WGPUCompareFunction_Undefined,
     };
 
     material->sampler = wgpuDeviceCreateSampler(_sp_state.device, &sampler_desc);
     DEBUG_PRINT(DEBUG_PRINT_TYPE_CREATE_MATERIAL, "mat_creation: created sampler\n");
     
-    WGPUBindGroupBinding vert_bindings[] = {
+    WGPUBindGroupEntry vert_bindings[] = {
         {
             .binding = 0,
             .buffer = _sp_state.buffers.uniform.model,
@@ -1275,14 +1276,14 @@ SPMaterialID spCreateMaterial(const SPMaterialDesc* desc) {
 
     WGPUBindGroupDescriptor vert_bg_desc = {
         .layout = _sp_state.pipelines.render.forward.vert.bind_group_layout,
-        .bindingCount = ARRAY_LEN(vert_bindings),
-        .bindings = vert_bindings
+        .entryCount = ARRAY_LEN(vert_bindings),
+        .entries = vert_bindings
     };
     material->bind_groups.vert = wgpuDeviceCreateBindGroup(_sp_state.device, &vert_bg_desc);
     DEBUG_PRINT(DEBUG_PRINT_TYPE_CREATE_MATERIAL, "mat_creation: created vert bind group\n");
     SPIDER_ASSERT(_sp_state.pools.lights[1].color_view);
     
-    WGPUBindGroupBinding frag_bindings[] = {
+    WGPUBindGroupEntry frag_bindings[] = {
         {
             .binding = 0,
             .buffer = _sp_state.buffers.uniform.light,
@@ -1350,8 +1351,8 @@ SPMaterialID spCreateMaterial(const SPMaterialDesc* desc) {
     };
     WGPUBindGroupDescriptor frag_bg_desc = {
         .layout = _sp_state.pipelines.render.forward.frag.bind_group_layout,
-        .bindingCount = ARRAY_LEN(frag_bindings),
-        .bindings = frag_bindings
+        .entryCount = ARRAY_LEN(frag_bindings),
+        .entries = frag_bindings
     };
     material->bind_groups.frag = wgpuDeviceCreateBindGroup(_sp_state.device, &frag_bg_desc);
     DEBUG_PRINT(DEBUG_PRINT_TYPE_CREATE_MATERIAL, "mat_creation: created frag bind group\n");
@@ -1413,7 +1414,6 @@ SPLightID spCreateSpotLight(const SPSpotLightDesc* desc){
             .usage = WGPUTextureUsage_OutputAttachment, // TODO: should sample directly from depth texture
             .dimension = WGPUTextureDimension_2D,
             .size = texture_size,
-            .arrayLayerCount = 1,
             .format = WGPUTextureFormat_Depth32Float,
             .mipLevelCount = 1,
             .sampleCount = 1,
@@ -1441,7 +1441,6 @@ SPLightID spCreateSpotLight(const SPSpotLightDesc* desc){
             .usage = WGPUTextureUsage_Sampled | WGPUTextureUsage_OutputAttachment,
             .dimension = WGPUTextureDimension_2D,
             .size = texture_size,
-            .arrayLayerCount = 1,
             .format = WGPUTextureFormat_R32Float,
             .mipLevelCount = 1,
             .sampleCount = 1,
@@ -1504,7 +1503,6 @@ void _spCreateForwardRenderPipeline() {
             .height = _sp_state.surface_size.height,
             .depth = 1,
         },
-        .arrayLayerCount = 1,
         .format = WGPUTextureFormat_Depth32Float,
         .mipLevelCount = 1,
         .sampleCount = 1,
@@ -1558,14 +1556,14 @@ void _spCreateForwardRenderPipeline() {
     }
     DEBUG_PRINT(DEBUG_PRINT_TYPE_INIT, "init: forward render: created frag shader\n");
 
-    WGPUBindGroupLayoutBinding vert_bglbs[] = {
+    WGPUBindGroupLayoutEntry vert_bgles[] = {
         {
             .binding = 0,
             .visibility = WGPUShaderStage_Vertex,
             .type = WGPUBindingType_UniformBuffer,
             .hasDynamicOffset = true,
             .multisampled = false,
-            .textureDimension = WGPUTextureViewDimension_Undefined,
+            .viewDimension = WGPUTextureViewDimension_Undefined,
             .textureComponentType = WGPUTextureComponentType_Float,
         },
         {
@@ -1574,26 +1572,26 @@ void _spCreateForwardRenderPipeline() {
             .type = WGPUBindingType_UniformBuffer,
             .hasDynamicOffset = false,
             .multisampled = false,
-            .textureDimension = WGPUTextureViewDimension_Undefined,
+            .viewDimension = WGPUTextureViewDimension_Undefined,
             .textureComponentType = WGPUTextureComponentType_Float,
         }
     };
 
     WGPUBindGroupLayoutDescriptor vert_bgl_desc = {
-        .bindingCount = ARRAY_LEN(vert_bglbs),
-        .bindings = vert_bglbs
+        .entryCount = ARRAY_LEN(vert_bgles),
+        .entries = vert_bgles
     };
     pipeline->vert.bind_group_layout = wgpuDeviceCreateBindGroupLayout(_sp_state.device, &vert_bgl_desc);
     DEBUG_PRINT(DEBUG_PRINT_TYPE_INIT, "init: forward render: created vert bind group layout\n");
     
-    WGPUBindGroupLayoutBinding frag_bglbs[] = {
+    WGPUBindGroupLayoutEntry frag_bgles[] = {
         {
             .binding = 0,
             .visibility = WGPUShaderStage_Fragment,
             .type = WGPUBindingType_UniformBuffer,
             .hasDynamicOffset = false,
             .multisampled = false,
-            .textureDimension = WGPUTextureViewDimension_Undefined,
+            .viewDimension = WGPUTextureViewDimension_Undefined,
             .textureComponentType = WGPUTextureComponentType_Float,
         },
         {
@@ -1602,7 +1600,7 @@ void _spCreateForwardRenderPipeline() {
             .type = WGPUBindingType_Sampler,
             .hasDynamicOffset = false,
             .multisampled = false,
-            .textureDimension = WGPUTextureViewDimension_2D,
+            .viewDimension = WGPUTextureViewDimension_2D,
             .textureComponentType = WGPUTextureComponentType_Float,
         },
         {
@@ -1611,7 +1609,7 @@ void _spCreateForwardRenderPipeline() {
             .type = WGPUBindingType_SampledTexture,
             .hasDynamicOffset = false,
             .multisampled = false,
-            .textureDimension = WGPUTextureViewDimension_2D,
+            .viewDimension = WGPUTextureViewDimension_2D,
             .textureComponentType = WGPUTextureComponentType_Float,
         },
         {
@@ -1620,7 +1618,7 @@ void _spCreateForwardRenderPipeline() {
             .type = WGPUBindingType_SampledTexture,
             .hasDynamicOffset = false,
             .multisampled = false,
-            .textureDimension = WGPUTextureViewDimension_2D,
+            .viewDimension = WGPUTextureViewDimension_2D,
             .textureComponentType = WGPUTextureComponentType_Float,
         },
         {
@@ -1629,7 +1627,7 @@ void _spCreateForwardRenderPipeline() {
             .type = WGPUBindingType_SampledTexture,
             .hasDynamicOffset = false,
             .multisampled = false,
-            .textureDimension = WGPUTextureViewDimension_2D,
+            .viewDimension = WGPUTextureViewDimension_2D,
             .textureComponentType = WGPUTextureComponentType_Float,
         },
         {
@@ -1638,7 +1636,7 @@ void _spCreateForwardRenderPipeline() {
             .type = WGPUBindingType_SampledTexture,
             .hasDynamicOffset = false,
             .multisampled = false,
-            .textureDimension = WGPUTextureViewDimension_2D,
+            .viewDimension = WGPUTextureViewDimension_2D,
             .textureComponentType = WGPUTextureComponentType_Float,
         },
         {
@@ -1647,7 +1645,7 @@ void _spCreateForwardRenderPipeline() {
             .type = WGPUBindingType_SampledTexture,
             .hasDynamicOffset = false,
             .multisampled = false,
-            .textureDimension = WGPUTextureViewDimension_2D,
+            .viewDimension = WGPUTextureViewDimension_2D,
             .textureComponentType = WGPUTextureComponentType_Float,
         },
         {
@@ -1656,14 +1654,14 @@ void _spCreateForwardRenderPipeline() {
             .type = WGPUBindingType_SampledTexture,
             .hasDynamicOffset = false,
             .multisampled = false,
-            .textureDimension = WGPUTextureViewDimension_2D,
+            .viewDimension = WGPUTextureViewDimension_2D,
             .textureComponentType = WGPUTextureComponentType_Float,
         },
     };
 
     WGPUBindGroupLayoutDescriptor frag_bgl_desc = {
-        .bindingCount = ARRAY_LEN(frag_bglbs),
-        .bindings = frag_bglbs
+        .entryCount = ARRAY_LEN(frag_bgles),
+        .entries = frag_bgles
     };
     pipeline->frag.bind_group_layout = wgpuDeviceCreateBindGroupLayout(_sp_state.device, &frag_bgl_desc);
     DEBUG_PRINT(DEBUG_PRINT_TYPE_INIT, "init: forward render: created frag bind group layout\n");
@@ -1809,14 +1807,14 @@ void _spCreateShadowMapRenderPipeline() {
     }
     DEBUG_PRINT(DEBUG_PRINT_TYPE_INIT, "init: shadow: created frag shader\n");
 
-    WGPUBindGroupLayoutBinding vert_bglbs[] = {
+    WGPUBindGroupLayoutEntry vert_bgles[] = {
         {
             .binding = 0,
             .visibility = WGPUShaderStage_Vertex,
             .type = WGPUBindingType_UniformBuffer,
             .hasDynamicOffset = true,
             .multisampled = false,
-            .textureDimension = WGPUTextureViewDimension_Undefined,
+            .viewDimension = WGPUTextureViewDimension_Undefined,
             .textureComponentType = WGPUTextureComponentType_Float,
         },
         {
@@ -1825,14 +1823,14 @@ void _spCreateShadowMapRenderPipeline() {
             .type = WGPUBindingType_UniformBuffer,
             .hasDynamicOffset = false,
             .multisampled = false,
-            .textureDimension = WGPUTextureViewDimension_Undefined,
+            .viewDimension = WGPUTextureViewDimension_Undefined,
             .textureComponentType = WGPUTextureComponentType_Float,
         },
     };
 
     WGPUBindGroupLayoutDescriptor vert_bgl_desc = {
-        .bindingCount = ARRAY_LEN(vert_bglbs),
-        .bindings = vert_bglbs
+        .entryCount = ARRAY_LEN(vert_bgles),
+        .entries = vert_bgles
     };
     pipeline->vert.bind_group_layout = wgpuDeviceCreateBindGroupLayout(_sp_state.device, &vert_bgl_desc);
     DEBUG_PRINT(DEBUG_PRINT_TYPE_INIT, "init: forward render: created vert bind group layout\n");
@@ -1846,7 +1844,7 @@ void _spCreateShadowMapRenderPipeline() {
         .bindGroupLayouts = bgls
     };
 
-    WGPUBindGroupBinding vert_bindings[] = {
+    WGPUBindGroupEntry vert_entries[] = {
         {
             .binding = 0,
             .buffer = _sp_state.buffers.uniform.model,
@@ -1867,8 +1865,8 @@ void _spCreateShadowMapRenderPipeline() {
 
     WGPUBindGroupDescriptor vert_bg_desc = {
         .layout = pipeline->vert.bind_group_layout,
-        .bindingCount = ARRAY_LEN(vert_bindings),
-        .bindings = vert_bindings
+        .entryCount = ARRAY_LEN(vert_entries),
+        .entries = vert_entries
     };
     _sp_state.light_bind_group = wgpuDeviceCreateBindGroup(_sp_state.device, &vert_bg_desc);
 
@@ -2141,7 +2139,6 @@ void _spCreateAndLoadTextures(_SPTextureViewFromImageDescriptor descriptors[], c
             .usage = WGPUTextureUsage_Sampled | WGPUTextureUsage_CopyDst,
             .dimension = WGPUTextureDimension_2D,
             .size = texture_size,
-            .arrayLayerCount = 1,
             .format = formats[read_comps],
             .mipLevelCount = 1,
             .sampleCount = 1,
@@ -2164,8 +2161,8 @@ void _spCreateAndLoadTextures(_SPTextureViewFromImageDescriptor descriptors[], c
         WGPUBufferCopyView buffer_copy_view = {
             .buffer = result.buffer,
             .offset = 0,
-            .rowPitch = width * comps,
-            .imageHeight = height,
+            .bytesPerRow = width * comps,
+            .rowsPerImage = height,
         };
 
         WGPUTextureCopyView texture_copy_view = {
