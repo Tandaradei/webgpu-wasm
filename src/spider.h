@@ -618,14 +618,14 @@ void spInit(const SPInitDesc* desc) {
     DEBUG_PRINT(DEBUG_PRINT_TYPE_INIT, "init: created queue\n");
 
     WGPUSurfaceDescriptorFromHTMLCanvasId canvas_desc = {
+        .chain = {
+            .sType = WGPUSType_SurfaceDescriptorFromHTMLCanvasId
+        },
         .id = "canvas"
     };
 
     WGPUSurfaceDescriptor surf_desc = {
-        .nextInChain = &(WGPUChainedStruct){
-            (const WGPUChainedStruct*)&canvas_desc, 
-            WGPUSType_SurfaceDescriptorFromHTMLCanvasId
-        }
+        .nextInChain = (WGPUChainedStruct const*)&canvas_desc, 
     };
 
     _sp_state.instance = NULL;  // null instance
@@ -1537,22 +1537,34 @@ void _spCreateForwardRenderPipeline() {
         _SPFileReadResult vertShader;
         _spReadFile("src/shaders/compiled/forward.vert.spv", &vertShader);
         DEBUG_PRINT(DEBUG_PRINT_TYPE_CREATE_MATERIAL, "read file: size: %d\n", vertShader.size);
-        WGPUShaderModuleDescriptor sm_desc = {
+        WGPUShaderModuleSPIRVDescriptor sm_desc = {
+            .chain = {
+                .sType = WGPUSType_ShaderModuleSPIRVDescriptor,
+            },
             .codeSize = vertShader.size / sizeof(uint32_t),
             .code = (const uint32_t*)vertShader.data
         };
-        pipeline->vert.module = wgpuDeviceCreateShaderModule(_sp_state.device, &sm_desc);
+        WGPUShaderModuleDescriptor sm_wrapper = {
+            .nextInChain = (WGPUChainedStruct const*)&sm_desc,
+        };
+        pipeline->vert.module = wgpuDeviceCreateShaderModule(_sp_state.device, &sm_wrapper);
     }
     DEBUG_PRINT(DEBUG_PRINT_TYPE_INIT, "init: forward render: created vert shader\n");
     {
         _SPFileReadResult fragShader;
         _spReadFile("src/shaders/compiled/forward_pbr.frag.spv", &fragShader);
         DEBUG_PRINT(DEBUG_PRINT_TYPE_CREATE_MATERIAL, "read file: size: %d\n", fragShader.size);
-        WGPUShaderModuleDescriptor sm_desc = {
+        WGPUShaderModuleSPIRVDescriptor sm_desc = {
+            .chain = {
+                .sType = WGPUSType_ShaderModuleSPIRVDescriptor,
+            },
             .codeSize = fragShader.size / sizeof(uint32_t),
             .code = (const uint32_t*)fragShader.data
         };
-        pipeline->frag.module = wgpuDeviceCreateShaderModule(_sp_state.device, &sm_desc);
+        WGPUShaderModuleDescriptor sm_wrapper = {
+            .nextInChain = (WGPUChainedStruct const*)&sm_desc,
+        };
+        pipeline->frag.module = wgpuDeviceCreateShaderModule(_sp_state.device, &sm_wrapper);
     }
     DEBUG_PRINT(DEBUG_PRINT_TYPE_INIT, "init: forward render: created frag shader\n");
 
@@ -1787,11 +1799,17 @@ void _spCreateShadowMapRenderPipeline() {
         _SPFileReadResult vertShader;
         _spReadFile("src/shaders/compiled/shadow.vert.spv", &vertShader);
         DEBUG_PRINT(DEBUG_PRINT_TYPE_CREATE_MATERIAL, "read file: size: %d\n", vertShader.size);
-        WGPUShaderModuleDescriptor sm_desc = {
+        WGPUShaderModuleSPIRVDescriptor sm_desc = {
+            .chain = {
+                .sType = WGPUSType_ShaderModuleSPIRVDescriptor,
+            },
             .codeSize = vertShader.size / sizeof(uint32_t),
             .code = (const uint32_t*)vertShader.data
         };
-        pipeline->vert.module = wgpuDeviceCreateShaderModule(_sp_state.device, &sm_desc);
+        WGPUShaderModuleDescriptor sm_wrapper = {
+            .nextInChain = (WGPUChainedStruct const*)&sm_desc,
+        };
+        pipeline->vert.module = wgpuDeviceCreateShaderModule(_sp_state.device, &sm_wrapper);
     }
     DEBUG_PRINT(DEBUG_PRINT_TYPE_INIT, "init: shadow: created vert shader\n");
 
@@ -1799,11 +1817,17 @@ void _spCreateShadowMapRenderPipeline() {
         _SPFileReadResult fragShader;
         _spReadFile("src/shaders/compiled/shadow.frag.spv", &fragShader);
         DEBUG_PRINT(DEBUG_PRINT_TYPE_CREATE_MATERIAL, "read file: size: %d\n", fragShader.size);
-        WGPUShaderModuleDescriptor sm_desc = {
+        WGPUShaderModuleSPIRVDescriptor sm_desc = {
+            .chain = {
+                .sType = WGPUSType_ShaderModuleSPIRVDescriptor,
+            },
             .codeSize = fragShader.size / sizeof(uint32_t),
             .code = (const uint32_t*)fragShader.data
         };
-        pipeline->frag.module = wgpuDeviceCreateShaderModule(_sp_state.device, &sm_desc);
+        WGPUShaderModuleDescriptor sm_wrapper = {
+            .nextInChain = (WGPUChainedStruct const*)&sm_desc,
+        };
+        pipeline->frag.module = wgpuDeviceCreateShaderModule(_sp_state.device, &sm_wrapper);
     }
     DEBUG_PRINT(DEBUG_PRINT_TYPE_INIT, "init: shadow: created frag shader\n");
 
