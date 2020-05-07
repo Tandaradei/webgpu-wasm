@@ -1,4 +1,6 @@
 # STATE OF WORK
+## 2020-05-07
+![Avocado imported from glTF file](demo/state_of_work_20200507.png)
 ## 2020-04-08
 ![Test scene](demo/state_of_work_20200408.png)
 ## 2020-03-27
