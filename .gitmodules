@@ -1,12 +1,6 @@
-[submodule "external/wgpu"]
-	path = external/wgpu
-	url = https://github.com/gfx-rs/wgpu
 [submodule "external/emscripten"]
 	path = external/emscripten
 	url = https://github.com/emscripten-core/emscripten
-[submodule "external/dawn"]
-	path = external/dawn
-	url = https://dawn.googlesource.com/dawn
 [submodule "external/cglm"]
 	path = external/cglm
 	url = https://github.com/recp/cglm
