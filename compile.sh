@@ -1,5 +1,5 @@
 #!/bin/bash
-../emscripten/emcc src/example.c \
+emcc src/example.c \
 -I external/emscripten/system/include/ \
 -I external/cglm/include \
 -I external/stb \

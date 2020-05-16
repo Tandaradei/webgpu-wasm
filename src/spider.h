@@ -1415,6 +1415,7 @@ SPLightID spCreateSpotLight(const SPSpotLightDesc* desc){
             .usage = WGPUTextureUsage_OutputAttachment, // TODO: should sample directly from depth texture
             .dimension = WGPUTextureDimension_2D,
             .size = texture_size,
+            .arrayLayerCount = texture_size.depth, // TODO: deprecated, but needed for dawn
             .format = WGPUTextureFormat_Depth32Float,
             .mipLevelCount = 1,
             .sampleCount = 1,
@@ -1442,6 +1443,7 @@ SPLightID spCreateSpotLight(const SPSpotLightDesc* desc){
             .usage = WGPUTextureUsage_Sampled | WGPUTextureUsage_OutputAttachment,
             .dimension = WGPUTextureDimension_2D,
             .size = texture_size,
+            .arrayLayerCount = texture_size.depth, // TODO: deprecated, but needed for dawn
             .format = WGPUTextureFormat_R32Float,
             .mipLevelCount = 1,
             .sampleCount = 1,
@@ -1504,6 +1506,7 @@ void _spCreateForwardRenderPipeline() {
             .height = _sp_state.surface_size.height,
             .depth = 1,
         },
+        .arrayLayerCount = 1, // TODO: deprecated, but needed for dawn
         .format = WGPUTextureFormat_Depth32Float,
         .mipLevelCount = 1,
         .sampleCount = 1,
@@ -2154,6 +2157,7 @@ void _spCreateAndLoadTextures(_SPTextureViewFromImageDescriptor descriptors[], c
             .usage = WGPUTextureUsage_Sampled | WGPUTextureUsage_CopyDst,
             .dimension = WGPUTextureDimension_2D,
             .size = texture_size,
+            .arrayLayerCount = texture_size.depth, // TODO: deprecated, but needed for dawn
             .format = formats[read_comps],
             .mipLevelCount = 1,
             .sampleCount = 1,
