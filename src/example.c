@@ -131,7 +131,7 @@ const SPMeshInitializer cube = {
     }
 };
 
-#define INSTANCES_COUNT 40
+#define INSTANCES_COUNT 0
 SPInstanceID instance_ids[INSTANCES_COUNT];
 SPLightID spot_light_id;
 clock_t start_clock;
@@ -144,7 +144,8 @@ float randFloatRange(float min, float max) {
     return min + randFloat() * (max - min);
 }
 
-static const vec3 light_start_pos = {10.0f, 6.0f, 2.0f};
+static const vec3 light_start_pos = {10.0f, 6.0f, 6.0f};
+SPInstanceID gltf_instance_id = {SP_INVALID_ID};
 
 void createObjects(void) {
     SPMeshID mesh = spCreateMeshFromInit(&plane);
@@ -172,117 +173,19 @@ void createObjects(void) {
     );
     SPIDER_ASSERT(spot_light_id.id != SP_INVALID_ID);
 
-    SPMaterialID metal = spCreateMaterial(&(SPMaterialDesc){
-            .albedo = {
-                .name = "assets/textures/Metal003_2K/Metal003_2K_Color.jpg",
-                .width = 2048,
-                .height = 2048,
-                .channel_count = 3,
-            },
-            .normal = {
-                .name = "assets/textures/Metal003_2K/Metal003_2K_Normal.jpg",
-                .width = 2048,
-                .height = 2048,
-                .channel_count = 3,
-            },
-            .roughness = {
-                .name = "assets/textures/Metal003_2K/Metal003_2K_Roughness.jpg",
-                .width = 2048,
-                .height = 2048,
-                .channel_count = 1,
-            },
-            .metallic = {
-                .name = "assets/textures/Metal003_2K/Metal003_2K_Metalness.jpg",
-                .width = 2048,
-                .height = 2048,
-                .channel_count = 1,
-            },
-        }
-    );
-
-    SPMaterialID marble = spCreateMaterial(&(SPMaterialDesc){
-            .albedo = {
-                .name = "assets/textures/Marble006_2K/Marble006_2K_Color.jpg",
-                .width = 2048,
-                .height = 2048,
-                .channel_count = 3,
-            },
-            .normal = {
-                .name = "assets/textures/Marble006_2K/Marble006_2K_Normal.jpg",
-                .width = 2048,
-                .height = 2048,
-                .channel_count = 3,
-            },
-            .roughness = {
-                .name = "assets/textures/Marble006_2K/Marble006_2K_Roughness.jpg",
-                .width = 2048,
-                .height = 2048,
-                .channel_count = 1,
-            },
-        }
-    );
-
-    SPMaterialID bricks = spCreateMaterial(&(SPMaterialDesc){
-            .albedo = {
-                .name = "assets/textures/Bricks038_2K/Bricks038_2K_Color.jpg",
-                .width = 2048,
-                .height = 2048,
-                .channel_count = 3,
-            },
-            .normal = {
-                .name = "assets/textures/Bricks038_2K/Bricks038_2K_Normal.jpg",
-                .width = 2048,
-                .height = 2048,
-                .channel_count = 3,
-            },
-            .roughness = {
-                .name = "assets/textures/Bricks038_2K/Bricks038_2K_Roughness.jpg",
-                .width = 2048,
-                .height = 2048,
-                .channel_count = 1,
-            },
-            .ao = {
-                .name = "assets/textures/Bricks038_2K/Bricks038_2K_AmbientOcclusion.jpg",
-                .width = 2048,
-                .height = 2048,
-                .channel_count = 1,
-            },
-        }
-    );
+    SPObject gltf_object = spLoadGltf("assets/gltf/Avocado/Avocado.gltf");
+    
     SPMaterialID planks = spCreateMaterial(&(SPMaterialDesc){
-            .albedo = {
-                .name = "assets/textures/Planks021_2K/Planks021_2K_Color.jpg",
-                .width = 2048,
-                .height = 2048,
-                .channel_count = 3,
-            },
-            .normal = {
-                .name = "assets/textures/Planks021_2K/Planks021_2K_Normal.jpg",
-                .width = 2048,
-                .height = 2048,
-                .channel_count = 3,
-            },
-            .roughness = {
-                .name = "assets/textures/Planks021_2K/Planks021_2K_Roughness.jpg",
-                .width = 2048,
-                .height = 2048,
-                .channel_count = 1,
-            },
-            .ao = {
-                .name = "assets/textures/Planks021_2K/Planks021_2K_AmbientOcclusion.jpg",
-                .width = 2048,
-                .height = 2048,
-                .channel_count = 1,
-            },
+            .albedo = "assets/textures/Planks021_2K/Planks021_2K_Color.jpg",
+            .normal = "assets/textures/Planks021_2K/Planks021_2K_Normal.jpg",
+            .metallic_roughness = "assets/textures/Planks021_2K/Planks021_2K_Metallic_Roughness.jpg",
+            .ao = "assets/textures/Planks021_2K/Planks021_2K_AmbientOcclusion.jpg",
         }
     );
    
     const float spacing = 4.0f;
 
     SPMaterialID mats[] = {
-        marble,
-        metal,
-        bricks,
         planks
     };
 
@@ -290,8 +193,10 @@ void createObjects(void) {
     for(int i = 0; i < INSTANCES_COUNT; i++) {
         float scale = randFloatRange(0.5f, 1.0f);
         instance_ids[i] = spCreateInstance(&(SPInstanceDesc){
-                .mesh = mesh_cube, 
-                .material = mats[rand() % ARRAY_LEN(mats)],
+                .object = {
+                    .mesh = mesh_cube, 
+                    .material = mats[rand() % ARRAY_LEN(mats)]
+                },
                 .transform = &(SPTransform){
                     .pos = {randFloatRange(-spacing, spacing), randFloatRange(-spacing, spacing), randFloatRange(-spacing, spacing)},
                     .scale = {scale, scale, scale},
@@ -302,8 +207,10 @@ void createObjects(void) {
     }
     // Create floor 
     spCreateInstance(&(SPInstanceDesc){
-            .mesh = mesh, 
-            .material = planks,
+            .object = {
+                .mesh = mesh, 
+                .material = planks,
+            },
             .transform = &(SPTransform){
                 .pos = {0.0f, -spacing, 0.0f},
                 .scale = {50.0f, 1.0f, 50.0f},
@@ -311,6 +218,17 @@ void createObjects(void) {
             }
         }
     );
+
+    if(gltf_object.mesh.id != SP_INVALID_ID && gltf_object.material.id != SP_INVALID_ID) {
+        gltf_instance_id = spCreateInstance(&(SPInstanceDesc){
+            .object = gltf_object,
+            .transform = &(SPTransform){
+                .pos = {0.0f, -spacing + 2.0f, 0.0f},
+                .scale = {100.0f, 100.0f, 100.0f},
+                .rot = {0.0f, 0.0f, 0.0f},
+            }
+        });
+    }
 }
 
 float time_elapsed_total_s = 0.0f;
@@ -331,13 +249,17 @@ void frame(void) {
             instance->transform.rot[1] -= 360.0f; 
         }
     }
+
+    // Update gltf test model
+    SPInstance* gltf_instance = spGetInstance(gltf_instance_id);
+    gltf_instance->transform.rot[1] += -80.0f * delta_time_s;
     // Update light(s)
     SPLight* spot_light = spGetLight(spot_light_id);
     float angle = sin(glm_rad(30.0f));
     float light_distance_from_center = 10.0f;
     float rounds_per_seconds = 0.25f;
     float rotation_speed = rounds_per_seconds * M_PI;
-    if(spot_light) {
+    if(false && spot_light) {
         spot_light->pos[0] = sin(time_elapsed_total_s * rotation_speed) * light_distance_from_center;
         spot_light->pos[1] = light_start_pos[1] + sin(time_elapsed_total_s * 0.4f) * 2.0f;
         spot_light->pos[2] = cos(time_elapsed_total_s * rotation_speed) * light_distance_from_center;
@@ -359,7 +281,7 @@ int main() {
     vec3 dir = {0.0f, -1.0f, -1.0f}; // for SPCameraMode_Direction
     glm_vec3_normalize(dir);
     vec3 pos = {0.0f, 5.0f, 8.0f};
-    vec3 center = {0.0f, -4.0f, 0.0f}; // for SPCameraMode_LookAt
+    vec3 center = {0.0f, 0.0f, 0.0f}; // for SPCameraMode_LookAt
 
     SPInitDesc init = {
         .surface_size = {
@@ -370,7 +292,7 @@ int main() {
             .pos = {pos[0], pos[1], pos[2]},
             .dir = {dir[0], dir[1], dir[2]},
             .look_at = {center[0], center[1], center[2]},
-            .mode = SPCameraMode_Direction,
+            .mode = SPCameraMode_LookAt,
             .fovy = glm_rad(60.0f),
             .aspect = (float)surface_width / (float) surface_height,
             .near = 0.1f,

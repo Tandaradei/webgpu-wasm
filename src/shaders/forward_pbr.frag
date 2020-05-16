@@ -26,10 +26,9 @@ layout(set = 1, binding = 0) uniform Light {
 layout(set = 1, binding = 1) uniform sampler my_sampler;
 layout(set = 1, binding = 2) uniform texture2D albedo_tex;
 layout(set = 1, binding = 3) uniform texture2D normal_tex;
-layout(set = 1, binding = 4) uniform texture2D roughness_tex;
-layout(set = 1, binding = 5) uniform texture2D metallic_tex;
-layout(set = 1, binding = 6) uniform texture2D ao_tex;
-layout(set = 1, binding = 7) uniform texture2D shadow_map; // TODO: support more than 1 shadow map
+layout(set = 1, binding = 4) uniform texture2D metallic_roughness_tex;
+layout(set = 1, binding = 5) uniform texture2D ao_tex;
+layout(set = 1, binding = 6) uniform texture2D shadow_map; // TODO: support more than 1 shadow map
 
 
 layout(location = 0) in vec3 fragPosWorld;
@@ -102,8 +101,9 @@ vec3 fresnelSchlick(float cosTheta, vec3 F0) {
 void main() {
     const vec3 albedo = texture(sampler2D(albedo_tex, my_sampler), fragTexCoords).rgb;
     vec3 local_normal = normalize(texture(sampler2D(normal_tex, my_sampler), fragTexCoords).xyz * 2.0 - 1.0);
-    const float roughness = texture(sampler2D(roughness_tex, my_sampler), fragTexCoords).r;
-    const float metallic = texture(sampler2D(metallic_tex, my_sampler), fragTexCoords).r;
+    const vec3 x_metallic_roughness = texture(sampler2D(metallic_roughness_tex, my_sampler), fragTexCoords).rgb;
+    const float roughness = x_metallic_roughness.g;
+    const float metallic = x_metallic_roughness.b;
     const float ao = texture(sampler2D(ao_tex, my_sampler), fragTexCoords).r;
 
     vec3 Normal = normalize(fragNormal);

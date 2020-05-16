@@ -8,8 +8,6 @@ emcc src/example.c \
 -s WASM=1 \
 -s ASSERTIONS=1 \
 -s ALLOW_MEMORY_GROWTH=1 \
--fsanitize=address \
--s ASAN_SHADOW_SIZE=1073741824 \
 -g \
 -o out/hello.html \
 --preload-file src/shaders/compiled \
