@@ -8,12 +8,6 @@ layout(set = 0, binding = 1) uniform Camera {
     vec3 pos;
 } cam;
 
-/*
-layout(set = 1, binding = 0) uniform PBRMaterialProperties {
-    vec4 rmap; // roughness, metallic, ao, padding
-} mat;
-*/
-
 layout(set = 1, binding = 0) uniform Light {
     mat4 view;
     mat4 proj;
@@ -26,9 +20,8 @@ layout(set = 1, binding = 0) uniform Light {
 layout(set = 1, binding = 1) uniform sampler my_sampler;
 layout(set = 1, binding = 2) uniform texture2D albedo_tex;
 layout(set = 1, binding = 3) uniform texture2D normal_tex;
-layout(set = 1, binding = 4) uniform texture2D metallic_roughness_tex;
-layout(set = 1, binding = 5) uniform texture2D ao_tex;
-layout(set = 1, binding = 6) uniform texture2D shadow_map; // TODO: support more than 1 shadow map
+layout(set = 1, binding = 4) uniform texture2D ao_roughness_metallic_tex;
+layout(set = 1, binding = 5) uniform texture2D shadow_map; // TODO: support more than 1 shadow map
 
 
 layout(location = 0) in vec3 fragPosWorld;
@@ -100,20 +93,25 @@ vec3 fresnelSchlick(float cosTheta, vec3 F0) {
 
 void main() {
     const vec3 albedo = texture(sampler2D(albedo_tex, my_sampler), fragTexCoords).rgb;
-    vec3 local_normal = normalize(texture(sampler2D(normal_tex, my_sampler), fragTexCoords).xyz * 2.0 - 1.0);
-    const vec3 x_metallic_roughness = texture(sampler2D(metallic_roughness_tex, my_sampler), fragTexCoords).rgb;
-    const float roughness = x_metallic_roughness.g;
-    const float metallic = x_metallic_roughness.b;
-    const float ao = texture(sampler2D(ao_tex, my_sampler), fragTexCoords).r;
+    vec3 tangent_space_normal = normalize(texture(sampler2D(normal_tex, my_sampler), fragTexCoords).xyz * vec3(2.0, 2.0, 1.0) - vec3(1.0, 1.0, 0.0));
+    const vec3 ao_roughness_metallic = texture(sampler2D(ao_roughness_metallic_tex, my_sampler), fragTexCoords).rgb;
+    const float ao          = ao_roughness_metallic.r;
+    const float roughness   = ao_roughness_metallic.g;
+    const float metallic    = ao_roughness_metallic.b;
 
     vec3 Normal = normalize(fragNormal);
     vec3 Tangent = normalize(fragTangent);
-    Tangent = normalize(Tangent - dot(Tangent, Normal) * Normal);
+    Tangent = normalize(Tangent - dot(Tangent, Normal) * Normal); // enforce orthogonality
     const vec3 Bitangent = cross(Tangent, Normal);
     mat3 TBN = mat3(Tangent, Bitangent, Normal);
-    vec3 normal = TBN * local_normal;
+    vec3 normal = normalize(TBN * tangent_space_normal);
 
     vec3 N = normalize(normal);
+    #define NORMAL_DEBUG_VIEW 0
+    #if NORMAL_DEBUG_VIEW
+    vec3 colored_normal = N * 0.5 + 0.5;
+    outColor = vec4(colored_normal * vec3(0.0, 0.0, 1.0), 1.0);
+    #else
     vec3 V = normalize(cam.pos - fragPosWorld);
     vec3 F0 = vec3(0.04); 
     F0 = mix(F0, albedo, metallic);
@@ -141,22 +139,22 @@ void main() {
         pos_in_light_clip_space.y = 1.0 - pos_in_light_clip_space.y; // bottom-up to top-down
         // [0, 0] of pos_in_light_clip_space.xy should now be the top left corner and [1, 1] the bottom right --> texture space
 
-        if(pos_in_light_clip_space.z > 0.0 && pos_in_light_clip_space.z < 1.0) {
+        const float depth_bias = 0.00001; // Depth bias is not yet implemented in Chromium/dawn, so we have to "fake" it in the shader
+        if(attenuation > 0.0 && pos_in_light_clip_space.z > 0.0 && pos_in_light_clip_space.z < 1.0) {
             const float light_depth_on_pos = getLightDepthOnPosSampled(pos_in_light_clip_space.xy);
-            if(pos_in_light_clip_space.w > 0.0 && pos_in_light_clip_space.z + 0.0001 < light_depth_on_pos) {
+            if(pos_in_light_clip_space.w > 0.0 && light_depth_on_pos - depth_bias > pos_in_light_clip_space.z) {
                 attenuation = 0.0;
             }
         }
         if(attenuation > 0.0) {
             // calculate per-light radiance
             vec3 H = normalize(V + L);
-            float distance    = length(light_pos - fragPosWorld);
-            vec3 radiance     = light.color3_type1.rgb * attenuation;        
+            vec3 radiance     = light.color3_type1.rgb * attenuation;
             
             // cook-torrance brdf
-            float NDF = DistributionGGX(N, H, roughness);        
-            float G   = GeometrySmith(N, V, L, roughness);      
-            vec3 F    = fresnelSchlick(max(dot(H, V), 0.0), F0);       
+            float NDF = DistributionGGX(N, H, roughness);
+            float G   = GeometrySmith(N, V, L, roughness);
+            vec3 F    = fresnelSchlick(max(dot(H, V), 0.0), F0);
             
             vec3 kS = F;
             vec3 kD = vec3(1.0) - kS;
@@ -179,4 +177,5 @@ void main() {
     color = pow(color, vec3(1.0/gamma));  
    
     outColor = vec4(color, 1.0);
+    #endif
 }

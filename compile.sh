@@ -9,6 +9,6 @@ emcc src/example.c \
 -s ASSERTIONS=1 \
 -s ALLOW_MEMORY_GROWTH=1 \
 -g \
--o out/hello.html \
+-o out/debug/hello.html \
 --preload-file src/shaders/compiled \
 --preload-file assets \

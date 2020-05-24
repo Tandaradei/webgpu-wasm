@@ -75,7 +75,7 @@ typedef struct SPCamera {
     float fovy;
     float aspect;
     float near;
-    float far;
+    float far;  // not used with infinite far plane
     mat4 _view;
     mat4 _proj;
 } SPCamera;
@@ -172,16 +172,14 @@ typedef struct SPMaterial {
     SPMaterialProperties props;
     _SPMaterialTexture albedo;
     _SPMaterialTexture normal;
-    _SPMaterialTexture metallic_roughness;
-    _SPMaterialTexture ao;
+    _SPMaterialTexture ao_roughness_metallic;
     WGPUSampler sampler;
 } SPMaterial;
 
 typedef struct SPMaterialDesc {
     const char* albedo;
     const char* normal;
-    const char* metallic_roughness;
-    const char* ao;
+    const char* ao_roughness_metallic;
 } SPMaterialDesc;
 
 typedef struct SPMaterialID {
@@ -395,7 +393,7 @@ typedef struct _SPState {
 
     struct {
         _SPMaterialTexture normal;
-        _SPMaterialTexture metallic_roughness;
+        _SPMaterialTexture ao_roughness_metallic;
         _SPMaterialTexture ao;
     } default_textures;
 
@@ -719,19 +717,9 @@ void spInit(const SPInitDesc* desc) {
 
     _sp_state.instance_counts_per_mat = SPIDER_MALLOC(sizeof(uint32_t) * desc->pools.capacities.materials);
     _sp_state.sorted_instances = SPIDER_MALLOC((sizeof(SPInstanceID) * desc->pools.capacities.materials) * desc->pools.capacities.instances);
-    
-    WGPUTextureViewDescriptor tex_view_desc_8 = {
-        .format = WGPUTextureFormat_R8Unorm,
-        .dimension = WGPUTextureViewDimension_2D,
-        .baseMipLevel = 0,
-        .mipLevelCount = 0,
-        .baseArrayLayer = 0,
-        .arrayLayerCount = 0,
-        .aspect = WGPUTextureAspect_All,
-    };
 
-    WGPUTextureViewDescriptor tex_view_desc_32 = {
-        .format = WGPUTextureFormat_RGBA8UnormSrgb,
+    WGPUTextureViewDescriptor tex_view_desc_linear_32 = {
+        .format = WGPUTextureFormat_RGBA8Unorm,
         .dimension = WGPUTextureViewDimension_2D,
         .baseMipLevel = 0,
         .mipLevelCount = 0,
@@ -745,19 +733,13 @@ void spInit(const SPInitDesc* desc) {
             &(_sp_state.default_textures.normal),
             "assets/textures/default_normal_32.png",
             4,
-            &tex_view_desc_32
+            &tex_view_desc_linear_32
         },
         {
-            &(_sp_state.default_textures.metallic_roughness),
-            "assets/textures/default_black_32.png",
+            &(_sp_state.default_textures.ao_roughness_metallic),
+            "assets/textures/default_ao_roughness_metallic_32.png",
             4,
-            &tex_view_desc_32
-        },
-        {
-            &(_sp_state.default_textures.ao),
-            "assets/textures/default_white_8.png",
-            1,
-            &tex_view_desc_8
+            &tex_view_desc_linear_32
         }
     };
 
@@ -788,10 +770,8 @@ void spShutdown(void) {
         _SP_RELEASE_RESOURCE(Sampler, material->sampler)
         _SP_RELEASE_RESOURCE(Texture, material->albedo.texture)
         _SP_RELEASE_RESOURCE(TextureView, material->albedo.view)
-        _SP_RELEASE_RESOURCE(Texture, material->metallic_roughness.texture)
-        _SP_RELEASE_RESOURCE(TextureView, material->metallic_roughness.view)
-        _SP_RELEASE_RESOURCE(Texture, material->ao.texture)
-        _SP_RELEASE_RESOURCE(TextureView, material->ao.view)
+        _SP_RELEASE_RESOURCE(Texture, material->ao_roughness_metallic.texture)
+        _SP_RELEASE_RESOURCE(TextureView, material->ao_roughness_metallic.view)
     }
     _spDiscardPool(&_sp_state.pools.material_pool);
     free(_sp_state.pools.materials);
@@ -1190,6 +1170,9 @@ SPObject spLoadGltf(const char* file) {
     else {
         DEBUG_PRINT(DEBUG_PRINT_GLTF_LOAD, "%s: error %d\n", file, result);
     }
+    if(!object.mesh.id || !object.material.id) {
+        DEBUG_PRINT(DEBUG_PRINT_GLTF_LOAD, "%s: error -> mesh: %d, material: %d\n", file, object.mesh.id, object.material.id);
+    }
     return object;
 }
 
@@ -1201,7 +1184,7 @@ SPMaterialID spCreateMaterial(const SPMaterialDesc* desc) {
     int id = material_id.id; 
     SPMaterial* material = &(_sp_state.pools.materials[id]);
 
-    WGPUTextureViewDescriptor tex_view_desc_32 = {
+    WGPUTextureViewDescriptor tex_view_desc_srgb_32 = {
         .format = WGPUTextureFormat_RGBA8UnormSrgb,
         .dimension = WGPUTextureViewDimension_2D,
         .baseMipLevel = 0,
@@ -1210,8 +1193,8 @@ SPMaterialID spCreateMaterial(const SPMaterialDesc* desc) {
         .arrayLayerCount = 0,
         .aspect = WGPUTextureAspect_All,
     };
-    WGPUTextureViewDescriptor tex_view_desc_8 = {
-        .format = WGPUTextureFormat_R8Unorm,
+    WGPUTextureViewDescriptor tex_view_desc_linear_32 = {
+        .format = WGPUTextureFormat_RGBA8Unorm,
         .dimension = WGPUTextureViewDimension_2D,
         .baseMipLevel = 0,
         .mipLevelCount = 0,
@@ -1224,35 +1207,29 @@ SPMaterialID spCreateMaterial(const SPMaterialDesc* desc) {
         {
             &(material->albedo),
             desc->albedo,
-            3,
-            &tex_view_desc_32
+            4,
+            &tex_view_desc_srgb_32
         },
         {
             &(material->normal),
             desc->normal,
-            3,
-            &tex_view_desc_32
+            4,
+            &tex_view_desc_linear_32
         },
         {
-            &(material->metallic_roughness),
-            desc->metallic_roughness,
-            3,
-            &tex_view_desc_32
-        },
-        {
-            &(material->ao),
-            desc->ao,
-            1,
-            &tex_view_desc_8
+            &(material->ao_roughness_metallic),
+            desc->ao_roughness_metallic,
+            4,
+            &tex_view_desc_linear_32
         }
     };
 
     _spCreateAndLoadTextures(image_descs, ARRAY_LEN(image_descs));
 
     WGPUSamplerDescriptor sampler_desc = {
-        .addressModeU = WGPUAddressMode_ClampToEdge,
-        .addressModeV = WGPUAddressMode_ClampToEdge,
-        .addressModeW = WGPUAddressMode_ClampToEdge,
+        .addressModeU = WGPUAddressMode_Repeat,
+        .addressModeV = WGPUAddressMode_Repeat,
+        .addressModeW = WGPUAddressMode_Repeat,
         .magFilter = WGPUFilterMode_Linear,
         .minFilter = WGPUFilterMode_Linear,
         .mipmapFilter = WGPUFilterMode_Linear,
@@ -1331,18 +1308,10 @@ SPMaterialID spCreateMaterial(const SPMaterialDesc* desc) {
             .offset = 0,
             .size = 0,
             .sampler = NULL,
-            .textureView = material->metallic_roughness.view ? material->metallic_roughness.view :_sp_state.default_textures.metallic_roughness.view,
+            .textureView = material->ao_roughness_metallic.view ? material->ao_roughness_metallic.view :_sp_state.default_textures.ao_roughness_metallic.view,
         },
         {
             .binding = 5,
-            .buffer = NULL,
-            .offset = 0,
-            .size = 0,
-            .sampler = NULL,
-            .textureView = material->ao.view ? material->ao.view : _sp_state.default_textures.ao.view,
-        },
-        {
-            .binding = 6,
             .buffer = NULL,
             .offset = 0,
             .size = 0,
@@ -1611,6 +1580,7 @@ void _spCreateForwardRenderPipeline() {
             .textureComponentType = WGPUTextureComponentType_Float,
         },
         {
+            // texture sampler (also used for shadow map)
             .binding = 1,
             .visibility = WGPUShaderStage_Fragment,
             .type = WGPUBindingType_Sampler,
@@ -1620,6 +1590,7 @@ void _spCreateForwardRenderPipeline() {
             .textureComponentType = WGPUTextureComponentType_Float,
         },
         {
+            // base color
             .binding = 2,
             .visibility = WGPUShaderStage_Fragment,
             .type = WGPUBindingType_SampledTexture,
@@ -1629,6 +1600,7 @@ void _spCreateForwardRenderPipeline() {
             .textureComponentType = WGPUTextureComponentType_Float,
         },
         {
+            // normal
             .binding = 3,
             .visibility = WGPUShaderStage_Fragment,
             .type = WGPUBindingType_SampledTexture,
@@ -1638,6 +1610,7 @@ void _spCreateForwardRenderPipeline() {
             .textureComponentType = WGPUTextureComponentType_Float,
         },
         {
+            // ao_metallic_roughness
             .binding = 4,
             .visibility = WGPUShaderStage_Fragment,
             .type = WGPUBindingType_SampledTexture,
@@ -1647,16 +1620,8 @@ void _spCreateForwardRenderPipeline() {
             .textureComponentType = WGPUTextureComponentType_Float,
         },
         {
+            // shadow map
             .binding = 5,
-            .visibility = WGPUShaderStage_Fragment,
-            .type = WGPUBindingType_SampledTexture,
-            .hasDynamicOffset = false,
-            .multisampled = false,
-            .viewDimension = WGPUTextureViewDimension_2D,
-            .textureComponentType = WGPUTextureComponentType_Float,
-        },
-        {
-            .binding = 6,
             .visibility = WGPUShaderStage_Fragment,
             .type = WGPUBindingType_SampledTexture,
             .hasDynamicOffset = false,
@@ -1762,7 +1727,6 @@ void _spCreateForwardRenderPipeline() {
     };
 
     WGPURasterizationStateDescriptor rast_state_desc = {
-        .nextInChain = NULL,
         .frontFace = WGPUFrontFace_CW,
         .cullMode = WGPUCullMode_Front,
         .depthBias = 0,
@@ -1953,11 +1917,10 @@ void _spCreateShadowMapRenderPipeline() {
     };
 
     WGPURasterizationStateDescriptor rast_state_desc = {
-        .nextInChain = NULL,
         .frontFace = WGPUFrontFace_CW,
         .cullMode = WGPUCullMode_Front,
-        .depthBias = 0,
-        .depthBiasSlopeScale = 0.0f,
+        .depthBias = 1, // Depth bias is not yet implemented in Chromium/dawn
+        .depthBiasSlopeScale = 1.75f,
         .depthBiasClamp = 0.0f,
     };
 
@@ -2106,7 +2069,7 @@ void _spCreateAndLoadTextures(_SPTextureViewFromImageDescriptor descriptors[], c
             continue;
         }
         WGPUTextureViewDescriptor* tex_view_desc = descriptors[i].tex_view_desc;
-
+        WGPUTextureFormat texture_format = descriptors[i].tex_view_desc->format;
 
         int width = 0;
         int height = 0;
@@ -2124,13 +2087,6 @@ void _spCreateAndLoadTextures(_SPTextureViewFromImageDescriptor descriptors[], c
             STBI_grey_alpha,
             STBI_rgb_alpha,
             STBI_rgb_alpha
-        };
-        const WGPUTextureFormat formats[5] = {
-            WGPUTextureFormat_Undefined,
-            WGPUTextureFormat_R8Unorm,
-            WGPUTextureFormat_RG8Unorm,
-            WGPUTextureFormat_RGBA8UnormSrgb,
-            WGPUTextureFormat_RGBA8UnormSrgb,
         };
 
         stbi_uc* pixel_data = stbi_load(
@@ -2158,7 +2114,7 @@ void _spCreateAndLoadTextures(_SPTextureViewFromImageDescriptor descriptors[], c
             .dimension = WGPUTextureDimension_2D,
             .size = texture_size,
             .arrayLayerCount = texture_size.depth, // TODO: deprecated, but needed for dawn
-            .format = formats[read_comps],
+            .format = texture_format,
             .mipLevelCount = 1,
             .sampleCount = 1,
         };
@@ -2546,9 +2502,21 @@ SPMeshID _spLoadMeshFromGltf(cgltf_data* data, const char* gltf_path) {
                             break;
                         }
                         case cgltf_attribute_type_tangent: {
+                            uint32_t w_negative_count = 0;
                             for(uint32_t vertex_index = 0; vertex_index < vertex_count; vertex_index++) {
-                                memcpy(&vertex_data[vertex_index].tangent, (vec3*)&attr_data[attr_offset + vertex_index * sizeof(vec4)], sizeof(vec4));
+                                vec4* tangent = (vec4*)&attr_data[attr_offset + vertex_index * sizeof(vec4)];
+                                if((*tangent)[3] == -1.0f) {
+                                    w_negative_count++;
+                                    // invert x component
+                                    (*tangent)[0] = -(*tangent)[0];
+                                    // swap y and z components
+                                    float z = (*tangent)[2];
+                                    (*tangent)[2] = (*tangent)[1];
+                                    (*tangent)[1] = z;
+                                }
+                                memcpy(&vertex_data[vertex_index].tangent, (vec3*)tangent, sizeof(vec3));
                             }
+                            DEBUG_PRINT(DEBUG_PRINT_GLTF_LOAD, "%s: found %d tangents with w == -1.0\n", gltf_path, w_negative_count);
                             break;
                         }
                         case cgltf_attribute_type_texcoord: {
@@ -2589,26 +2557,36 @@ SPMaterialID _spLoadMaterialFromGltf(const cgltf_data* data, const char* gltf_pa
         if(mesh->primitives_count > 0) { 
             const cgltf_primitive* prim = &mesh->primitives[0];
             const cgltf_material* mat = prim->material;
-            char albedo[100];
+            char albedo[100] = {0};
             char* albedo_ptr = NULL;
-            char normal[100];
+            char normal[100] = {0};
             char* normal_ptr = NULL;
-            char metallic_roughness[100];
-            char* metallic_roughness_ptr = NULL;
+            char ao_roughness_metallic[100] = {0};
+            char* ao_roughness_metallic_ptr = NULL;
             if(mat->has_pbr_metallic_roughness) {
-                _spModifyRelativeFilePath(gltf_path, mat->pbr_metallic_roughness.base_color_texture.texture->image->uri, albedo);
-                albedo_ptr = albedo;
-                _spModifyRelativeFilePath(gltf_path, mat->pbr_metallic_roughness.metallic_roughness_texture.texture->image->uri, metallic_roughness);
-                metallic_roughness_ptr = metallic_roughness;
+                if(mat->pbr_metallic_roughness.base_color_texture.texture) {
+                    _spModifyRelativeFilePath(gltf_path, mat->pbr_metallic_roughness.base_color_texture.texture->image->uri, albedo);
+                    albedo_ptr = albedo;
+                    DEBUG_PRINT(DEBUG_PRINT_GLTF_LOAD, "%s: albedo texture -> %s\n", gltf_path, albedo);
+                }
+                if(mat->pbr_metallic_roughness.metallic_roughness_texture.texture) {
+                    _spModifyRelativeFilePath(gltf_path, mat->pbr_metallic_roughness.metallic_roughness_texture.texture->image->uri, ao_roughness_metallic);
+                    ao_roughness_metallic_ptr = ao_roughness_metallic;
+                    DEBUG_PRINT(DEBUG_PRINT_GLTF_LOAD, "%s: ao_roughness_metallic texture -> %s\n", gltf_path, ao_roughness_metallic);
+                }
             }
-            _spModifyRelativeFilePath(gltf_path, mat->normal_texture.texture->image->uri, normal);
-            normal_ptr = normal;
+            if(mat->normal_texture.texture) {
+                _spModifyRelativeFilePath(gltf_path, mat->normal_texture.texture->image->uri, normal);
+                normal_ptr = normal;
+                DEBUG_PRINT(DEBUG_PRINT_GLTF_LOAD, "%s: normal texture -> %s\n", gltf_path, normal);
+            }
             SPMaterialDesc mat_desc = {
                 .albedo = albedo_ptr,
                 .normal = normal_ptr,
-                .metallic_roughness = metallic_roughness_ptr,
+                .ao_roughness_metallic = ao_roughness_metallic_ptr,
             };
             mat_id = spCreateMaterial(&mat_desc);
+            DEBUG_PRINT(DEBUG_PRINT_GLTF_LOAD, "%s: created material\n", gltf_path);
         }
     }
     return mat_id;

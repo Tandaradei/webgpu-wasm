@@ -131,8 +131,6 @@ const SPMeshInitializer cube = {
     }
 };
 
-#define INSTANCES_COUNT 0
-SPInstanceID instance_ids[INSTANCES_COUNT];
 SPLightID spot_light_id;
 clock_t start_clock;
 
@@ -144,8 +142,9 @@ float randFloatRange(float min, float max) {
     return min + randFloat() * (max - min);
 }
 
-static const vec3 light_start_pos = {10.0f, 6.0f, 6.0f};
-SPInstanceID gltf_instance_id = {SP_INVALID_ID};
+static const vec3 light_start_pos = {0.0f, 10.0f, 10.0f};
+SPInstanceID avocado_instance_id = {SP_INVALID_ID};
+SPInstanceID fish_instance_id = {SP_INVALID_ID};
 
 void createObjects(void) {
     SPMeshID mesh = spCreateMeshFromInit(&plane);
@@ -165,7 +164,7 @@ void createObjects(void) {
             .color = {.r = 255, .g = 255, .b = 255},
             .dir = {light_direction[0], light_direction[1], light_direction[2]},
             .fov = glm_rad(70.0f),
-            .power = 50.0f,
+            .power = 100.0f,
             .shadow_casting = &(SPLightShadowCastDesc){
                 .shadow_map_size = 1024,
             },
@@ -173,59 +172,38 @@ void createObjects(void) {
     );
     SPIDER_ASSERT(spot_light_id.id != SP_INVALID_ID);
 
-    SPObject gltf_object = spLoadGltf("assets/gltf/Avocado/Avocado.gltf");
-    
-    SPMaterialID planks = spCreateMaterial(&(SPMaterialDesc){
-            .albedo = "assets/textures/Planks021_2K/Planks021_2K_Color.jpg",
-            .normal = "assets/textures/Planks021_2K/Planks021_2K_Normal.jpg",
-            .metallic_roughness = "assets/textures/Planks021_2K/Planks021_2K_Metallic_Roughness.jpg",
-            .ao = "assets/textures/Planks021_2K/Planks021_2K_AmbientOcclusion.jpg",
-        }
-    );
-   
-    const float spacing = 4.0f;
-
-    SPMaterialID mats[] = {
-        planks
-    };
-
-    // Create random placed and rotated cubes
-    for(int i = 0; i < INSTANCES_COUNT; i++) {
-        float scale = randFloatRange(0.5f, 1.0f);
-        instance_ids[i] = spCreateInstance(&(SPInstanceDesc){
-                .object = {
-                    .mesh = mesh_cube, 
-                    .material = mats[rand() % ARRAY_LEN(mats)]
-                },
-                .transform = &(SPTransform){
-                    .pos = {randFloatRange(-spacing, spacing), randFloatRange(-spacing, spacing), randFloatRange(-spacing, spacing)},
-                    .scale = {scale, scale, scale},
-                    .rot = {randFloatRange(0.0f, 360.0f), randFloatRange(0.0f, 360.0f), randFloatRange(0.0f, 360.0f)},
-                }
+    SPObject ground_object = spLoadGltf("assets/gltf/ManholeCover/ManholeCover.gltf");
+    if(ground_object.mesh.id != SP_INVALID_ID && ground_object.material.id != SP_INVALID_ID) {
+        spCreateInstance(&(SPInstanceDesc){
+            .object = ground_object,
+            .transform = &(SPTransform){
+                .pos = {0.0f, 0.0f, 0.0f},
+                .scale = {10.0f, 1.0f, 10.0f},
+                .rot = {0.0f, 0.0f, 0.0f},
             }
-        );
+        });
     }
-    // Create floor 
-    spCreateInstance(&(SPInstanceDesc){
-            .object = {
-                .mesh = mesh, 
-                .material = planks,
-            },
+
+    SPObject avocado_object = spLoadGltf("assets/gltf/Avocado/Avocado.gltf");
+    if(avocado_object.mesh.id != SP_INVALID_ID && avocado_object.material.id != SP_INVALID_ID) {
+        avocado_instance_id = spCreateInstance(&(SPInstanceDesc){
+            .object = avocado_object,
             .transform = &(SPTransform){
-                .pos = {0.0f, -spacing, 0.0f},
-                .scale = {50.0f, 1.0f, 50.0f},
+                .pos = {-3.0f, 2.0f, 0.0f},
+                .scale = {50.0f, 50.0f, 50.0f},
                 .rot = {0.0f, 0.0f, 0.0f},
             }
-        }
-    );
+        });
+    }
 
-    if(gltf_object.mesh.id != SP_INVALID_ID && gltf_object.material.id != SP_INVALID_ID) {
-        gltf_instance_id = spCreateInstance(&(SPInstanceDesc){
-            .object = gltf_object,
+    SPObject fish_object = spLoadGltf("assets/gltf/BarramundiFish/BarramundiFish.gltf");
+    if(fish_object.mesh.id != SP_INVALID_ID && fish_object.material.id != SP_INVALID_ID) {
+        fish_instance_id = spCreateInstance(&(SPInstanceDesc){
+            .object = fish_object,
             .transform = &(SPTransform){
-                .pos = {0.0f, -spacing + 2.0f, 0.0f},
-                .scale = {100.0f, 100.0f, 100.0f},
-                .rot = {0.0f, 0.0f, 0.0f},
+                .pos = {3.0f, 2.0f, 0.0f},
+                .scale = {10.0f, 10.0f, 10.0f},
+                .rot = {0.0f, 200.0f, 0.0f},
             }
         });
     }
@@ -238,36 +216,38 @@ void frame(void) {
     float delta_time_s = ((float)(cur_clock - start_clock) / CLOCKS_PER_SEC);
     start_clock = clock();
     time_elapsed_total_s += delta_time_s;
-    // Update instance transforms
-    for(int i = 0; i < INSTANCES_COUNT; i++) {
-        SPInstance* instance = spGetInstance(instance_ids[i]);
-        if(!instance) {
-            continue;
-        }
-        instance->transform.rot[1] += (180.0f / INSTANCES_COUNT) * i * delta_time_s;
-        if(instance->transform.rot[1] >= 360.0f) {
-            instance->transform.rot[1] -= 360.0f; 
-        }
-    }
 
-    // Update gltf test model
-    SPInstance* gltf_instance = spGetInstance(gltf_instance_id);
-    gltf_instance->transform.rot[1] += -80.0f * delta_time_s;
+    // Update avocado transform
+    /*
+    SPInstance* avocado = spGetInstance(avocado_instance_id);
+    if(avocado) {
+        avocado->transform.rot[1] += -80.0f * delta_time_s;
+    }
+    // Update plane transform
+    SPInstance* fish = spGetInstance(fish_instance_id);
+    if(fish) {
+        fish->transform.rot[1] += 10.0f * delta_time_s;
+    }
+    */
     // Update light(s)
-    SPLight* spot_light = spGetLight(spot_light_id);
-    float angle = sin(glm_rad(30.0f));
-    float light_distance_from_center = 10.0f;
-    float rounds_per_seconds = 0.25f;
-    float rotation_speed = rounds_per_seconds * M_PI;
-    if(false && spot_light) {
-        spot_light->pos[0] = sin(time_elapsed_total_s * rotation_speed) * light_distance_from_center;
-        spot_light->pos[1] = light_start_pos[1] + sin(time_elapsed_total_s * 0.4f) * 2.0f;
-        spot_light->pos[2] = cos(time_elapsed_total_s * rotation_speed) * light_distance_from_center;
-        vec3 light_look_at = {0.0f, 0.0f, 0.0f};
-        vec3 light_direction = {-1.0, -1.0f, 0.2f};
-        glm_vec3_sub(light_look_at, spot_light->pos, light_direction);
-        glm_vec3_normalize(light_direction);
-        memcpy(spot_light->dir, light_direction, sizeof spot_light->dir);
+    bool should_animate_light = true;
+    if(should_animate_light) {
+        SPLight* spot_light = spGetLight(spot_light_id);
+        if(spot_light) {
+            float angle = sin(glm_rad(30.0f));
+            float light_distance_from_center = 12.0f;
+            float rounds_per_second = 0.25f;
+            float rotation_speed = rounds_per_second * M_PI;
+
+            spot_light->pos[0] = sin(time_elapsed_total_s * rotation_speed) * light_distance_from_center;
+            //spot_light->pos[1] = light_start_pos[1] + sin(time_elapsed_total_s * 0.4f) * 2.0f;
+            spot_light->pos[2] = cos(time_elapsed_total_s * rotation_speed) * light_distance_from_center;
+            vec3 light_look_at = {0.0f, 0.0f, 0.0f};
+            vec3 light_direction = {-1.0, -1.0f, 0.2f};
+            glm_vec3_sub(light_look_at, spot_light->pos, light_direction);
+            glm_vec3_normalize(light_direction);
+            memcpy(spot_light->dir, light_direction, sizeof spot_light->dir);
+        }
     }
 
     spUpdate();
@@ -280,10 +260,10 @@ int main() {
     const uint16_t surface_height = 720;
     vec3 dir = {0.0f, -1.0f, -1.0f}; // for SPCameraMode_Direction
     glm_vec3_normalize(dir);
-    vec3 pos = {0.0f, 5.0f, 8.0f};
+    vec3 pos = {0.0f, 10.0f, 4.0f};
     vec3 center = {0.0f, 0.0f, 0.0f}; // for SPCameraMode_LookAt
 
-    SPInitDesc init = {
+    spInit(&(SPInitDesc){
         .surface_size = {
             .width = surface_width,
             .height = surface_height
@@ -296,7 +276,7 @@ int main() {
             .fovy = glm_rad(60.0f),
             .aspect = (float)surface_width / (float) surface_height,
             .near = 0.1f,
-            .far = 100.0f
+            .far = 100.0f // not used
         },
         .pools.capacities = {
             .meshes = 8,
@@ -304,8 +284,7 @@ int main() {
             .instances = 4096,
             .lights = 1,
         },
-    };
-    spInit(&init);
+    });
     createObjects();
     start_clock = clock();
 
