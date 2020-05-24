@@ -1,5 +1,5 @@
-#define SPIDER_DEBUG 1
-#include "spider.h"
+#include <emscripten/emscripten.h>
+#include "spider/spider.h"
 
 vec3 plane_vertices[] = {
     {-0.5f,  0.0f,  0.5f},
