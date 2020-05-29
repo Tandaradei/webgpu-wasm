@@ -12,7 +12,7 @@ vec2 plane_tex_coords[] = {
     {0.0f, 0.0f},
     {1.0f, 0.0f},
     {1.0f, 1.0f},
-    {0.0f, 1.0f}
+    {0.0f, 1.0f} 
 };
 
 SPTriangle plane_faces[] = {
@@ -189,7 +189,7 @@ void createObjects(void) {
         avocado_instance_id = spCreateInstance(&(SPInstanceDesc){
             .object = avocado_object,
             .transform = &(SPTransform){
-                .pos = {-3.0f, 2.0f, 0.0f},
+                .pos = {-3.0f, -1.0f, 0.0f},
                 .scale = {50.0f, 50.0f, 50.0f},
                 .rot = {0.0f, 0.0f, 0.0f},
             }
@@ -201,7 +201,7 @@ void createObjects(void) {
         fish_instance_id = spCreateInstance(&(SPInstanceDesc){
             .object = fish_object,
             .transform = &(SPTransform){
-                .pos = {3.0f, 2.0f, 0.0f},
+                .pos = {3.0f, -1.0f, 0.0f},
                 .scale = {10.0f, 10.0f, 10.0f},
                 .rot = {0.0f, 200.0f, 0.0f},
             }
@@ -260,7 +260,7 @@ int main() {
     const uint16_t surface_height = 720;
     vec3 dir = {0.0f, -1.0f, -1.0f}; // for SPCameraMode_Direction
     glm_vec3_normalize(dir);
-    vec3 pos = {0.0f, 10.0f, 4.0f};
+    vec3 pos = {0.0f, 2.0f, 8.0f};
     vec3 center = {0.0f, 0.0f, 0.0f}; // for SPCameraMode_LookAt
 
     spInit(&(SPInitDesc){

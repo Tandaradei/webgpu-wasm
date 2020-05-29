@@ -74,13 +74,11 @@ typedef struct _SPStagingBufferPool {
 typedef struct _SPBuffers {
     struct {
         WGPUBuffer camera;
-        _SPStagingBufferPool camera_staging;
+        WGPUBuffer camera_staging;
         WGPUBuffer model;
-        _SPStagingBufferPool model_staging;
-        WGPUBuffer material;
-        _SPStagingBufferPool material_staging;
+        WGPUBuffer model_staging;
         WGPUBuffer light;
-        _SPStagingBufferPool light_staging;
+        WGPUBuffer light_staging;
     } uniform;
 } _SPBuffers;
 
@@ -108,7 +106,7 @@ typedef struct _SPState {
 
     uint32_t dynamic_alignment;
 
-    uint32_t frame_index;
+    uint32_t frame_index; // enough for ~10,000 hours @ 120 fps
 
     struct {
         struct {
@@ -122,9 +120,6 @@ typedef struct _SPState {
 
     uint32_t* instance_counts_per_mat;
     SPInstanceID* sorted_instances;
-    
-    // TODO: move (but don't know where yet)
-    WGPUBindGroup light_bind_group;
 
     struct {
         _SPMaterialTexture normal;

@@ -110,7 +110,7 @@ void main() {
     #define NORMAL_DEBUG_VIEW 0
     #if NORMAL_DEBUG_VIEW
     vec3 colored_normal = N * 0.5 + 0.5;
-    outColor = vec4(colored_normal * vec3(0.0, 0.0, 1.0), 1.0);
+    outColor = vec4(colored_normal * vec3(1.0, 1.0, 1.0), 1.0);
     #else
     vec3 V = normalize(cam.pos - fragPosWorld);
     vec3 F0 = vec3(0.04); 

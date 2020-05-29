@@ -33,7 +33,7 @@ SPLightID spCreateSpotLight(const SPSpotLightDesc* desc){
         };
 
         WGPUTextureDescriptor depth_tex_desc = {
-            .usage = WGPUTextureUsage_OutputAttachment, // TODO: should sample directly from depth texture
+            .usage = WGPUTextureUsage_OutputAttachment | WGPUTextureUsage_Sampled, // TODO: should sample directly from depth texture
             .dimension = WGPUTextureDimension_2D,
             .size = texture_size,
             .arrayLayerCount = texture_size.depth, // TODO: deprecated, but needed for dawn
@@ -56,12 +56,10 @@ SPLightID spCreateSpotLight(const SPSpotLightDesc* desc){
 
         light->depth_view = wgpuTextureCreateView(light->depth_texture, &depth_tex_view_desc);
 
-        /*
-        It's apparently not possible to sample from a depth texture in WebGPU yet
-        So we have to create an extra color texture which copies the depth information
-        */
+        // TODO: [vertex-only, dawn] https://bugs.chromium.org/p/dawn/issues/detail?id=1367
+        // remove color texture when vertex-only render pipelines are available
         WGPUTextureDescriptor color_tex_desc = {
-            .usage = WGPUTextureUsage_Sampled | WGPUTextureUsage_OutputAttachment,
+            .usage = WGPUTextureUsage_OutputAttachment,
             .dimension = WGPUTextureDimension_2D,
             .size = texture_size,
             .arrayLayerCount = texture_size.depth, // TODO: deprecated, but needed for dawn

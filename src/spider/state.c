@@ -53,6 +53,7 @@ void spInit(const SPInitDesc* desc) {
     
     _spSetupPools(&(_sp_state.pools), &(desc->pools));
 
+    
     // Camera uniform buffer creation
     {
         WGPUBufferDescriptor buffer_desc = {
@@ -62,10 +63,6 @@ void spInit(const SPInitDesc* desc) {
 
        _sp_state.buffers.uniform.camera = wgpuDeviceCreateBuffer(_sp_state.device, &buffer_desc);
     }
-    
-    _sp_state.buffers.uniform.camera_staging.count = 0;
-    _sp_state.buffers.uniform.camera_staging.cur = 0;
-    _sp_state.buffers.uniform.camera_staging.num_bytes = sizeof(_SPUboCamera);
 
     _sp_state.dynamic_alignment = 256;
 
@@ -79,11 +76,6 @@ void spInit(const SPInitDesc* desc) {
 
         _sp_state.buffers.uniform.model = wgpuDeviceCreateBuffer(_sp_state.device, &buffer_desc);
     }
-    _sp_state.buffers.uniform.model_staging.count = 0;
-    _sp_state.buffers.uniform.model_staging.cur = 0;
-    _sp_state.buffers.uniform.model_staging.num_bytes = _sp_state.dynamic_alignment * instance_count;
-
-    DEBUG_PRINT(DEBUG_PRINT_TYPE_INIT, "init: created uniform_buffer with size %u\n", _sp_state.buffers.uniform.model_staging.num_bytes);
 
     // Light uniform buffer creation
     const uint32_t light_count = (_sp_state.pools.light_pool.size - 1);
@@ -95,11 +87,6 @@ void spInit(const SPInitDesc* desc) {
 
         _sp_state.buffers.uniform.light = wgpuDeviceCreateBuffer(_sp_state.device, &buffer_desc);
     }
-
-    _sp_state.buffers.uniform.light_staging.count = 0;
-    _sp_state.buffers.uniform.light_staging.cur = 0;
-    _sp_state.buffers.uniform.light_staging.num_bytes = _sp_state.dynamic_alignment * light_count;
-    DEBUG_PRINT(DEBUG_PRINT_TYPE_INIT, "init: created uniform_buffer with size %u\n", _sp_state.buffers.uniform.light_staging.num_bytes);
 
     _sp_state.active_cam = desc->camera;
 
@@ -181,7 +168,6 @@ void spShutdown(void) {
     _spDiscardStagingBuffers();
     wgpuBufferRelease(_sp_state.buffers.uniform.camera);
     wgpuBufferRelease(_sp_state.buffers.uniform.model);
-    wgpuBufferRelease(_sp_state.buffers.uniform.material);
     wgpuBufferRelease(_sp_state.buffers.uniform.light);
 
     free(_sp_state.sorted_instances);
@@ -210,8 +196,6 @@ void spShutdown(void) {
     _SP_RELEASE_RESOURCE(ShaderModule, _sp_state.pipelines.render.shadow.frag.module)
     _SP_RELEASE_RESOURCE(BindGroupLayout, _sp_state.pipelines.render.shadow.frag.bind_group_layout)
 
-    _SP_RELEASE_RESOURCE(BindGroup, _sp_state.light_bind_group)
-
 }
 
 void spUpdate(void) {
@@ -221,29 +205,6 @@ void spUpdate(void) {
 
 void spRender(void) {
     DEBUG_PRINT(DEBUG_PRINT_RENDER, "render: start\n");
-    wgpuCommandEncoderCopyBufferToBuffer(
-        _sp_state.cmd_enc, 
-        _sp_state.buffers.uniform.camera_staging.buffer[_sp_state.buffers.uniform.camera_staging.cur], 0, 
-        _sp_state.buffers.uniform.camera, 0, 
-        _sp_state.buffers.uniform.camera_staging.num_bytes
-    ); 
-    DEBUG_PRINT(DEBUG_PRINT_RENDER, "render: recorded copy common ubo\n");
-
-    wgpuCommandEncoderCopyBufferToBuffer(
-        _sp_state.cmd_enc, 
-        _sp_state.buffers.uniform.model_staging.buffer[_sp_state.buffers.uniform.model_staging.cur], 0, 
-        _sp_state.buffers.uniform.model, 0, 
-        _sp_state.buffers.uniform.model_staging.num_bytes
-    );
-    DEBUG_PRINT(DEBUG_PRINT_RENDER, "render: recorded copy dynamic ubo\n");
-
-    wgpuCommandEncoderCopyBufferToBuffer(
-        _sp_state.cmd_enc, 
-        _sp_state.buffers.uniform.light_staging.buffer[_sp_state.buffers.uniform.light_staging.cur], 0, 
-        _sp_state.buffers.uniform.light, 0, 
-        _sp_state.buffers.uniform.light_staging.num_bytes
-    );
-    DEBUG_PRINT(DEBUG_PRINT_RENDER, "render: recorded copy light ubo\n");
 
     WGPUTextureView view = wgpuSwapChainGetCurrentTextureView(_sp_state.swap_chain);
     
@@ -253,6 +214,9 @@ void spRender(void) {
     // ***
     {
         SPLight* light = &(_sp_state.pools.lights[1]); // TODO: currently just 1 light supported
+        
+        // TODO: [vertex-only, dawn] https://bugs.chromium.org/p/dawn/issues/detail?id=1367
+        // remove color attachment when vertex-only render pipelines are available
         WGPURenderPassColorAttachmentDescriptor color_attachment = {
             .attachment = light->color_view,
             .loadOp = WGPULoadOp_Clear,
@@ -270,6 +234,8 @@ void spRender(void) {
             .clearStencil = 0,
         };
 
+        // TODO: [vertex-only, dawn] https://bugs.chromium.org/p/dawn/issues/detail?id=1367
+        // remove color attachment when vertex-only render pipelines are available
         WGPURenderPassDescriptor render_pass = {
             .colorAttachmentCount = 1,
             .colorAttachments = &color_attachment,
@@ -291,7 +257,7 @@ void spRender(void) {
                 last_mesh_id = mesh_id;
             }
             uint32_t offsets_vert[] = { (ins_id - 1) * _sp_state.dynamic_alignment};
-            wgpuRenderPassEncoderSetBindGroup(shadow_pass_enc, 0, _sp_state.light_bind_group, ARRAY_LEN(offsets_vert), offsets_vert);
+            wgpuRenderPassEncoderSetBindGroup(shadow_pass_enc, 0, _sp_state.pipelines.render.shadow.bind_group, ARRAY_LEN(offsets_vert), offsets_vert);
             wgpuRenderPassEncoderDrawIndexed(shadow_pass_enc, mesh->indices_count, 1, 0, 0, 0);
         }
         wgpuRenderPassEncoderEndPass(shadow_pass_enc);
@@ -414,22 +380,6 @@ void _spCreateForwardRenderPipeline() {
         .aspect = WGPUTextureAspect_All,
     };
     _sp_state.depth_view = wgpuTextureCreateView(depth_texture, &view_desc);
-
-    // Uniform buffer creation
-    uint32_t material_count = _sp_state.pools.material_pool.size - 1;
-    {
-        WGPUBufferDescriptor buffer_desc = {
-            .usage = WGPUBufferUsage_Uniform | WGPUBufferUsage_CopyDst,
-            .size = _sp_state.dynamic_alignment * material_count,
-        };
-
-        _sp_state.buffers.uniform.material = wgpuDeviceCreateBuffer(_sp_state.device, &buffer_desc);
-    }
-    _sp_state.buffers.uniform.material_staging.count = 0;
-    _sp_state.buffers.uniform.material_staging.cur = 0;
-    _sp_state.buffers.uniform.material_staging.num_bytes = _sp_state.dynamic_alignment * material_count;
-
-    DEBUG_PRINT(DEBUG_PRINT_TYPE_INIT, "init: created uniform_buffer with size %u\n", _sp_state.buffers.uniform.material_staging.num_bytes);
     
     _SPRenderPipeline* pipeline = &(_sp_state.pipelines.render.forward);
     {
@@ -777,7 +727,7 @@ void _spCreateShadowMapRenderPipeline() {
         .entryCount = ARRAY_LEN(vert_entries),
         .entries = vert_entries
     };
-    _sp_state.light_bind_group = wgpuDeviceCreateBindGroup(_sp_state.device, &vert_bg_desc);
+    pipeline->bind_group = wgpuDeviceCreateBindGroup(_sp_state.device, &vert_bg_desc);
 
     WGPUVertexAttributeDescriptor vertex_attribute_descs[] = {
         {
@@ -870,7 +820,7 @@ void _spCreateShadowMapRenderPipeline() {
         .vertexStage.module = pipeline->vert.module,
         .vertexStage.entryPoint = "main",
         .vertexState = &vert_state_desc,
-        .fragmentStage = &frag_stage_desc,
+        .fragmentStage = &frag_stage_desc, // enable "No Color Output" mode
         .rasterizationState = &rast_state_desc,
         .sampleCount = 1,
         .depthStencilState = &depth_stencil_state_desc,

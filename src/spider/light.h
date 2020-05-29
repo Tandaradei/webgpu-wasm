@@ -26,6 +26,8 @@ typedef struct SPLight {
     float power;
     WGPUTexture depth_texture;
     WGPUTextureView depth_view;
+    // TODO: [vertex-only, dawn] https://bugs.chromium.org/p/dawn/issues/detail?id=1367
+    // remove color texture + view when vertex-only render pipelines are available
     WGPUTexture color_texture;
     WGPUTextureView color_view;
 } SPLight;

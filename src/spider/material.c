@@ -151,7 +151,7 @@ SPMaterialID spCreateMaterial(const SPMaterialDesc* desc) {
             .offset = 0,
             .size = 0,
             .sampler = NULL,
-            .textureView = _sp_state.pools.lights[1].color_view, // TODO: currently just 1 light supported
+            .textureView = _sp_state.pools.lights[1].depth_view, // TODO: currently just 1 light supported
         },
     };
     WGPUBindGroupDescriptor frag_bg_desc = {
