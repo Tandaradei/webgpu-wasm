@@ -1,4 +1,6 @@
 # STATE OF WORK
+## 2020-06-01
+![Sponza scene imported from glTF file](demo/state_of_work_20200601.png)
 ## 2020-05-24
 ![All objects imported from glTF files](demo/state_of_work_20200524.png)
 ## 2020-05-07
