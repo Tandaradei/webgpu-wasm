@@ -6,14 +6,15 @@
 #include "camera.h"
 #include "mesh.h"
 #include "material.h"
-#include "instance.h"
+#include "scene_node.h"
 #include "pipelines.h"
 #include "light.h"
 
-#define _SP_MATERIAL_POOL_MAX 8
-#define _SP_MESH_POOL_MAX 256
-#define _SP_INSTANCE_POOL_MAX 256
-#define _SP_LIGHT_POOL_MAX 8
+#define _SP_MATERIAL_POOL_DEFAULT 8
+#define _SP_MESH_POOL_DEFAULT 256
+#define _SP_RENDER_MESH_POOL_DEFAULT 512
+#define _SP_LIGHT_POOL_DEFAULT 8
+#define _SP_SCENE_NODE_POOL_DEFAULT 1024
 
 typedef struct _SPPool {
     size_t size;
@@ -27,8 +28,9 @@ typedef struct SPPoolsDesc {
     const struct {
         uint32_t materials;
         uint32_t meshes;
-        uint32_t instances;
+        uint32_t render_meshes;
         uint32_t lights;
+        uint32_t scene_nodes;
     } capacities;
 } SPPoolsDesc;
 
@@ -44,32 +46,31 @@ typedef struct SPInitDesc {
 } SPInitDesc;
 
 typedef struct _SPPools {
-    _SPPool material_pool;
-    SPMaterial* materials;
+    struct {
+        _SPPool info;
+        SPMaterial* data;
+    } material;
 
-    _SPPool mesh_pool;
-    SPMesh* meshes;
+    struct {
+        _SPPool info;
+        SPMesh* data;
+    } mesh;
 
-    _SPPool instance_pool;
-    SPInstance* instances;
+    struct {
+        _SPPool info;
+        SPRenderMesh* data;
+    } render_mesh;
 
-    _SPPool light_pool;
-    SPLight* lights;
+    struct {
+        _SPPool info;
+        SPLight* data;
+    } light;
+
+    struct {
+        _SPPool info;
+        SPSceneNode* data;
+    } scene_node;
 } _SPPools;
-
-#define SP_STAGING_POOL_SIZE 64
-#define SP_STAGING_POOL_MAPPINGS_UNTIL_NEXT_CHECK 255
-
-typedef struct _SPStagingBufferPool {
-    uint32_t num_bytes;
-    uint8_t count;
-    uint8_t cur;
-    uint8_t max_cur;
-    uint8_t mappings_until_next_check;
-    WGPUBuffer buffer[SP_STAGING_POOL_SIZE];
-    uint8_t* data[SP_STAGING_POOL_SIZE];
-    bool waiting_for_map[SP_STAGING_POOL_SIZE];
-} _SPStagingBufferPool;
 
 typedef struct _SPBuffers {
     struct {
@@ -118,8 +119,13 @@ typedef struct _SPState {
         } compute;
     } pipelines;
 
-    uint32_t* instance_counts_per_mat;
-    SPInstanceID* sorted_instances;
+    uint32_t* rm_counts_per_mat;
+    SPRenderMeshID* sorted_rm;
+
+    struct {
+        SPSceneNode** data;
+        uint32_t count;
+    } dirty_nodes;
 
     struct {
         _SPMaterialTexture normal;
@@ -159,10 +165,25 @@ Returns a temporary pointer to the active camera
 */
 SPCamera* spGetActiveCamera();
 /*
-Returns a temporary pointer to the instance with the specified id
+Returns a temporary pointer to the scene node with the specified id
 NULL if not a valid id
 */
-SPInstance* spGetInstance(SPInstanceID instance_id);
+SPMaterial* spGetMaterial(SPMaterialID mat_id);
+/*
+Returns a temporary pointer to the scene node with the specified id
+NULL if not a valid id
+*/
+SPMesh* spGetMesh(SPMeshID mesh_id);
+/*
+Returns a temporary pointer to the scene node with the specified id
+NULL if not a valid id
+*/
+SPSceneNode* spGetSceneNode(SPSceneNodeID node_id);
+/*
+Returns a temporary pointer to the render mesh with the specified id
+NULL if not a valid id
+*/
+SPRenderMesh* spGetRenderMesh(SPRenderMeshID rm_id);
 /*
 Returns a temporary pointer to the light with the specified id
 NULL if not a valid id
@@ -197,6 +218,7 @@ void _spFreePoolIndex(_SPPool* pool, int slot_index);
 
 void _spErrorCallback(WGPUErrorType type, char const * message, void * userdata);
 
+void _spUpdateDirtyNodes(void);
 
 // Matrices
 /* Updates the view matrix */
@@ -217,9 +239,11 @@ Recreates the command encoder
 void _spSubmit(void);
 
 /*
-Creates a list for each material with all the instances using the material
+Creates a list for each material with all the scene nodes using the material
 */
-void _spSortInstances(void);
+void _spSortRenderMeshes(void);
 
+
+bool _spIsIDValid(uint32_t id, const _SPPool* pool);
 
 #endif // SPIDER_STATE_H_

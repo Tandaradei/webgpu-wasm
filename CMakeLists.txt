@@ -30,15 +30,29 @@ set(SOURCE_FILES
     src/spider/color.c
     src/spider/file.c
     src/spider/gltf_load.c
-    src/spider/instance.c
+    src/spider/scene_node.c
     src/spider/light.c
     src/spider/material.c
+    src/spider/render_mesh.c
     src/spider/mesh.c
     src/spider/state.c
     src/spider/ubos.c
 )
 
-set(EMCC_LINKER_FLAGS "-s USE_WEBGPU=1 -s WASM=1 -s ASSERTIONS=1 -s ALLOW_MEMORY_GROWTH=1 --preload-file ${BASEPATH}/src/shaders/compiled@/src/shaders/compiled --preload-file ${BASEPATH}/assets@/assets")
+if(${CMAKE_BUILD_TYPE} STREQUAL "")
+    SET(CMAKE_RUNTIME_OUTPUT_DIRECTORY "${BASEPATH}/out/unnamed")
+else()
+    SET(CMAKE_RUNTIME_OUTPUT_DIRECTORY "${BASEPATH}/out/${CMAKE_BUILD_TYPE}")
+endif()
+
+set(DEBUG_LINKER_FLAGS "-g4 --profiling-funcs --source-map-base /debug/ -fsanitize=undefined")
+set(EMCC_LINKER_FLAGS "-s ALLOW_MEMORY_GROWTH=1 -s USE_WEBGPU=1 -s WASM=1 -s ASSERTIONS=1 --preload-file ${BASEPATH}/src/shaders/compiled@/src/shaders/compiled --preload-file ${BASEPATH}/assets@/assets")
+
+if(${CMAKE_BUILD_TYPE} STREQUAL "Debug")
+    set(CMAKE_C_FLAGS "-fsanitize=undefined -DDEBUG=1")
+    SET(EMCC_LINKER_FLAGS "${DEBUG_LINKER_FLAGS} ${EMCC_LINKER_FLAGS}")
+endif()
+
 set(CMAKE_REQUIRED_FLAGS "${EMCC_LINKER_FLAGS}")
 
 include_directories(
@@ -47,12 +61,6 @@ include_directories(
     external/stb
     external/cgltf
 )
-
-if(${CMAKE_BUILD_TYPE} STREQUAL "")
-    SET(CMAKE_RUNTIME_OUTPUT_DIRECTORY "${BASEPATH}/out/unnamed")
-else()
-    SET(CMAKE_RUNTIME_OUTPUT_DIRECTORY "${BASEPATH}/out/${CMAKE_BUILD_TYPE}")
-endif()
 
 SET(CMAKE_EXECUTABLE_SUFFIX ".html")
 

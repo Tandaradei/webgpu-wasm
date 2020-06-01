@@ -8,20 +8,22 @@ extern _SPState _sp_state;
 
 SPLightID spCreateSpotLight(const SPSpotLightDesc* desc){
     DEBUG_PRINT(DEBUG_PRINT_GENERAL, "create light: start\n");
-    SPLightID light_id = (SPLightID){_spAllocPoolIndex(&(_sp_state.pools.light_pool))};
+    SPLightID light_id = (SPLightID){_spAllocPoolIndex(&(_sp_state.pools.light.info))};
     if(light_id.id == SP_INVALID_ID) {
         return light_id;
+    } 
+    SPLight* light = spGetLight(light_id);
+    if(!light) {
+        return (SPLightID){SP_INVALID_ID};
     }
-    int id = light_id.id; 
-    SPLight* light = &(_sp_state.pools.lights[id]);
 
     light->type = SPLightType_Spot;
-    memcpy(light->view, GLM_MAT4_IDENTITY, sizeof(mat4));
-    memcpy(light->proj, GLM_MAT4_IDENTITY, sizeof(mat4));
-    memcpy(light->pos, desc->pos, sizeof(vec3));
+    glm_mat4_copy(GLM_MAT4_IDENTITY, light->view);
+    glm_mat4_copy(GLM_MAT4_IDENTITY, light->proj);
+    glm_vec3_copy((float*)desc->pos, light->pos);
     light->range = desc->range;
     light->color = desc->color;
-    memcpy(light->dir, desc->dir, sizeof(vec3));
+    glm_vec3_copy((float*)desc->dir, light->dir);
     light->fov = desc->fov;
     light->power = desc->power;
     if(desc->shadow_casting) {

@@ -7,7 +7,7 @@
 #include "material.h"
 #include "light.h"
 #include "color.h"
-#include "instance.h"
+#include "scene_node.h"
 #include "state.h"
 #include "gltf_load.h"
 

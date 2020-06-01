@@ -7,12 +7,12 @@
 extern _SPState _sp_state;
 
 SPMeshID spCreateMesh(const SPMeshDesc* desc) {
-    SPMeshID mesh_id = (SPMeshID){_spAllocPoolIndex(&(_sp_state.pools.mesh_pool))};
+    SPMeshID mesh_id = (SPMeshID){_spAllocPoolIndex(&(_sp_state.pools.mesh.info))};
     if(mesh_id.id == SP_INVALID_ID) {
         return mesh_id;
     }
     int id = mesh_id.id;
-    SPMesh* mesh = &(_sp_state.pools.meshes[id]);
+    SPMesh* mesh = &(_sp_state.pools.mesh.data[id]);
     // SPVertex buffer creation
     {
         WGPUBufferDescriptor buffer_desc = {

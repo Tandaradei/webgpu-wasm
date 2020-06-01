@@ -6,7 +6,7 @@
 #include "debug.h"
 #include "impl.h"
 
-#include "instance.h"
+#include "scene_node.h"
 #include "light.h"
 #include "ubos.h"
 #include "file.h"
@@ -67,7 +67,7 @@ void spInit(const SPInitDesc* desc) {
     _sp_state.dynamic_alignment = 256;
 
     // Model uniform buffer creation
-    const uint32_t instance_count = (_sp_state.pools.instance_pool.size - 1);
+    const uint32_t instance_count = (_sp_state.pools.scene_node.info.size - 1);
     {
         WGPUBufferDescriptor buffer_desc = {
             .usage = WGPUBufferUsage_Uniform | WGPUBufferUsage_CopyDst,
@@ -78,7 +78,7 @@ void spInit(const SPInitDesc* desc) {
     }
 
     // Light uniform buffer creation
-    const uint32_t light_count = (_sp_state.pools.light_pool.size - 1);
+    const uint32_t light_count = (_sp_state.pools.light.info.size - 1);
     {
         WGPUBufferDescriptor buffer_desc = {
             .usage = WGPUBufferUsage_Uniform | WGPUBufferUsage_CopyDst,
@@ -93,8 +93,10 @@ void spInit(const SPInitDesc* desc) {
     _spCreateForwardRenderPipeline();
     _spCreateShadowMapRenderPipeline();
 
-    _sp_state.instance_counts_per_mat = SPIDER_MALLOC(sizeof(uint32_t) * desc->pools.capacities.materials);
-    _sp_state.sorted_instances = SPIDER_MALLOC((sizeof(SPInstanceID) * desc->pools.capacities.materials) * desc->pools.capacities.instances);
+    _sp_state.rm_counts_per_mat = SPIDER_MALLOC(sizeof(uint32_t) * desc->pools.capacities.materials);
+    _sp_state.sorted_rm = SPIDER_MALLOC((sizeof(SPRenderMeshID) * desc->pools.capacities.materials) * desc->pools.capacities.render_meshes);
+    _sp_state.dirty_nodes.data = SPIDER_MALLOC(sizeof(SPSceneNode*) * desc->pools.capacities.scene_nodes);
+    _sp_state.dirty_nodes.count = 0;
 
     WGPUTextureViewDescriptor tex_view_desc_linear_32 = {
         .format = WGPUTextureFormat_RGBA8Unorm,
@@ -126,20 +128,20 @@ void spInit(const SPInitDesc* desc) {
 }
 
 void spShutdown(void) {
-    for(uint32_t i = 0; i < _sp_state.pools.mesh_pool.size; i++) {
-        SPMesh* mesh = &(_sp_state.pools.meshes[i]);
+    for(uint32_t i = 0; i < _sp_state.pools.mesh.info.size; i++) {
+        SPMesh* mesh = &(_sp_state.pools.mesh.data[i]);
         if(!mesh) {
             continue;
         }
         _SP_RELEASE_RESOURCE(Buffer, mesh->vertex_buffer)
         _SP_RELEASE_RESOURCE(Buffer, mesh->index_buffer)
     }
-    _spDiscardPool(&_sp_state.pools.mesh_pool);
-    free(_sp_state.pools.meshes);
-    _sp_state.pools.meshes = NULL;
+    _spDiscardPool(&_sp_state.pools.mesh.info);
+    free(_sp_state.pools.mesh.data);
+    _sp_state.pools.mesh.data = NULL;
 
-    for(uint32_t i = 0; i < _sp_state.pools.material_pool.size; i++) {
-        SPMaterial* material = &(_sp_state.pools.materials[i]);
+    for(uint32_t i = 0; i < _sp_state.pools.material.info.size; i++) {
+        SPMaterial* material = &(_sp_state.pools.material.data[i]);
         if(!material) {
             continue;
         }
@@ -151,29 +153,46 @@ void spShutdown(void) {
         _SP_RELEASE_RESOURCE(Texture, material->ao_roughness_metallic.texture)
         _SP_RELEASE_RESOURCE(TextureView, material->ao_roughness_metallic.view)
     }
-    _spDiscardPool(&_sp_state.pools.material_pool);
-    free(_sp_state.pools.materials);
-    _sp_state.pools.materials = NULL;
+    _spDiscardPool(&_sp_state.pools.material.info);
+    free(_sp_state.pools.material.data);
+    _sp_state.pools.material.data = NULL;
 
-    // Instances don't have resources that need to be released/freed
-    _spDiscardPool(&_sp_state.pools.instance_pool);
-    free(_sp_state.pools.instances);
-    _sp_state.pools.instances = NULL;
+    // RenderMeshes don't have resources that need to be released/freed
+    _spDiscardPool(&_sp_state.pools.render_mesh.info);
+    free(_sp_state.pools.render_mesh.data);
+    _sp_state.pools.render_mesh.data = NULL;
 
     // Lights don't have resources that need to be released/freed
-    _spDiscardPool(&_sp_state.pools.light_pool);
-    free(_sp_state.pools.lights);
-    _sp_state.pools.lights = NULL;
+    _spDiscardPool(&_sp_state.pools.light.info);
+    free(_sp_state.pools.light.data);
+    _sp_state.pools.light.data = NULL;
+
+    for(uint32_t i = 0; i < _sp_state.pools.scene_node.info.size; i++) {
+        SPSceneNode* node = &(_sp_state.pools.scene_node.data[i]);
+        if(!node) {
+            continue;
+        }
+        if(node->tree.children.capacity > 1) {
+            free(node->tree.children.list);
+        }
+    }
+    _spDiscardPool(&_sp_state.pools.scene_node.info);
+    free(_sp_state.pools.scene_node.data);
+    _sp_state.pools.scene_node.data = NULL;
 
     _spDiscardStagingBuffers();
     wgpuBufferRelease(_sp_state.buffers.uniform.camera);
     wgpuBufferRelease(_sp_state.buffers.uniform.model);
     wgpuBufferRelease(_sp_state.buffers.uniform.light);
 
-    free(_sp_state.sorted_instances);
-    _sp_state.sorted_instances = NULL;
-    free(_sp_state.instance_counts_per_mat);
-    _sp_state.instance_counts_per_mat = NULL;
+    
+    free(_sp_state.sorted_rm);
+    _sp_state.sorted_rm = NULL;
+    free(_sp_state.rm_counts_per_mat);
+    _sp_state.rm_counts_per_mat = NULL;
+
+    free(_sp_state.dirty_nodes.data);
+    _sp_state.dirty_nodes.data = NULL;
 
     _SP_RELEASE_RESOURCE(Device, _sp_state.device)
     _SP_RELEASE_RESOURCE(Queue, _sp_state.queue)
@@ -208,69 +227,69 @@ void spRender(void) {
 
     WGPUTextureView view = wgpuSwapChainGetCurrentTextureView(_sp_state.swap_chain);
     
-    _spSortInstances();
+    _spSortRenderMeshes();
 
     // shadow maps
     // ***
     {
-        SPLight* light = &(_sp_state.pools.lights[1]); // TODO: currently just 1 light supported
-        
-        // TODO: [vertex-only, dawn] https://bugs.chromium.org/p/dawn/issues/detail?id=1367
-        // remove color attachment when vertex-only render pipelines are available
-        WGPURenderPassColorAttachmentDescriptor color_attachment = {
-            .attachment = light->color_view,
-            .loadOp = WGPULoadOp_Clear,
-            .storeOp = WGPUStoreOp_Store,
-            .clearColor = (WGPUColor){0.0f, 0.0f, 0.0, 1.0f}
-        };
+        SPLight* light = spGetLight((SPLightID){1}); // TODO: currently just 1 light supported
+        if(light) {
+            
+            // TODO: [vertex-only, dawn] https://bugs.chromium.org/p/dawn/issues/detail?id=1367
+            // remove color attachment when vertex-only render pipelines are available
+            WGPURenderPassColorAttachmentDescriptor color_attachment = {
+                .attachment = light->color_view,
+                .loadOp = WGPULoadOp_Clear,
+                .storeOp = WGPUStoreOp_Store,
+                .clearColor = (WGPUColor){0.0f, 0.0f, 0.0, 1.0f}
+            };
 
-        WGPURenderPassDepthStencilAttachmentDescriptor depth_attachment = {
-            .attachment = light->depth_view,
-            .depthLoadOp = WGPULoadOp_Clear,
-            .depthStoreOp = WGPUStoreOp_Store,
-            .clearDepth = 0.0f,
-            .stencilLoadOp = WGPULoadOp_Clear,
-            .stencilStoreOp = WGPUStoreOp_Store,
-            .clearStencil = 0,
-        };
+            WGPURenderPassDepthStencilAttachmentDescriptor depth_attachment = {
+                .attachment = light->depth_view,
+                .depthLoadOp = WGPULoadOp_Clear,
+                .depthStoreOp = WGPUStoreOp_Store,
+                .clearDepth = 0.0f,
+                .stencilLoadOp = WGPULoadOp_Clear,
+                .stencilStoreOp = WGPUStoreOp_Store,
+                .clearStencil = 0,
+            };
 
-        // TODO: [vertex-only, dawn] https://bugs.chromium.org/p/dawn/issues/detail?id=1367
-        // remove color attachment when vertex-only render pipelines are available
-        WGPURenderPassDescriptor render_pass = {
-            .colorAttachmentCount = 1,
-            .colorAttachments = &color_attachment,
-            .depthStencilAttachment = &depth_attachment,
-        };
-        WGPURenderPassEncoder shadow_pass_enc = wgpuCommandEncoderBeginRenderPass(_sp_state.cmd_enc, &render_pass);
-        wgpuRenderPassEncoderSetPipeline(shadow_pass_enc, _sp_state.pipelines.render.shadow.pipeline);
-        SPMeshID last_mesh_id = {0};
-        for(uint32_t ins_id = 1; ins_id < _sp_state.pools.instance_pool.size; ins_id++) {
-            SPInstance* instance = &(_sp_state.pools.instances[ins_id]);
-            SPMeshID mesh_id = instance->object.mesh;
-            if(mesh_id.id == SP_INVALID_ID) {
-                continue;
+            // TODO: [vertex-only, dawn] https://bugs.chromium.org/p/dawn/issues/detail?id=1367
+            // remove color attachment when vertex-only render pipelines are available
+            WGPURenderPassDescriptor render_pass = {
+                .colorAttachmentCount = 1,
+                .colorAttachments = &color_attachment,
+                .depthStencilAttachment = &depth_attachment,
+            };
+            WGPURenderPassEncoder shadow_pass_enc = wgpuCommandEncoderBeginRenderPass(_sp_state.cmd_enc, &render_pass);
+            wgpuRenderPassEncoderSetPipeline(shadow_pass_enc, _sp_state.pipelines.render.shadow.pipeline);
+            SPMesh* last_mesh = NULL;
+            for(SPRenderMeshID rm_id = {1}; rm_id.id < _sp_state.pools.render_mesh.info.size; rm_id.id++) {
+                SPRenderMesh* rm = spGetRenderMesh(rm_id);
+                if(rm) {
+                    SPMesh* mesh = rm->_mesh;
+                    if(mesh) {
+                        if(last_mesh != mesh) {
+                            wgpuRenderPassEncoderSetVertexBuffer(shadow_pass_enc, 0, mesh->vertex_buffer, 0, 0);
+                            wgpuRenderPassEncoderSetIndexBuffer(shadow_pass_enc, mesh->index_buffer, 0, 0);
+                            last_mesh = mesh;
+                        }
+                        uint32_t offsets_vert[] = { (rm_id.id - 1) * _sp_state.dynamic_alignment};
+                        wgpuRenderPassEncoderSetBindGroup(shadow_pass_enc, 0, _sp_state.pipelines.render.shadow.bind_group, ARRAY_LEN(offsets_vert), offsets_vert);
+                        wgpuRenderPassEncoderDrawIndexed(shadow_pass_enc, mesh->indices_count, 1, 0, 0, 0);
+                    }
+                }
             }
-            SPMesh* mesh = &(_sp_state.pools.meshes[mesh_id.id]);
-            if(last_mesh_id.id != mesh_id.id) {
-                wgpuRenderPassEncoderSetVertexBuffer(shadow_pass_enc, 0, mesh->vertex_buffer, 0, 0);
-                wgpuRenderPassEncoderSetIndexBuffer(shadow_pass_enc, mesh->index_buffer, 0, 0);
-                last_mesh_id = mesh_id;
-            }
-            uint32_t offsets_vert[] = { (ins_id - 1) * _sp_state.dynamic_alignment};
-            wgpuRenderPassEncoderSetBindGroup(shadow_pass_enc, 0, _sp_state.pipelines.render.shadow.bind_group, ARRAY_LEN(offsets_vert), offsets_vert);
-            wgpuRenderPassEncoderDrawIndexed(shadow_pass_enc, mesh->indices_count, 1, 0, 0, 0);
+            wgpuRenderPassEncoderEndPass(shadow_pass_enc);
+            wgpuRenderPassEncoderRelease(shadow_pass_enc);
+            DEBUG_PRINT(DEBUG_PRINT_RENDER, "render: finished render pass\n");
+            _spSubmit();
         }
-        wgpuRenderPassEncoderEndPass(shadow_pass_enc);
-        wgpuRenderPassEncoderRelease(shadow_pass_enc);
-        DEBUG_PRINT(DEBUG_PRINT_RENDER, "render: finished render pass\n");
-        _spSubmit();
     }
     // ***
 
     // main pass
     // ***
-    #define FORWARD_OPAQUE_PASS 1
-    #if FORWARD_OPAQUE_PASS
     {
         WGPURenderPassColorAttachmentDescriptor color_attachment = {
             .attachment = view,
@@ -296,29 +315,33 @@ void spRender(void) {
         };
         _sp_state.pass_enc = wgpuCommandEncoderBeginRenderPass(_sp_state.cmd_enc, &render_pass);
         wgpuRenderPassEncoderSetPipeline(_sp_state.pass_enc, _sp_state.pipelines.render.forward.pipeline);
-        uint32_t instances_count = _sp_state.pools.instance_pool.size - 1;
-        for(uint32_t mat_id = 1; mat_id < _sp_state.pools.material_pool.size; mat_id++) {
-            if(_sp_state.instance_counts_per_mat[mat_id - 1] == 0) {
+        uint32_t rm_count = _sp_state.pools.render_mesh.info.size - 1;
+        for(SPMaterialID mat_id = {1}; mat_id.id < _sp_state.pools.material.info.size; mat_id.id++) {
+            if(_sp_state.rm_counts_per_mat[mat_id.id - 1] == 0) {
                 continue;
             }
-            SPMaterial* material = &(_sp_state.pools.materials[mat_id]);
-            //uint32_t offsets_frag[] = { (mat_id - 1) * _sp_state.dynamic_alignment};
-            wgpuRenderPassEncoderSetBindGroup(_sp_state.pass_enc, 1, material->bind_groups.frag, 0, NULL /*ARRAY_LEN(offsets_frag), offsets_frag*/);
-            SPMeshID last_mesh_id = {0};
-            uint32_t instance_count = _sp_state.instance_counts_per_mat[mat_id - 1];
-            for(uint32_t i = 0; i < instance_count; i++) {
-                SPInstanceID ins_id = _sp_state.sorted_instances[(mat_id - 1) * (_sp_state.pools.instance_pool.size - 1) + i];
-                SPInstance* instance = &(_sp_state.pools.instances[ins_id.id]);
-                SPMeshID mesh_id = instance->object.mesh;
-                SPMesh* mesh = &(_sp_state.pools.meshes[mesh_id.id]);
-                if(last_mesh_id.id != mesh_id.id) {
-                    wgpuRenderPassEncoderSetVertexBuffer(_sp_state.pass_enc, 0, mesh->vertex_buffer, 0, 0);
-                    wgpuRenderPassEncoderSetIndexBuffer(_sp_state.pass_enc, mesh->index_buffer, 0, 0);
-                    last_mesh_id = mesh_id;
+            SPMaterial* material = spGetMaterial(mat_id);
+            if(material) {
+                wgpuRenderPassEncoderSetBindGroup(_sp_state.pass_enc, 1, material->bind_groups.frag, 0, NULL);
+                SPMesh* last_mesh = NULL;
+                uint32_t rm_count = _sp_state.rm_counts_per_mat[mat_id.id - 1];
+                for(uint32_t i = 0; i < rm_count; i++) {
+                    SPRenderMeshID rm_id = _sp_state.sorted_rm[(mat_id.id - 1) * (_sp_state.pools.render_mesh.info.size - 1) + i];
+                    SPRenderMesh* rm = spGetRenderMesh(rm_id);
+                    if(rm) {
+                        SPMesh* mesh = rm->_mesh;
+                        if(mesh) {
+                            if(last_mesh != mesh) {
+                                wgpuRenderPassEncoderSetVertexBuffer(_sp_state.pass_enc, 0, mesh->vertex_buffer, 0, 0);
+                                wgpuRenderPassEncoderSetIndexBuffer(_sp_state.pass_enc, mesh->index_buffer, 0, 0);
+                                last_mesh = mesh;
+                            }
+                            uint32_t offsets_vert[] = { (rm_id.id - 1) * _sp_state.dynamic_alignment};
+                            wgpuRenderPassEncoderSetBindGroup(_sp_state.pass_enc, 0, material->bind_groups.vert, ARRAY_LEN(offsets_vert), offsets_vert);
+                            wgpuRenderPassEncoderDrawIndexed(_sp_state.pass_enc, mesh->indices_count, 1, 0, 0, 0);
+                        }
+                    }
                 }
-                uint32_t offsets_vert[] = { (ins_id.id - 1) * _sp_state.dynamic_alignment};
-                wgpuRenderPassEncoderSetBindGroup(_sp_state.pass_enc, 0, material->bind_groups.vert, ARRAY_LEN(offsets_vert), offsets_vert);
-                wgpuRenderPassEncoderDrawIndexed(_sp_state.pass_enc, mesh->indices_count, 1, 0, 0, 0);
             }
         }
 
@@ -328,7 +351,6 @@ void spRender(void) {
         _spSubmit();
         wgpuTextureViewRelease(view);
     }
-    #endif
     // ***
     
     _sp_state.frame_index++;
@@ -339,18 +361,39 @@ SPCamera* spGetActiveCamera() {
     return &(_sp_state.active_cam);
 }
 
-SPInstance* spGetInstance(SPInstanceID instance_id) {
-    if(instance_id.id == SP_INVALID_ID || instance_id.id >= _sp_state.pools.instance_pool.size) {
-        return NULL;
+SPMaterial* spGetMaterial(SPMaterialID mat_id) {
+    if(_spIsIDValid(mat_id.id, &_sp_state.pools.material.info)) {
+        return  &(_sp_state.pools.material.data[mat_id.id]);
     }
-    return &(_sp_state.pools.instances[instance_id.id]);
+    return NULL;
+}
+
+SPMesh* spGetMesh(SPMeshID mesh_id) {
+    if(_spIsIDValid(mesh_id.id, &_sp_state.pools.mesh.info)) {
+        return  &(_sp_state.pools.mesh.data[mesh_id.id]);
+    }
+    return NULL;
+}
+
+SPSceneNode* spGetSceneNode(SPSceneNodeID scene_node_id) {
+    if(_spIsIDValid(scene_node_id.id, &_sp_state.pools.scene_node.info)) {
+        return  &(_sp_state.pools.scene_node.data[scene_node_id.id]);
+    }
+    return NULL;
+}
+
+SPRenderMesh* spGetRenderMesh(SPRenderMeshID rm_id) {
+    if(_spIsIDValid(rm_id.id, &_sp_state.pools.render_mesh.info)) {
+        return  &(_sp_state.pools.render_mesh.data[rm_id.id]);
+    }
+    return NULL;
 }
 
 SPLight* spGetLight(SPLightID light_id) {
-    if(light_id.id == SP_INVALID_ID || light_id.id >= _sp_state.pools.light_pool.size) {
-        return NULL;
+    if(_spIsIDValid(light_id.id, &_sp_state.pools.light.info)) {
+        return  &(_sp_state.pools.light.data[light_id.id]);
     }
-    return &(_sp_state.pools.lights[light_id.id]);
+    return NULL;
 }
 
 void _spErrorCallback(WGPUErrorType type, char const * message, void * userdata) {
@@ -840,30 +883,35 @@ void _spCreateMipmapsComputePipeline() {
 // Pool implementation from https://github.com/floooh/sokol/ 
 // ***
 void _spSetupPools(_SPPools* pools, const SPPoolsDesc* pools_desc) {
-    _spInitPool(&(_sp_state.pools.mesh_pool), _SP_GET_DEFAULT_IF_ZERO(pools_desc->capacities.meshes, _SP_MESH_POOL_MAX));
-    size_t mesh_pool_byte_size = sizeof(SPMesh) * pools->mesh_pool.size;
-    pools->meshes = (SPMesh*) SPIDER_MALLOC(mesh_pool_byte_size);
-    SPIDER_ASSERT(pools->meshes);
-    memset(pools->meshes, 0, mesh_pool_byte_size);
+    _spInitPool(&(_sp_state.pools.material.info), _SP_GET_DEFAULT_IF_ZERO(pools_desc->capacities.materials, _SP_MATERIAL_POOL_DEFAULT));
+    size_t mat_pool_byte_size = sizeof(SPMaterial) * pools->material.info.size;
+    pools->material.data = (SPMaterial*) SPIDER_MALLOC(mat_pool_byte_size);
+    SPIDER_ASSERT(pools->material.data);
+    memset(pools->material.data, 0, mat_pool_byte_size);
 
-    
-    _spInitPool(&(_sp_state.pools.material_pool), _SP_GET_DEFAULT_IF_ZERO(pools_desc->capacities.materials, _SP_MATERIAL_POOL_MAX));
-    size_t mat_pool_byte_size = sizeof(SPMaterial) * pools->material_pool.size;
-    pools->materials = (SPMaterial*) SPIDER_MALLOC(mat_pool_byte_size);
-    SPIDER_ASSERT(pools->materials);
-    memset(pools->materials, 0, mat_pool_byte_size);
+    _spInitPool(&(_sp_state.pools.mesh.info), _SP_GET_DEFAULT_IF_ZERO(pools_desc->capacities.meshes, _SP_MESH_POOL_DEFAULT));
+    size_t mesh_pool_byte_size = sizeof(SPMesh) * pools->mesh.info.size;
+    pools->mesh.data = (SPMesh*) SPIDER_MALLOC(mesh_pool_byte_size);
+    SPIDER_ASSERT(pools->mesh.data);
+    memset(pools->mesh.data, 0, mesh_pool_byte_size);
 
-    _spInitPool(&(_sp_state.pools.instance_pool), _SP_GET_DEFAULT_IF_ZERO(pools_desc->capacities.instances, _SP_INSTANCE_POOL_MAX));
-    size_t instance_pool_byte_size = sizeof(SPInstance) * pools->instance_pool.size;
-    pools->instances = (SPInstance*) SPIDER_MALLOC(instance_pool_byte_size);
-    SPIDER_ASSERT(pools->instances);
-    memset(pools->instances, 0, instance_pool_byte_size);
+    _spInitPool(&(_sp_state.pools.render_mesh.info), _SP_GET_DEFAULT_IF_ZERO(pools_desc->capacities.render_meshes, _SP_RENDER_MESH_POOL_DEFAULT));
+    size_t render_mesh_pool_byte_size = sizeof(SPRenderMesh) * pools->render_mesh.info.size;
+    pools->render_mesh.data = (SPRenderMesh*) SPIDER_MALLOC(render_mesh_pool_byte_size);
+    SPIDER_ASSERT(pools->render_mesh.data);
+    memset(pools->render_mesh.data, 0, render_mesh_pool_byte_size);
 
-    _spInitPool(&(_sp_state.pools.light_pool), _SP_GET_DEFAULT_IF_ZERO(pools_desc->capacities.lights, _SP_LIGHT_POOL_MAX));
-    size_t light_pool_byte_size = sizeof(SPLight) * pools->light_pool.size;
-    pools->lights = (SPLight*) SPIDER_MALLOC(light_pool_byte_size);
-    SPIDER_ASSERT(pools->lights);
-    memset(pools->lights, 0, light_pool_byte_size);
+    _spInitPool(&(_sp_state.pools.light.info), _SP_GET_DEFAULT_IF_ZERO(pools_desc->capacities.lights, _SP_LIGHT_POOL_DEFAULT));
+    size_t light_pool_byte_size = sizeof(SPLight) * pools->light.info.size;
+    pools->light.data = (SPLight*) SPIDER_MALLOC(light_pool_byte_size);
+    SPIDER_ASSERT(pools->light.data);
+    memset(pools->light.data, 0, light_pool_byte_size);
+
+    _spInitPool(&(_sp_state.pools.scene_node.info), _SP_GET_DEFAULT_IF_ZERO(pools_desc->capacities.scene_nodes, _SP_SCENE_NODE_POOL_DEFAULT));
+    size_t scene_node_pool_byte_size = sizeof(SPSceneNode) * pools->scene_node.info.size;
+    pools->scene_node.data = (SPSceneNode*) SPIDER_MALLOC(scene_node_pool_byte_size);
+    SPIDER_ASSERT(pools->scene_node.data);
+    memset(pools->scene_node.data, 0, scene_node_pool_byte_size);
 }
 
 void _spInitPool(_SPPool* pool, size_t size) {
@@ -929,6 +977,12 @@ void _spFreePoolIndex(_SPPool* pool, int slot_index) {
     }
 }
 
+void _spUpdateDirtyNodes(void) {
+    for(uint32_t i = 0; i < _sp_state.dirty_nodes.count; i++) {
+        _spSceneNodeUpdateWorldTransform(_sp_state.dirty_nodes.data[i]);
+    }
+    _sp_state.dirty_nodes.count = 0;
+}
 
 void _spUpdateView(void) {
     vec3 up = { 0.0f, 1.0f, 0.0f };
@@ -960,6 +1014,7 @@ void _spUpdateProjection(void) {
 }
 
 void _spUpdate(void) {
+    _spUpdateDirtyNodes();
     _spUpdateView();
     _spUpdateProjection();
     _spUpdateUboCamera();
@@ -978,17 +1033,32 @@ void _spSubmit(void) {
     _sp_state.cmd_enc = wgpuDeviceCreateCommandEncoder(_sp_state.device, NULL);
 }
 
-void _spSortInstances(void) {
-    uint32_t materials_count = _sp_state.pools.material_pool.size - 1;
-    memset(_sp_state.instance_counts_per_mat, 0, sizeof(uint32_t) * materials_count);
-    for(uint32_t i = 1; i < _sp_state.pools.instance_pool.size; i++) {
-        SPInstance* instance = &(_sp_state.pools.instances[i]);
-        SPMeshID mesh_id = instance->object.mesh;
-        SPMaterialID mat_id = instance->object.material;
-        if(mesh_id.id == SP_INVALID_ID || mat_id.id == SP_INVALID_ID) {
-            continue;
+
+void _spSortRenderMeshes(void) {
+    uint32_t materials_count = _sp_state.pools.material.info.size - 1;
+    memset(_sp_state.rm_counts_per_mat, 0, sizeof(uint32_t) * materials_count);
+    for(SPRenderMeshID rm_id = {1}; rm_id.id < _sp_state.pools.render_mesh.info.size; rm_id.id++) {
+        SPRenderMesh* rm = spGetRenderMesh(rm_id);
+        if(rm) {
+            SPMeshID mesh_id = rm->mesh_id;
+            SPMaterialID mat_id = rm->material_id;
+            if(mesh_id.id != SP_INVALID_ID && mat_id.id != SP_INVALID_ID) {
+                _sp_state.sorted_rm[(mat_id.id - 1) * (_sp_state.pools.render_mesh.info.size - 1) + _sp_state.rm_counts_per_mat[mat_id.id - 1]++] = rm_id;
+            }
         }
-        _sp_state.sorted_instances[(mat_id.id - 1) * (_sp_state.pools.instance_pool.size - 1) + _sp_state.instance_counts_per_mat[mat_id.id - 1]++] = (SPInstanceID){i};
     }
 }
+
+bool _spIsIDValid(uint32_t id, const _SPPool* pool) {
+    if(id == SP_INVALID_ID || id > pool->size) {
+        return false;
+    }
+    for(uint32_t i = 0; i < pool->queue_top; i++) {
+        if(id == pool->free_queue[i]) {
+            return false; // object at id is not allocated
+        }
+    } 
+    return true;
+}
+
 // ***

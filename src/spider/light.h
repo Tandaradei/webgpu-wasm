@@ -14,16 +14,16 @@ typedef enum SPLightType {
 } SPLightType;
 
 typedef struct SPLight {
-    SPLightType type;
     mat4 view;
     mat4 proj;
     vec3 pos;
     float range;
-    SPColorRGB8 color;
     vec3 dir; // for spot & dir
     float fov; // for spot
     vec2 area; // for dir
     float power;
+    SPColorRGB8 color;
+    SPLightType type;
     WGPUTexture depth_texture;
     WGPUTextureView depth_view;
     // TODO: [vertex-only, dawn] https://bugs.chromium.org/p/dawn/issues/detail?id=1367

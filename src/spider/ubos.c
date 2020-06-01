@@ -4,7 +4,6 @@
 #include "debug.h"
 #include "mesh.h"
 #include "material.h"
-#include "instance.h"
 #include "light.h"
 #include "color.h"
 #include "state.h"
@@ -18,38 +17,25 @@ void _spUpdateUboModel(void) {
     }
     WGPUBufferDescriptor buffer_desc = {
         .usage = WGPUBufferUsage_CopySrc,
-        .size = (_sp_state.pools.instance_pool.size - 1) * _sp_state.dynamic_alignment,
+        .size = (_sp_state.pools.render_mesh.info.size - 1) * _sp_state.dynamic_alignment,
     };
     WGPUCreateBufferMappedResult result = wgpuDeviceCreateBufferMapped(_sp_state.device, &buffer_desc);
     _sp_state.buffers.uniform.model_staging = result.buffer;
 
-    for(uint32_t i = 1; i < _sp_state.pools.instance_pool.last_index_plus_1; i++) {
-        SPMeshID mesh_id = _sp_state.pools.instances[i].object.mesh;
-        SPMaterialID mat_id = _sp_state.pools.instances[i].object.material;
-        if(mesh_id.id == SP_INVALID_ID || mat_id.id == SP_INVALID_ID) {
-            continue;
+    for(SPSceneNodeID node_id = {1}; node_id.id < _sp_state.pools.scene_node.info.last_index_plus_1; node_id.id++) {
+        SPSceneNode* node = spGetSceneNode(node_id);
+        if(node && node->linked_object.type == SPSceneNodeType_RenderMesh) {
+            SPRenderMeshID rm_id = node->linked_object.render_mesh;
+            SPRenderMesh* rm = spGetRenderMesh(rm_id);
+            if(rm) {
+                _SPUboModel ubo;
+                glm_mat4_copy(node->_transform_world, ubo.model);
+
+                uint64_t offset = (rm_id.id - 1) * _sp_state.dynamic_alignment;
+
+                memcpy((void*)((uint64_t)(result.data) + offset), &ubo, sizeof(_SPUboModel));
+            }
         }
-        SPInstance* instance = &(_sp_state.pools.instances[i]);
-        _SPUboModel ubo = {
-            .model = GLM_MAT4_IDENTITY_INIT,
-        };
-
-        mat4 scale = GLM_MAT4_IDENTITY_INIT;
-        glm_scale(scale, instance->transform.scale);
-        vec3 rot_rad = {
-            glm_rad(instance->transform.rot[0]),
-            glm_rad(instance->transform.rot[1]),
-            glm_rad(instance->transform.rot[2])
-        };
-        mat4 rot = GLM_MAT4_IDENTITY_INIT;
-        glm_euler_zxy(rot_rad, rot);
-        glm_mat4_mul(rot, scale, rot);
-        glm_translate(ubo.model, instance->transform.pos);
-        glm_mat4_mul(ubo.model, rot, ubo.model);
-
-        uint64_t offset = (i - 1) * _sp_state.dynamic_alignment;
-
-        memcpy((void*)((uint64_t)(result.data) + offset), &ubo, sizeof(_SPUboModel));
     }
     wgpuBufferUnmap(result.buffer);
     wgpuCommandEncoderCopyBufferToBuffer(
@@ -99,14 +85,14 @@ void _spUpdateUboLight(void) {
     }
     WGPUBufferDescriptor buffer_desc = {
         .usage = WGPUBufferUsage_CopySrc,
-        .size = (_sp_state.pools.light_pool.size - 1) * _sp_state.dynamic_alignment,
+        .size = (_sp_state.pools.light.info.size - 1) * _sp_state.dynamic_alignment,
     };
     WGPUCreateBufferMappedResult result = wgpuDeviceCreateBufferMapped(_sp_state.device, &buffer_desc);
     _sp_state.buffers.uniform.light_staging = result.buffer;
     
     //for(uint32_t i = 1; i < _sp_state.pools.light_pool.last_index_plus_1; i++) {
         uint32_t i = 1; // only 1 light supported right now
-        SPLight* light = &(_sp_state.pools.lights[i]);
+        SPLight* light = &(_sp_state.pools.light.data[i]);
         uint64_t offset = (i - 1) * _sp_state.dynamic_alignment;
         
         _SPUboLight ubo = {

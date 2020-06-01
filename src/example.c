@@ -142,16 +142,29 @@ float randFloatRange(float min, float max) {
     return min + randFloat() * (max - min);
 }
 
-static const vec3 light_start_pos = {0.0f, 10.0f, 10.0f};
-SPInstanceID avocado_instance_id = {SP_INVALID_ID};
-SPInstanceID fish_instance_id = {SP_INVALID_ID};
+static const vec3 light_start_pos = {0.0f, 5.0f, 0.5f};
+SPSceneNodeID avocado_node_id = {SP_INVALID_ID};
+SPSceneNodeID fish_node_id = {SP_INVALID_ID};
+
+void setTransform(SPSceneNodeID node_id, const SPTransform* transform) {
+    SPSceneNode* node = spGetSceneNode(node_id);
+    if(node) {
+        memcpy(
+            &node->transform, 
+            &(SPTransform){
+                .pos = {0.0f, 0.0f, 0.0f},
+                .scale = {10.0f, 1.0f, 10.0f},
+                .rot = {0.0f, 0.0f, 0.0f},
+            },
+            sizeof(SPTransform)
+        );
+        spSceneNodeMarkDirty(node);
+    }
+}
 
 void createObjects(void) {
-    SPMeshID mesh = spCreateMeshFromInit(&plane);
-    SPMeshID mesh_cube = spCreateMeshFromInit(&cube);
-    
     // TODO: lights have to be created before materials right now 
-    vec3 light_look_at = {0.0f, 0.0f, 0.0f};
+    vec3 light_look_at = {2.0f, 0.0f, 0.0f};
     vec3 light_direction = {-1.0, -1.0f, 0.2f};
     // (float*) cast to prevent compiler warning 'incompatible-pointer-types-discards-qualifiers'
     // cglm takes no const pointers as arguments, even if it doesn't mutate the vectors
@@ -164,49 +177,15 @@ void createObjects(void) {
             .color = {.r = 255, .g = 255, .b = 255},
             .dir = {light_direction[0], light_direction[1], light_direction[2]},
             .fov = glm_rad(70.0f),
-            .power = 100.0f,
+            .power = 20.0f,
             .shadow_casting = &(SPLightShadowCastDesc){
-                .shadow_map_size = 1024,
+                .shadow_map_size = 2048,
             },
         }
     );
     SPIDER_ASSERT(spot_light_id.id != SP_INVALID_ID);
 
-    SPObject ground_object = spLoadGltf("assets/gltf/ManholeCover/ManholeCover.gltf");
-    if(ground_object.mesh.id != SP_INVALID_ID && ground_object.material.id != SP_INVALID_ID) {
-        spCreateInstance(&(SPInstanceDesc){
-            .object = ground_object,
-            .transform = &(SPTransform){
-                .pos = {0.0f, 0.0f, 0.0f},
-                .scale = {10.0f, 1.0f, 10.0f},
-                .rot = {0.0f, 0.0f, 0.0f},
-            }
-        });
-    }
-
-    SPObject avocado_object = spLoadGltf("assets/gltf/Avocado/Avocado.gltf");
-    if(avocado_object.mesh.id != SP_INVALID_ID && avocado_object.material.id != SP_INVALID_ID) {
-        avocado_instance_id = spCreateInstance(&(SPInstanceDesc){
-            .object = avocado_object,
-            .transform = &(SPTransform){
-                .pos = {-3.0f, -1.0f, 0.0f},
-                .scale = {50.0f, 50.0f, 50.0f},
-                .rot = {0.0f, 0.0f, 0.0f},
-            }
-        });
-    }
-
-    SPObject fish_object = spLoadGltf("assets/gltf/BarramundiFish/BarramundiFish.gltf");
-    if(fish_object.mesh.id != SP_INVALID_ID && fish_object.material.id != SP_INVALID_ID) {
-        fish_instance_id = spCreateInstance(&(SPInstanceDesc){
-            .object = fish_object,
-            .transform = &(SPTransform){
-                .pos = {3.0f, -1.0f, 0.0f},
-                .scale = {10.0f, 10.0f, 10.0f},
-                .rot = {0.0f, 200.0f, 0.0f},
-            }
-        });
-    }
+    SPSceneNodeID sponza_node_id = spLoadGltf("assets/gltf/Sponza/Sponza.gltf");
 }
 
 float time_elapsed_total_s = 0.0f;
@@ -217,31 +196,24 @@ void frame(void) {
     start_clock = clock();
     time_elapsed_total_s += delta_time_s;
 
-    // Update avocado transform
-    /*
-    SPInstance* avocado = spGetInstance(avocado_instance_id);
-    if(avocado) {
-        avocado->transform.rot[1] += -80.0f * delta_time_s;
+    // Update camera
+    bool should_animate_cam = true;
+    if(should_animate_cam) {
+        SPCamera* cam = spGetActiveCamera();
+        float rounds_per_second = 0.1f;
+        float rotation_speed = rounds_per_second * M_PI;
+        cam->dir[0] = sin(time_elapsed_total_s * rotation_speed);
+        cam->dir[1] = sin(0.45 + time_elapsed_total_s * 0.63f) * 0.1f;
+        cam->dir[2] = cos(time_elapsed_total_s * rotation_speed);
+        glm_vec3_normalize(cam->dir);
     }
-    // Update plane transform
-    SPInstance* fish = spGetInstance(fish_instance_id);
-    if(fish) {
-        fish->transform.rot[1] += 10.0f * delta_time_s;
-    }
-    */
+    
     // Update light(s)
     bool should_animate_light = true;
     if(should_animate_light) {
         SPLight* spot_light = spGetLight(spot_light_id);
         if(spot_light) {
-            float angle = sin(glm_rad(30.0f));
-            float light_distance_from_center = 12.0f;
-            float rounds_per_second = 0.25f;
-            float rotation_speed = rounds_per_second * M_PI;
-
-            spot_light->pos[0] = sin(time_elapsed_total_s * rotation_speed) * light_distance_from_center;
-            //spot_light->pos[1] = light_start_pos[1] + sin(time_elapsed_total_s * 0.4f) * 2.0f;
-            spot_light->pos[2] = cos(time_elapsed_total_s * rotation_speed) * light_distance_from_center;
+            spot_light->pos[0] = sin(time_elapsed_total_s * 0.05f) * 10.0f;
             vec3 light_look_at = {0.0f, 0.0f, 0.0f};
             vec3 light_direction = {-1.0, -1.0f, 0.2f};
             glm_vec3_sub(light_look_at, spot_light->pos, light_direction);
@@ -258,9 +230,9 @@ int main() {
     srand(0);
     const uint16_t surface_width = 1280;
     const uint16_t surface_height = 720;
-    vec3 dir = {0.0f, -1.0f, -1.0f}; // for SPCameraMode_Direction
+    vec3 dir = {0.0f, 0.0f, -1.0f}; // for SPCameraMode_Direction
     glm_vec3_normalize(dir);
-    vec3 pos = {0.0f, 2.0f, 8.0f};
+    vec3 pos = {0.0f, 2.0f, 0.0f};
     vec3 center = {0.0f, 0.0f, 0.0f}; // for SPCameraMode_LookAt
 
     spInit(&(SPInitDesc){
@@ -272,17 +244,18 @@ int main() {
             .pos = {pos[0], pos[1], pos[2]},
             .dir = {dir[0], dir[1], dir[2]},
             .look_at = {center[0], center[1], center[2]},
-            .mode = SPCameraMode_LookAt,
+            .mode = SPCameraMode_Direction,
             .fovy = glm_rad(60.0f),
             .aspect = (float)surface_width / (float) surface_height,
             .near = 0.1f,
             .far = 100.0f // not used
         },
         .pools.capacities = {
-            .meshes = 8,
-            .materials = 8,
-            .instances = 4096,
+            .meshes = 128,
+            .materials = 64,
+            .render_meshes = 256,
             .lights = 1,
+            .scene_nodes = 1024,
         },
     });
     createObjects();

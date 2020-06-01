@@ -12,12 +12,12 @@
 extern _SPState _sp_state;
 
 SPMaterialID spCreateMaterial(const SPMaterialDesc* desc) {
-    SPMaterialID material_id = (SPMaterialID){_spAllocPoolIndex(&(_sp_state.pools.material_pool))};
+    SPMaterialID material_id = (SPMaterialID){_spAllocPoolIndex(&(_sp_state.pools.material.info))};
     if(material_id.id == SP_INVALID_ID) {
         return material_id;
     }
     int id = material_id.id; 
-    SPMaterial* material = &(_sp_state.pools.materials[id]);
+    SPMaterial* material = &(_sp_state.pools.material.data[id]);
 
     WGPUTextureViewDescriptor tex_view_desc_srgb_32 = {
         .format = WGPUTextureFormat_RGBA8UnormSrgb,
@@ -102,7 +102,7 @@ SPMaterialID spCreateMaterial(const SPMaterialDesc* desc) {
     };
     material->bind_groups.vert = wgpuDeviceCreateBindGroup(_sp_state.device, &vert_bg_desc);
     DEBUG_PRINT(DEBUG_PRINT_TYPE_CREATE_MATERIAL, "mat_creation: created vert bind group\n");
-    SPIDER_ASSERT(_sp_state.pools.lights[1].color_view);
+    SPIDER_ASSERT(_sp_state.pools.light.info.size > 0 && _sp_state.pools.light.data[1].depth_view);
     
     WGPUBindGroupEntry frag_bindings[] = {
         {
@@ -151,7 +151,7 @@ SPMaterialID spCreateMaterial(const SPMaterialDesc* desc) {
             .offset = 0,
             .size = 0,
             .sampler = NULL,
-            .textureView = _sp_state.pools.lights[1].depth_view, // TODO: currently just 1 light supported
+            .textureView = _sp_state.pools.light.data[1].depth_view, // TODO: currently just 1 light supported
         },
     };
     WGPUBindGroupDescriptor frag_bg_desc = {
@@ -176,6 +176,7 @@ void _spCreateAndLoadTextures(_SPTextureViewFromImageDescriptor descriptors[], c
         buffers[i] = NULL;
         _SPMaterialTexture* mat_tex = descriptors[i].mat_tex;
         const char* file = descriptors[i].file;
+
         if(!file) {
             continue;
         }
@@ -212,7 +213,7 @@ void _spCreateAndLoadTextures(_SPTextureViewFromImageDescriptor descriptors[], c
         }
         SPIDER_ASSERT(pixel_data);
         int comps = comp_map[read_comps];
-        DEBUG_PRINT(DEBUG_PRINT_GENERAL, "loaded image (%d, %d, %d / %d)\n", width, height, read_comps, comps);
+        DEBUG_PRINT(DEBUG_PRINT_WARNING, "loaded image %s (%d, %d, %d / %d)\n", file, width, height, read_comps, comps);
 
         WGPUExtent3D texture_size = {
             .width = width,
@@ -239,6 +240,7 @@ void _spCreateAndLoadTextures(_SPTextureViewFromImageDescriptor descriptors[], c
         };
 
         WGPUCreateBufferMappedResult result = wgpuDeviceCreateBufferMapped(_sp_state.device, &buffer_desc);
+        SPIDER_ASSERT(result.data && result.dataLength == width * height * comps);
         memcpy(result.data, pixel_data, result.dataLength);
         stbi_image_free(pixel_data);
         wgpuBufferUnmap(result.buffer);
@@ -260,7 +262,7 @@ void _spCreateAndLoadTextures(_SPTextureViewFromImageDescriptor descriptors[], c
         wgpuCommandEncoderCopyBufferToTexture(texture_load_enc, &buffer_copy_view, &texture_copy_view, &texture_size);
     }
     WGPUCommandBuffer cmd_buffer = wgpuCommandEncoderFinish(texture_load_enc, NULL);
-   _SP_RELEASE_RESOURCE(CommandEncoder, texture_load_enc)
+    _SP_RELEASE_RESOURCE(CommandEncoder, texture_load_enc)
     wgpuQueueSubmit(_sp_state.queue, 1, &cmd_buffer);
     _SP_RELEASE_RESOURCE(CommandBuffer, cmd_buffer)
     for(size_t i = 0; i < count; i++) {
