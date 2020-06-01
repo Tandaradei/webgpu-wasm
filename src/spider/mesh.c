@@ -13,7 +13,7 @@ SPMeshID spCreateMesh(const SPMeshDesc* desc) {
     }
     int id = mesh_id.id;
     SPMesh* mesh = &(_sp_state.pools.mesh.data[id]);
-    // SPVertex buffer creation
+    // Vertex buffer creation
     {
         WGPUBufferDescriptor buffer_desc = {
             .usage = WGPUBufferUsage_Vertex,

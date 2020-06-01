@@ -3,6 +3,7 @@
 
 typedef struct cgltf_data cgltf_data;
 typedef struct cgltf_primitive cgltf_primitive;
+typedef struct cgltf_material cgltf_material;
 
 #include "mesh.h"
 #include "material.h"
@@ -15,13 +16,15 @@ returns an object with identifiers to the mesh/material
 SPSceneNodeID spLoadGltf(const char* file);
 
 /*
-Creates a mesh from the loaded gltf file (it loads the buffers) and returns an ID to it
+Creates a Mesh from the given cgltf_primitive and returns an ID to it
+It expects the buffers to be loaded
 */
 SPMeshID _spLoadMeshPrimitiveFromGltf(const cgltf_primitive* prim, const char* gltf_path);
 /*
-Creates a material from the loaded gltf file (it loads the images) and returns an ID to it
+Creates a Material from the given cgltf_material and returns an ID to it
+Loads the images itself (but doesn't cache them)
 */
-SPMaterialID _spLoadMaterialFromGltf(const cgltf_data* data, const char* gltf_path, uint32_t mat_index);
+SPMaterialID _spLoadMaterialFromGltf(const cgltf_material* mat, const char* gltf_path);
 
 /*
 Combines two paths and saves it in result (used for loading gltf materials that store images relative to the base file)

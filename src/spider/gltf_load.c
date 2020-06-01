@@ -25,8 +25,9 @@ SPSceneNodeID spLoadGltf(const char* file) {
 
         for(uint32_t mat = 0; mat < material_count; mat++) {
             DEBUG_PRINT(DEBUG_PRINT_WARNING, "Load material %d\n", mat);
-            mat_ptr_to_index[mat] = &data->materials[mat];
-            SPMaterialID mat_id = _spLoadMaterialFromGltf(data, file, mat);
+            cgltf_material* material =&data->materials[mat];
+            mat_ptr_to_index[mat] = material;
+            SPMaterialID mat_id = _spLoadMaterialFromGltf(material, file);
             SPIDER_ASSERT(mat_id.id);
             material_map[mat] = mat_id;
         }
@@ -186,30 +187,29 @@ SPMeshID _spLoadMeshPrimitiveFromGltf(const cgltf_primitive* prim, const char* g
     return mesh_id;
 }
 
-SPMaterialID _spLoadMaterialFromGltf(const cgltf_data* data, const char* gltf_path, uint32_t mat_index) {
-    SPIDER_ASSERT(data && gltf_path && mat_index < data->materials_count);
+SPMaterialID _spLoadMaterialFromGltf(const cgltf_material* mat, const char* gltf_path) {
+    SPIDER_ASSERT(mat && gltf_path);
     SPMaterialID mat_id = {0};
-    const cgltf_material mat = data->materials[mat_index];
     char albedo[100] = {0};
     char* albedo_ptr = NULL;
     char normal[100] = {0};
     char* normal_ptr = NULL;
     char ao_roughness_metallic[100] = {0};
     char* ao_roughness_metallic_ptr = NULL;
-    if(mat.has_pbr_metallic_roughness) {
-        if(mat.pbr_metallic_roughness.base_color_texture.texture) {
-            _spModifyRelativeFilePath(gltf_path, mat.pbr_metallic_roughness.base_color_texture.texture->image->uri, albedo);
+    if(mat->has_pbr_metallic_roughness) {
+        if(mat->pbr_metallic_roughness.base_color_texture.texture) {
+            _spModifyRelativeFilePath(gltf_path, mat->pbr_metallic_roughness.base_color_texture.texture->image->uri, albedo);
             albedo_ptr = albedo;
             DEBUG_PRINT(DEBUG_PRINT_GLTF_LOAD, "%s: albedo texture -> %s\n", gltf_path, albedo);
         }
-        if(mat.pbr_metallic_roughness.metallic_roughness_texture.texture) {
-            _spModifyRelativeFilePath(gltf_path, mat.pbr_metallic_roughness.metallic_roughness_texture.texture->image->uri, ao_roughness_metallic);
+        if(mat->pbr_metallic_roughness.metallic_roughness_texture.texture) {
+            _spModifyRelativeFilePath(gltf_path, mat->pbr_metallic_roughness.metallic_roughness_texture.texture->image->uri, ao_roughness_metallic);
             ao_roughness_metallic_ptr = ao_roughness_metallic;
             DEBUG_PRINT(DEBUG_PRINT_GLTF_LOAD, "%s: ao_roughness_metallic texture -> %s\n", gltf_path, ao_roughness_metallic);
         }
     }
-    if(mat.normal_texture.texture) {
-        _spModifyRelativeFilePath(gltf_path, mat.normal_texture.texture->image->uri, normal);
+    if(mat->normal_texture.texture) {
+        _spModifyRelativeFilePath(gltf_path, mat->normal_texture.texture->image->uri, normal);
         normal_ptr = normal;
         DEBUG_PRINT(DEBUG_PRINT_GLTF_LOAD, "%s: normal texture -> %s\n", gltf_path, normal);
     }

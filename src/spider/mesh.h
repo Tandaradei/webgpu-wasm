@@ -56,6 +56,7 @@ typedef struct SPMeshID {
 Creates a mesh and returns an identifier to it
 */
 SPMeshID spCreateMesh(const SPMeshDesc* desc);
+// TODO: add description
 SPMeshID spCreateMeshFromInit(const SPMeshInitializer* init);
 
 #endif // SPIDER_MESH_H_

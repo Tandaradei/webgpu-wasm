@@ -1,135 +1,7 @@
 #include <emscripten/emscripten.h>
 #include "spider/spider.h"
 
-vec3 plane_vertices[] = {
-    {-0.5f,  0.0f,  0.5f},
-    { 0.5f,  0.0f,  0.5f},
-    { 0.5f,  0.0f, -0.5f},
-    {-0.5f,  0.0f, -0.5f},
-};
-
-vec2 plane_tex_coords[] = {
-    {0.0f, 0.0f},
-    {1.0f, 0.0f},
-    {1.0f, 1.0f},
-    {0.0f, 1.0f} 
-};
-
-SPTriangle plane_faces[] = {
-    {
-        .vertex_indices = {0, 1, 2},
-        .tex_coord_indices = {0, 1, 2}
-    },
-    {
-        .vertex_indices = {2, 3, 0},
-        .tex_coord_indices = {2, 3, 0}
-    },
-};
-
-const SPMeshInitializer plane = {
-    .vertices = {
-        .data = plane_vertices,
-        .count = ARRAY_LEN(plane_vertices),
-    },
-    .tex_coords = {
-        .data = plane_tex_coords,
-        .count = ARRAY_LEN(plane_tex_coords),
-    },
-    .faces = {
-        .data = plane_faces,
-        .count = ARRAY_LEN(plane_faces)
-    }
-};
-
-vec3 cube_vertices[] = {
-    {-0.5f,  0.5f,  0.5f}, // LTB 0
-    { 0.5f,  0.5f,  0.5f}, // RTB 1
-    { 0.5f,  0.5f, -0.5f}, // RTF 2
-    {-0.5f,  0.5f, -0.5f}, // LTF 3
-    {-0.5f, -0.5f,  0.5f}, // LBB 4
-    { 0.5f, -0.5f,  0.5f}, // RBB 5
-    { 0.5f, -0.5f, -0.5f}, // RBF 6
-    {-0.5f, -0.5f, -0.5f}, // LBF 7
-};
-
-vec2 cube_tex_coords[] = {
-    {0.0f, 0.0f},
-    {1.0f, 0.0f},
-    {1.0f, 1.0f},
-    {0.0f, 1.0f}
-};
-
-SPTriangle cube_faces[] = {
-    // Top
-    {
-        .vertex_indices = {0, 1, 2},
-        .tex_coord_indices = {0, 1, 2}
-    },
-    {
-        .vertex_indices = {2, 3, 0},
-        .tex_coord_indices = {2, 3, 0}
-    },
-    // Front
-    {
-        .vertex_indices = {1, 0, 4},
-        .tex_coord_indices = {0, 1, 2}
-    },
-    {
-        .vertex_indices = {4, 5, 1},
-        .tex_coord_indices = {2, 3, 0}
-    },
-    // Left
-    {
-        .vertex_indices = {0, 3, 7},
-        .tex_coord_indices = {0, 1, 2}
-    },
-    {
-        .vertex_indices = {7, 4, 0},
-        .tex_coord_indices = {2, 3, 0}
-    },
-    // Back
-    {
-        .vertex_indices = {3, 2, 6},
-        .tex_coord_indices = {0, 1, 2}
-    },
-    {
-        .vertex_indices = {6, 7, 3},
-        .tex_coord_indices = {2, 3, 0}
-    },
-    // Right
-    {
-        .vertex_indices = {2, 1, 5},
-        .tex_coord_indices = {0, 1, 2}
-    },
-    {
-        .vertex_indices = {5, 6, 2},
-        .tex_coord_indices = {2, 3, 0}
-    },
-    // Bottom
-    {
-        .vertex_indices = {6, 5, 4},
-        .tex_coord_indices = {0, 1, 2}
-    },
-    {
-        .vertex_indices = {4, 7, 6},
-        .tex_coord_indices = {2, 3, 0}
-    },
-};
-
-const SPMeshInitializer cube = {
-    .vertices = {
-        .data = cube_vertices,
-        .count = ARRAY_LEN(cube_vertices),
-    },
-    .tex_coords = {
-        .data = cube_tex_coords,
-        .count = ARRAY_LEN(cube_tex_coords),
-    },
-    .faces = {
-        .data = cube_faces,
-        .count = ARRAY_LEN(cube_faces)
-    }
-};
+//#include "mesh_data.h" // not used currently
 
 SPLightID spot_light_id;
 clock_t start_clock;
@@ -142,37 +14,18 @@ float randFloatRange(float min, float max) {
     return min + randFloat() * (max - min);
 }
 
-static const vec3 light_start_pos = {0.0f, 5.0f, 0.5f};
-SPSceneNodeID avocado_node_id = {SP_INVALID_ID};
-SPSceneNodeID fish_node_id = {SP_INVALID_ID};
-
-void setTransform(SPSceneNodeID node_id, const SPTransform* transform) {
-    SPSceneNode* node = spGetSceneNode(node_id);
-    if(node) {
-        memcpy(
-            &node->transform, 
-            &(SPTransform){
-                .pos = {0.0f, 0.0f, 0.0f},
-                .scale = {10.0f, 1.0f, 10.0f},
-                .rot = {0.0f, 0.0f, 0.0f},
-            },
-            sizeof(SPTransform)
-        );
-        spSceneNodeMarkDirty(node);
-    }
-}
-
 void createObjects(void) {
     // TODO: lights have to be created before materials right now 
-    vec3 light_look_at = {2.0f, 0.0f, 0.0f};
+    const vec3 light_pos = {0.0f, 5.0f, 0.5f};
+    const vec3 light_look_at = {2.0f, 0.0f, 0.0f};
     vec3 light_direction = {-1.0, -1.0f, 0.2f};
     // (float*) cast to prevent compiler warning 'incompatible-pointer-types-discards-qualifiers'
     // cglm takes no const pointers as arguments, even if it doesn't mutate the vectors
-    glm_vec3_sub(light_look_at, (float*)light_start_pos, light_direction);
+    glm_vec3_sub((float*)light_look_at, (float*)light_pos, light_direction);
     glm_vec3_normalize(light_direction);
 
     spot_light_id = spCreateSpotLight(&(SPSpotLightDesc){
-            .pos = {light_start_pos[0], light_start_pos[1], light_start_pos[2]},
+            .pos = {light_pos[0], light_pos[1], light_pos[2]},
             .range = 40.0f,
             .color = {.r = 255, .g = 255, .b = 255},
             .dir = {light_direction[0], light_direction[1], light_direction[2]},
@@ -188,7 +41,7 @@ void createObjects(void) {
     SPSceneNodeID sponza_node_id = spLoadGltf("assets/gltf/Sponza/Sponza.gltf");
 }
 
-float time_elapsed_total_s = 0.0f;
+static float time_elapsed_total_s = 0.0f;
 
 void frame(void) {
     clock_t cur_clock = clock();
@@ -227,13 +80,13 @@ void frame(void) {
 }
 
 int main() {
-    srand(0);
+    srand(0); // to ensure getting comparable results every run
     const uint16_t surface_width = 1280;
     const uint16_t surface_height = 720;
     vec3 dir = {0.0f, 0.0f, -1.0f}; // for SPCameraMode_Direction
     glm_vec3_normalize(dir);
-    vec3 pos = {0.0f, 2.0f, 0.0f};
-    vec3 center = {0.0f, 0.0f, 0.0f}; // for SPCameraMode_LookAt
+    const vec3 pos = {0.0f, 2.0f, 0.0f};
+    const vec3 center = {0.0f, 0.0f, 0.0f}; // for SPCameraMode_LookAt
 
     spInit(&(SPInitDesc){
         .surface_size = {
@@ -258,6 +111,7 @@ int main() {
             .scene_nodes = 1024,
         },
     });
+
     createObjects();
     start_clock = clock();
 

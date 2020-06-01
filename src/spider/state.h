@@ -144,7 +144,7 @@ Initializes the application and creates all static resources
 void spInit(const SPInitDesc* desc);
 
 /*
-Releases all remaining resources
+Releases all remaining resources and frees allocated data
 */
 void spShutdown(void);
 /* 
@@ -158,7 +158,6 @@ Includes copying from staging to GPU-only buffers
 Draws all instances created with spCreateInstance
 */
 void spRender(void);
-
 
 /*
 Returns a temporary pointer to the active camera 
@@ -190,6 +189,7 @@ NULL if not a valid id
 */
 SPLight* spGetLight(SPLightID light_id);
 
+// ----------------------------------
 // PRIVATE
 /*
 Creates the forward render pipeline with all it's subresources
@@ -216,8 +216,10 @@ int _spAllocPoolIndex(_SPPool* pool);
 /* Free an ID from a pool */
 void _spFreePoolIndex(_SPPool* pool, int slot_index);
 
+// TODO: Add description
 void _spErrorCallback(WGPUErrorType type, char const * message, void * userdata);
 
+// TODO: Add description
 void _spUpdateDirtyNodes(void);
 
 // Matrices
@@ -243,7 +245,7 @@ Creates a list for each material with all the scene nodes using the material
 */
 void _spSortRenderMeshes(void);
 
-
+// TODO: Add description
 bool _spIsIDValid(uint32_t id, const _SPPool* pool);
 
 #endif // SPIDER_STATE_H_
