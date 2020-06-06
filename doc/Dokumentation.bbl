@@ -1,0 +1,231 @@
+% $ biblatex auxiliary file $
+% $ biblatex bbl format version 3.1 $
+% Do not modify the above lines!
+%
+% This is an auxiliary file used by the 'biblatex' package.
+% This file may safely be deleted. It will be recreated by
+% biber as required.
+%
+\begingroup
+\makeatletter
+\@ifundefined{ver@biblatex.sty}
+  {\@latex@error
+     {Missing 'biblatex' package}
+     {The bibliography requires the 'biblatex' package.}
+      \aftergroup\endinput}
+  {}
+\endgroup
+
+
+\refsection{0}
+  \datalist[entry]{nty/global//global/global}
+    \entry{amd:threadripper_3990x}{online}{}
+      \name{author}{1}{}{%
+        {{hash=bf70e453946d5be989799409fe1e53b9}{%
+           family={{Advanced Micro Devices, Inc}},
+           familyi={A\bibinitperiod}}}%
+      }
+      \strng{namehash}{bf70e453946d5be989799409fe1e53b9}
+      \strng{fullhash}{bf70e453946d5be989799409fe1e53b9}
+      \strng{bibnamehash}{bf70e453946d5be989799409fe1e53b9}
+      \strng{authorbibnamehash}{bf70e453946d5be989799409fe1e53b9}
+      \strng{authornamehash}{bf70e453946d5be989799409fe1e53b9}
+      \strng{authorfullhash}{bf70e453946d5be989799409fe1e53b9}
+      \field{sortinit}{A}
+      \field{sortinithash}{a3dcedd53b04d1adfd5ac303ecd5e6fa}
+      \field{labelnamesource}{author}
+      \field{labeltitlesource}{title}
+      \field{title}{AMD Ryzen™ Threadripper™ 3990X}
+      \field{urlday}{3}
+      \field{urlmonth}{6}
+      \field{urlyear}{2020}
+      \field{year}{2020}
+      \field{urldateera}{ce}
+      \verb{urlraw}
+      \verb https://www.amd.com/de/products/cpu/amd-ryzen-threadripper-3990x
+      \endverb
+      \verb{url}
+      \verb https://www.amd.com/de/products/cpu/amd-ryzen-threadripper-3990x
+      \endverb
+    \endentry
+    \entry{intel:i3_9100}{online}{}
+      \name{author}{1}{}{%
+        {{hash=b7f0fb90e404efb48f8a85a517dec3c9}{%
+           family={{Intel Corporation}},
+           familyi={I\bibinitperiod}}}%
+      }
+      \strng{namehash}{b7f0fb90e404efb48f8a85a517dec3c9}
+      \strng{fullhash}{b7f0fb90e404efb48f8a85a517dec3c9}
+      \strng{bibnamehash}{b7f0fb90e404efb48f8a85a517dec3c9}
+      \strng{authorbibnamehash}{b7f0fb90e404efb48f8a85a517dec3c9}
+      \strng{authornamehash}{b7f0fb90e404efb48f8a85a517dec3c9}
+      \strng{authorfullhash}{b7f0fb90e404efb48f8a85a517dec3c9}
+      \field{extraname}{1}
+      \field{sortinit}{I}
+      \field{sortinithash}{9417e9a1288a9371e2691d999083ed39}
+      \field{labelnamesource}{author}
+      \field{labeltitlesource}{title}
+      \field{title}{Intel® Core™ i3 Prozessor 9100}
+      \field{urlday}{3}
+      \field{urlmonth}{6}
+      \field{urlyear}{2020}
+      \field{year}{2020}
+      \field{urldateera}{ce}
+      \verb{urlraw}
+      \verb https://ark.intel.com/content/www/de/de/ark/products/134870/intel-core-i3-9100-processor-6m-cache-up-to-4-20-ghz.html
+      \endverb
+      \verb{url}
+      \verb https://ark.intel.com/content/www/de/de/ark/products/134870/intel-core-i3-9100-processor-6m-cache-up-to-4-20-ghz.html
+      \endverb
+    \endentry
+    \entry{intel:i9_9900k}{online}{}
+      \name{author}{1}{}{%
+        {{hash=b7f0fb90e404efb48f8a85a517dec3c9}{%
+           family={{Intel Corporation}},
+           familyi={I\bibinitperiod}}}%
+      }
+      \strng{namehash}{b7f0fb90e404efb48f8a85a517dec3c9}
+      \strng{fullhash}{b7f0fb90e404efb48f8a85a517dec3c9}
+      \strng{bibnamehash}{b7f0fb90e404efb48f8a85a517dec3c9}
+      \strng{authorbibnamehash}{b7f0fb90e404efb48f8a85a517dec3c9}
+      \strng{authornamehash}{b7f0fb90e404efb48f8a85a517dec3c9}
+      \strng{authorfullhash}{b7f0fb90e404efb48f8a85a517dec3c9}
+      \field{extraname}{2}
+      \field{sortinit}{I}
+      \field{sortinithash}{9417e9a1288a9371e2691d999083ed39}
+      \field{labelnamesource}{author}
+      \field{labeltitlesource}{title}
+      \field{title}{Intel® Core™ i9-9900K Prozessor}
+      \field{urlday}{3}
+      \field{urlmonth}{6}
+      \field{urlyear}{2020}
+      \field{year}{2020}
+      \field{urldateera}{ce}
+      \verb{urlraw}
+      \verb https://ark.intel.com/content/www/de/de/ark/products/186605/intel-core-i9-9900k-processor-16m-cache-up-to-5-00-ghz.html
+      \endverb
+      \verb{url}
+      \verb https://ark.intel.com/content/www/de/de/ark/products/186605/intel-core-i9-9900k-processor-16m-cache-up-to-5-00-ghz.html
+      \endverb
+    \endentry
+    \entry{gpu_history}{misc}{}
+      \name{author}{1}{}{%
+        {{hash=1f3300784d32984e9ecd83fc5a802b42}{%
+           family={McClanahan},
+           familyi={M\bibinitperiod},
+           given={Chris},
+           giveni={C\bibinitperiod}}}%
+      }
+      \strng{namehash}{1f3300784d32984e9ecd83fc5a802b42}
+      \strng{fullhash}{1f3300784d32984e9ecd83fc5a802b42}
+      \strng{bibnamehash}{1f3300784d32984e9ecd83fc5a802b42}
+      \strng{authorbibnamehash}{1f3300784d32984e9ecd83fc5a802b42}
+      \strng{authornamehash}{1f3300784d32984e9ecd83fc5a802b42}
+      \strng{authorfullhash}{1f3300784d32984e9ecd83fc5a802b42}
+      \field{sortinit}{M}
+      \field{sortinithash}{2e5c2f51f7fa2d957f3206819bf86dc3}
+      \field{labelnamesource}{author}
+      \field{labeltitlesource}{title}
+      \field{howpublished}{Survey Paper}
+      \field{title}{History and Evolution of GPU Architecture}
+      \field{year}{2010}
+      \verb{urlraw}
+      \verb http://www.mathcs.emory.edu/~cheung/Courses/355/Syllabus/94-CUDA/Docs/gpu-hist-paper.pdf
+      \endverb
+      \verb{url}
+      \verb http://www.mathcs.emory.edu/~cheung/Courses/355/Syllabus/94-CUDA/Docs/gpu-hist-paper.pdf
+      \endverb
+    \endentry
+    \entry{nvidia:gtx_1650}{online}{}
+      \name{author}{1}{}{%
+        {{hash=9ad14fae09b617d96cb4af76c555b394}{%
+           family={{NVIDIA Corporation}},
+           familyi={N\bibinitperiod}}}%
+      }
+      \strng{namehash}{9ad14fae09b617d96cb4af76c555b394}
+      \strng{fullhash}{9ad14fae09b617d96cb4af76c555b394}
+      \strng{bibnamehash}{9ad14fae09b617d96cb4af76c555b394}
+      \strng{authorbibnamehash}{9ad14fae09b617d96cb4af76c555b394}
+      \strng{authornamehash}{9ad14fae09b617d96cb4af76c555b394}
+      \strng{authorfullhash}{9ad14fae09b617d96cb4af76c555b394}
+      \field{extraname}{1}
+      \field{sortinit}{N}
+      \field{sortinithash}{98cf339a479c0454fe09153a08675a15}
+      \field{labelnamesource}{author}
+      \field{labeltitlesource}{title}
+      \field{title}{NVIDIA GeForce GTX 1650}
+      \field{urlday}{3}
+      \field{urlmonth}{6}
+      \field{urlyear}{2020}
+      \field{year}{2020}
+      \field{urldateera}{ce}
+      \verb{urlraw}
+      \verb https://www.nvidia.com/de-de/geforce/graphics-cards/gtx-1650/
+      \endverb
+      \verb{url}
+      \verb https://www.nvidia.com/de-de/geforce/graphics-cards/gtx-1650/
+      \endverb
+    \endentry
+    \entry{nvidia:rtx_2080ti}{online}{}
+      \name{author}{1}{}{%
+        {{hash=9ad14fae09b617d96cb4af76c555b394}{%
+           family={{NVIDIA Corporation}},
+           familyi={N\bibinitperiod}}}%
+      }
+      \strng{namehash}{9ad14fae09b617d96cb4af76c555b394}
+      \strng{fullhash}{9ad14fae09b617d96cb4af76c555b394}
+      \strng{bibnamehash}{9ad14fae09b617d96cb4af76c555b394}
+      \strng{authorbibnamehash}{9ad14fae09b617d96cb4af76c555b394}
+      \strng{authornamehash}{9ad14fae09b617d96cb4af76c555b394}
+      \strng{authorfullhash}{9ad14fae09b617d96cb4af76c555b394}
+      \field{extraname}{2}
+      \field{sortinit}{N}
+      \field{sortinithash}{98cf339a479c0454fe09153a08675a15}
+      \field{labelnamesource}{author}
+      \field{labeltitlesource}{title}
+      \field{title}{NVIDIA GeForce RTX 2080Ti}
+      \field{urlday}{3}
+      \field{urlmonth}{6}
+      \field{urlyear}{2020}
+      \field{year}{2020}
+      \field{urldateera}{ce}
+      \verb{urlraw}
+      \verb https://www.nvidia.com/de-de/geforce/graphics-cards/rtx-2080-ti
+      \endverb
+      \verb{url}
+      \verb https://www.nvidia.com/de-de/geforce/graphics-cards/rtx-2080-ti
+      \endverb
+    \endentry
+    \entry{2080_ti_graphics_card}{misc}{}
+      \name{author}{1}{}{%
+        {{hash=e0dedb40dda8df32fd056b6b6551502b}{%
+           family={{Wikimedia Commons}},
+           familyi={W\bibinitperiod}}}%
+      }
+      \strng{namehash}{e0dedb40dda8df32fd056b6b6551502b}
+      \strng{fullhash}{e0dedb40dda8df32fd056b6b6551502b}
+      \strng{bibnamehash}{e0dedb40dda8df32fd056b6b6551502b}
+      \strng{authorbibnamehash}{e0dedb40dda8df32fd056b6b6551502b}
+      \strng{authornamehash}{e0dedb40dda8df32fd056b6b6551502b}
+      \strng{authorfullhash}{e0dedb40dda8df32fd056b6b6551502b}
+      \field{sortinit}{W}
+      \field{sortinithash}{1af34bd8c148ffb32de1494636b49713}
+      \field{labelnamesource}{author}
+      \field{labeltitlesource}{title}
+      \field{title}{Picture of a Zotax Gaming 2080 ti Graphics Card}
+      \field{urlday}{3}
+      \field{urlmonth}{6}
+      \field{urlyear}{2020}
+      \field{year}{2019}
+      \field{urldateera}{ce}
+      \verb{urlraw}
+      \verb https://commons.wikimedia.org/wiki/File:Zotac_Gaming_GTX_2080_ti.jpg
+      \endverb
+      \verb{url}
+      \verb https://commons.wikimedia.org/wiki/File:Zotac_Gaming_GTX_2080_ti.jpg
+      \endverb
+    \endentry
+  \enddatalist
+\endrefsection
+\endinput
+
