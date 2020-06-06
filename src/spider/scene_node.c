@@ -40,7 +40,7 @@ SPSceneNodeID spCreateLightSceneNode(const SPLightSceneNodeDesc* desc) {
 
 
 void spSceneNodeSetParent(SPSceneNode* node, SPSceneNode* parent) {
-    SPIDER_ASSERT(node && node != parent);
+    SP_ASSERT(node && node != parent);
     
     if(parent) {
         spSceneNodeAddChild(parent, node); // add node to new parent (also removes from old parent)
@@ -54,9 +54,9 @@ void spSceneNodeSetParent(SPSceneNode* node, SPSceneNode* parent) {
 }
 
 void spSceneNodeAddChildren(SPSceneNode* node, SPSceneNode** children, uint32_t count) {
-    SPIDER_ASSERT(node && children && count > 0);
+    SP_ASSERT(node && children && count > 0);
     for(uint32_t i = 0; i < count; i++) {
-        SPIDER_ASSERT(children[i]);
+        SP_ASSERT(children[i]);
         if(children[i]->tree.parent) {
             spSceneNodeRemoveChild(node->tree.parent, node);
         }
@@ -75,12 +75,12 @@ void spSceneNodeAddChildren(SPSceneNode* node, SPSceneNode** children, uint32_t 
 }
 
 void spSceneNodeAddChild(SPSceneNode* node, SPSceneNode* child) {
-    SPIDER_ASSERT(node && child);
+    SP_ASSERT(node && child);
     spSceneNodeAddChildren(node, &child, 1);
 }
 
 void spSceneNodeRemoveChildren(SPSceneNode* node, SPSceneNode** children, uint32_t count) {
-    SPIDER_ASSERT(node && children && count > 0);
+    SP_ASSERT(node && children && count > 0);
     switch (node->tree.children.count) {
         case 0:
             return;
@@ -110,13 +110,13 @@ void spSceneNodeRemoveChildren(SPSceneNode* node, SPSceneNode** children, uint32
 }
 
 void spSceneNodeRemoveChild(SPSceneNode* node, SPSceneNode* child) {
-    SPIDER_ASSERT(node && child);
+    SP_ASSERT(node && child);
     spSceneNodeRemoveChildren(node, &child, 1);
 }
 
 void spSceneNodeSetChildrenCapacity(SPSceneNode* node, uint32_t capacity) {
-    SPIDER_ASSERT(node);
-    SPIDER_ASSERT(capacity >= node->tree.children.count);
+    SP_ASSERT(node);
+    SP_ASSERT(capacity >= node->tree.children.count);
     if(capacity == 0 || capacity == 1 || capacity == node->tree.children.capacity) {
         node->tree.children.capacity = capacity;
         return;
@@ -124,18 +124,18 @@ void spSceneNodeSetChildrenCapacity(SPSceneNode* node, uint32_t capacity) {
     else {
         switch (node->tree.children.capacity) {
             case 0: {
-                node->tree.children.list = SPIDER_MALLOC(capacity * sizeof (*node->tree.children.list));
+                node->tree.children.list = SP_MALLOC(capacity * sizeof (*node->tree.children.list));
                 break;
             }
             case 1: {
                 SPSceneNode* single_node = node->tree.children.single;
-                node->tree.children.list = SPIDER_MALLOC(capacity * sizeof (*node->tree.children.list));
+                node->tree.children.list = SP_MALLOC(capacity * sizeof (*node->tree.children.list));
                 node->tree.children.list[0] = single_node; // insert single node into list
                 break;
             }
             default: {
                 SPSceneNode** old_list = node->tree.children.list;
-                node->tree.children.list = SPIDER_MALLOC(capacity * sizeof (*node->tree.children.list));
+                node->tree.children.list = SP_MALLOC(capacity * sizeof (*node->tree.children.list));
                 memcpy(&node->tree.children.list[0], old_list, node->tree.children.count); // insert old nodes
                 free(old_list);
                 break;
@@ -152,7 +152,7 @@ void spSceneNodeIncreaseChildrenCapacityTo(SPSceneNode* node, uint32_t capacity)
 }
 
 void spSceneNodeMarkDirty(SPSceneNode* node) {
-    SPIDER_ASSERT(node);
+    SP_ASSERT(node);
     bool should_add = true;
     // check if either the node itself or one of it's parents is in the list
     for(uint32_t i = 0; i < _sp_state.dirty_nodes.count; i++) {
@@ -206,7 +206,7 @@ SPSceneNodeID _spCreateSceneNode(const _SPSceneNodeDesc* desc) {
 }
 
 void _spSceneNodeUpdateWorldTransform(SPSceneNode* node) {
-    SPIDER_ASSERT(node);
+    SP_ASSERT(node);
     glm_mat4_identity(node->_transform_world);
     glm_translate(node->_transform_world, node->transform.pos);
     mat4 scale = GLM_MAT4_IDENTITY_INIT;

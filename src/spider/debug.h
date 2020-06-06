@@ -15,6 +15,9 @@
 #define DEBUG_PRINT_RENDER 0
 #define DEBUG_PRINT_METRICS 0
 #define DEBUG_PRINT_GLTF_LOAD 1
+#define DEBUG_PRINT_SHADER_LOAD 0
+#define DEBUG_PRINT_IMGUI 1
+#define DEBUG_PRINT_RENDER_PIPELINE 1
 
 #include "state.h"
 extern _SPState _sp_state;

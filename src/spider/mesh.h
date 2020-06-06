@@ -16,7 +16,7 @@ typedef struct SPTriangle {
     uint16_t tex_coord_indices[3];
 } SPTriangle;
 
-typedef struct SPMeshInitializer {
+typedef struct SPMeshInitializerDesc {
     struct {
         vec3* data;
         uint16_t count;
@@ -29,7 +29,7 @@ typedef struct SPMeshInitializer {
         SPTriangle* data;
         uint32_t count;
     } faces;
-} SPMeshInitializer;
+} SPMeshInitializerDesc;
 
 typedef struct SPMesh {
     WGPUBuffer vertex_buffer;
@@ -57,6 +57,6 @@ Creates a mesh and returns an identifier to it
 */
 SPMeshID spCreateMesh(const SPMeshDesc* desc);
 // TODO: add description
-SPMeshID spCreateMeshFromInit(const SPMeshInitializer* init);
+SPMeshID spCreateMeshFromInit(const SPMeshInitializerDesc* desc);
 
 #endif // SPIDER_MESH_H_

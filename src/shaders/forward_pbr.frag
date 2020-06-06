@@ -8,7 +8,7 @@ layout(set = 0, binding = 1) uniform Camera {
     vec3 pos;
 } cam;
 
-layout(set = 1, binding = 0) uniform Light {
+layout(set = 0, binding = 2) uniform Light {
     mat4 view;
     mat4 proj;
     vec4 pos3_range1;
@@ -17,11 +17,14 @@ layout(set = 1, binding = 0) uniform Light {
     vec4 area2_power1_padding1; // area: for dir
 } light;  // TODO: support more than 1 light
 
-layout(set = 1, binding = 1) uniform sampler my_sampler;
-layout(set = 1, binding = 2) uniform texture2D albedo_tex;
-layout(set = 1, binding = 3) uniform texture2D normal_tex;
-layout(set = 1, binding = 4) uniform texture2D ao_roughness_metallic_tex;
-layout(set = 1, binding = 5) uniform texture2D shadow_map; // TODO: support more than 1 shadow map
+layout(set = 2, binding = 0) uniform texture2D albedo_tex;
+layout(set = 2, binding = 1) uniform sampler albedo_sampler;
+layout(set = 2, binding = 2) uniform texture2D normal_tex;
+layout(set = 2, binding = 3) uniform sampler normal_sampler;
+layout(set = 2, binding = 4) uniform texture2D ao_roughness_metallic_tex;
+layout(set = 2, binding = 5) uniform sampler arm_sampler;
+layout(set = 2, binding = 6) uniform texture2D shadow_map; // TODO: support more than 1 shadow map
+layout(set = 2, binding = 7) uniform sampler shadow_sampler;
 
 
 layout(location = 0) in vec3 fragPosWorld;
@@ -38,7 +41,7 @@ const int sampleSize = 1;
 const float scale = 1.5;
 
 float getLightDepthOnPosSingle(vec2 coords_shadow_map) {
-    return texture( sampler2D( shadow_map, my_sampler ), coords_shadow_map.xy ).r;
+    return texture( sampler2D( shadow_map, shadow_sampler ), coords_shadow_map.xy ).r;
 }
 
 float getLightDepthOnPosSampled(vec2 coords_shadow_map) {
@@ -92,9 +95,9 @@ vec3 fresnelSchlick(float cosTheta, vec3 F0) {
 }
 
 void main() {
-    const vec3 albedo = texture(sampler2D(albedo_tex, my_sampler), fragTexCoords).rgb;
-    vec3 tangent_space_normal = normalize(texture(sampler2D(normal_tex, my_sampler), fragTexCoords).xyz * vec3(2.0, 2.0, 1.0) - vec3(1.0, 1.0, 0.0));
-    const vec3 ao_roughness_metallic = texture(sampler2D(ao_roughness_metallic_tex, my_sampler), fragTexCoords).rgb;
+    const vec3 albedo = texture(sampler2D(albedo_tex, albedo_sampler), fragTexCoords).rgb;
+    vec3 tangent_space_normal = normalize(texture(sampler2D(normal_tex, normal_sampler), fragTexCoords).xyz * vec3(2.0, 2.0, 1.0) - vec3(1.0, 1.0, 0.0));
+    const vec3 ao_roughness_metallic = texture(sampler2D(ao_roughness_metallic_tex, arm_sampler), fragTexCoords).rgb;
     const float ao          = ao_roughness_metallic.r;
     const float roughness   = ao_roughness_metallic.g;
     const float metallic    = ao_roughness_metallic.b;

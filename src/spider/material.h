@@ -21,6 +21,7 @@ typedef struct _SPUboMaterialProperties {
 
 typedef struct SPMaterial {
     struct {
+        WGPUBindGroup uniform;
         WGPUBindGroup vert;
         WGPUBindGroup frag;
     } bind_groups;

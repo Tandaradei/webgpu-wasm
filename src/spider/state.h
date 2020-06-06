@@ -7,8 +7,9 @@
 #include "mesh.h"
 #include "material.h"
 #include "scene_node.h"
-#include "pipelines.h"
+#include "render_pipeline.h"
 #include "light.h"
+#include "imgui_impl_spider.h"
 
 #define _SP_MATERIAL_POOL_DEFAULT 8
 #define _SP_MESH_POOL_DEFAULT 256
@@ -43,6 +44,8 @@ typedef struct SPInitDesc {
     const SPCamera camera;
 
     SPPoolsDesc pools;
+
+    bool show_stats;
 } SPInitDesc;
 
 typedef struct _SPPools {
@@ -133,10 +136,13 @@ typedef struct _SPState {
         _SPMaterialTexture ao;
     } default_textures;
 
+    _SPImGuiState imgui_state;
+    
+    bool show_stats;
+
+    WGPUBindGroup shadow_bind_group;
+
 } _SPState;
-
-#define _SP_GET_DEFAULT_IF_ZERO(value, default_value) value ? value : default_value
-
 
 /* 
 Initializes the application and creates all static resources
@@ -149,13 +155,12 @@ Releases all remaining resources and frees allocated data
 void spShutdown(void);
 /* 
 Updates the model, view and projection matrices and copies them
-in a mapped staging buffer
+in their respective buffers buffer
 */
-void spUpdate(void);
+void spUpdate(float delta_time);
 /*
 Records the commands for the GPU and submits them
-Includes copying from staging to GPU-only buffers
-Draws all instances created with spCreateInstance
+Draws all valid RenderMeshes
 */
 void spRender(void);
 
@@ -201,6 +206,7 @@ Creates the shadow map render pipeline with all it's subresources
 void _spCreateShadowMapRenderPipeline();
 /*
 Creates the mipmaps compute pipeline with all it's subresources
+TODO: Implement
 */
 void _spCreateMipmapsComputePipeline();
 
@@ -232,7 +238,7 @@ void _spUpdateProjection(void);
 /*
 Calls all internal updates
 */
-void _spUpdate(void);
+void _spUpdate(float delta_time);
 /*
 Creates a command buffer from the recorded commands
 and submits it to the queue
@@ -241,7 +247,7 @@ Recreates the command encoder
 void _spSubmit(void);
 
 /*
-Creates a list for each material with all the scene nodes using the material
+Creates a list for each Material with all the RenderMeshes using the Material
 */
 void _spSortRenderMeshes(void);
 

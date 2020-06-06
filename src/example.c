@@ -36,7 +36,7 @@ void createObjects(void) {
             },
         }
     );
-    SPIDER_ASSERT(spot_light_id.id != SP_INVALID_ID);
+    SP_ASSERT(spot_light_id.id != SP_INVALID_ID);
 
     SPSceneNodeID sponza_node_id = spLoadGltf("assets/gltf/Sponza/Sponza.gltf");
 }
@@ -75,7 +75,7 @@ void frame(void) {
         }
     }
 
-    spUpdate();
+    spUpdate(delta_time_s);
     spRender();
 }
 
@@ -110,6 +110,7 @@ int main() {
             .lights = 1,
             .scene_nodes = 1024,
         },
+        .show_stats = true,
     });
 
     createObjects();

@@ -10,6 +10,7 @@
 #include "scene_node.h"
 #include "state.h"
 #include "gltf_load.h"
+#include "imgui_impl_spider.h"
 
 _SPState _sp_state;
 

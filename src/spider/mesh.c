@@ -45,41 +45,41 @@ SPMeshID spCreateMesh(const SPMeshDesc* desc) {
     return mesh_id;
 }
 
-SPMeshID spCreateMeshFromInit(const SPMeshInitializer* init) {
+SPMeshID spCreateMeshFromInit(const SPMeshInitializerDesc* desc) {
     typedef struct Element {
         uint16_t v;
         uint16_t t;
     } Element;
     
-    vec3* normals = calloc(init->vertices.count, sizeof *normals);
+    vec3* normals = calloc(desc->vertices.count, sizeof *normals);
     
-    Element* elements = calloc(init->faces.count * 3, sizeof *elements);
+    Element* elements = calloc(desc->faces.count * 3, sizeof *elements);
     uint16_t vertex_count = 0;
-    uint16_t* indices = SPIDER_MALLOC(sizeof *indices * init->faces.count * 3);
+    uint16_t* indices = SP_MALLOC(sizeof *indices * desc->faces.count * 3);
     uint32_t index_count = 0;
 
-    for(uint32_t f = 0; f < init->faces.count; f++) {
+    for(uint32_t f = 0; f < desc->faces.count; f++) {
         vec3 face_normal = {0.0f, 0.0f, 0.0f};
         vec3 v01, v02;
         glm_vec3_sub(
-            init->vertices.data[init->faces.data[f].vertex_indices[1]],
-            init->vertices.data[init->faces.data[f].vertex_indices[0]],
+            desc->vertices.data[desc->faces.data[f].vertex_indices[1]],
+            desc->vertices.data[desc->faces.data[f].vertex_indices[0]],
             v01
         );
         glm_vec3_sub(
-            init->vertices.data[init->faces.data[f].vertex_indices[2]],
-            init->vertices.data[init->faces.data[f].vertex_indices[0]],
+            desc->vertices.data[desc->faces.data[f].vertex_indices[2]],
+            desc->vertices.data[desc->faces.data[f].vertex_indices[0]],
             v02
         );
         glm_cross(v01, v02, face_normal);
         glm_vec3_normalize(face_normal);
         DEBUG_PRINT(DEBUG_PRINT_MESH, "face %2d -> n: %f, %f, %f\n", f, face_normal[0], face_normal[1], face_normal[2]);
         for(uint8_t i = 0; i < 3; i++) {
-            uint16_t v = init->faces.data[f].vertex_indices[i];
-            uint16_t t = init->faces.data[f].tex_coord_indices[i];
+            uint16_t v = desc->faces.data[f].vertex_indices[i];
+            uint16_t t = desc->faces.data[f].tex_coord_indices[i];
 
-            float d01 = glm_vec3_distance2(init->vertices.data[v], init->vertices.data[init->faces.data[f].vertex_indices[(i + 1) % 3]]);
-            float d02 = glm_vec3_distance2(init->vertices.data[v], init->vertices.data[init->faces.data[f].vertex_indices[(i + 2) % 3]]);
+            float d01 = glm_vec3_distance2(desc->vertices.data[v], desc->vertices.data[desc->faces.data[f].vertex_indices[(i + 1) % 3]]);
+            float d02 = glm_vec3_distance2(desc->vertices.data[v], desc->vertices.data[desc->faces.data[f].vertex_indices[(i + 2) % 3]]);
             float max_distance = fmax(d01, d02);
             float scale_factor = 1.0f / max_distance;
             vec3 normal_add = {0.0f, 0.0f, 0.0f};
@@ -100,14 +100,14 @@ SPMeshID spCreateMeshFromInit(const SPMeshInitializer* init) {
         }
     }
 
-    for(uint16_t v = 0; v < init->vertices.count; v++) {
+    for(uint16_t v = 0; v < desc->vertices.count; v++) {
         glm_vec3_normalize(normals[v]);
     }
     
-    SPVertex* vertices = SPIDER_MALLOC(sizeof *vertices * init->faces.count * 3);
+    SPVertex* vertices = SP_MALLOC(sizeof *vertices * desc->faces.count * 3);
     for(uint16_t i = 0; i < vertex_count; i++) {
-        memcpy(vertices[i].pos, init->vertices.data[elements[i].v], sizeof vertices[i].pos);
-        memcpy(vertices[i].tex_coords, init->tex_coords.data[elements[i].t], sizeof vertices[i].tex_coords);
+        memcpy(vertices[i].pos, desc->vertices.data[elements[i].v], sizeof vertices[i].pos);
+        memcpy(vertices[i].tex_coords, desc->tex_coords.data[elements[i].t], sizeof vertices[i].tex_coords);
         memcpy(vertices[i].normal, normals[elements[i].v], sizeof vertices[i].normal);
         memcpy(vertices[i].tangent , &(vec3){0.0f, 0.0f, 0.0f}, sizeof vertices[i].tangent);
     }
@@ -141,12 +141,6 @@ SPMeshID spCreateMeshFromInit(const SPMeshInitializer* init) {
             f * (deltaV2 * e01[0] - deltaV1 * e02[0]),
             f * (deltaV2 * e01[1] - deltaV1 * e02[1]),
             f * (deltaV2 * e01[2] - deltaV1 * e02[2])
-        };
-
-        vec3 bitangent = {
-            f * (-deltaU2 * e01[0] - deltaU1 * e02[0]),
-            f * (-deltaU2 * e01[1] - deltaU1 * e02[1]),
-            f * (-deltaU2 * e01[2] - deltaU1 * e02[2])
         };
 
         glm_vec3_add(v0->tangent, tangent, v0->tangent);

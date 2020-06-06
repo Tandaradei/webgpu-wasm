@@ -12,15 +12,15 @@ If you have a WebGPU compatible browser (https://github.com/gpuweb/gpuweb/wiki/I
 ## 2020-06-01
 ![Sponza scene imported from glTF file](demo/state_of_work_20200601.png)
 * Added SceneNode tree structure for scene hierarchy
-* Improved glTF loading further, to load node transformations and an arbitary numbers of nodes / meshes / primitives
+* Improved glTF loading further, to load node transformations and an arbitary numbers of nodes / meshes / primitives / materials
 * Changed scene to Sponza which is loaded from glTF consisting of 1 node / 1 mesh / 103 primitives and 25 materials using a total of 69 textures
 ## 2020-05-24
 ![All objects imported from glTF files](demo/state_of_work_20200524.png)
-* Streamlined glTF loading, so that multiple (simple 1 mesh/ 1 primitive) glTF files can be loaded now
-* Improved PBR shader
+* Streamlined glTF loading, so that multiple simple (1 mesh/ 1 primitive / 1 material) glTF files can be loaded now
+* Improved PBR shader slightly (normals from normal maps were off)
 ## 2020-05-07
 ![Avocado imported from glTF file](demo/state_of_work_20200507.png)
-* Avocado model imported from a (simple 1 mesh/ 1 primitive)glTF file (using cgltf to parse the JSON)
+* Avocado model imported from a simple (1 mesh / 1 primitive / 1 material) glTF file (using cgltf to parse the JSON)
 ## 2020-04-08
 ![Test scene](demo/state_of_work_20200408.png)
 * Same scene but now with PBR textures (diffuse, metalness, roughness, normal) and adequate lighting

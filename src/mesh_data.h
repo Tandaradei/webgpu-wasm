@@ -29,18 +29,18 @@ SPTriangle plane_faces[] = {
     },
 };
 
-const SPMeshInitializer plane = {
+const SPMeshInitializerDesc plane = {
     .vertices = {
         .data = plane_vertices,
-        .count = ARRAY_LEN(plane_vertices),
+        .count = SP_ARRAY_LEN(plane_vertices),
     },
     .tex_coords = {
         .data = plane_tex_coords,
-        .count = ARRAY_LEN(plane_tex_coords),
+        .count = SP_ARRAY_LEN(plane_tex_coords),
     },
     .faces = {
         .data = plane_faces,
-        .count = ARRAY_LEN(plane_faces)
+        .count = SP_ARRAY_LEN(plane_faces)
     }
 };
 
@@ -119,18 +119,18 @@ SPTriangle cube_faces[] = {
     },
 };
 
-const SPMeshInitializer cube = {
+const SPMeshInitializerDesc cube = {
     .vertices = {
         .data = cube_vertices,
-        .count = ARRAY_LEN(cube_vertices),
+        .count = SP_ARRAY_LEN(cube_vertices),
     },
     .tex_coords = {
         .data = cube_tex_coords,
-        .count = ARRAY_LEN(cube_tex_coords),
+        .count = SP_ARRAY_LEN(cube_tex_coords),
     },
     .faces = {
         .data = cube_faces,
-        .count = ARRAY_LEN(cube_faces)
+        .count = SP_ARRAY_LEN(cube_faces)
     }
 };
 

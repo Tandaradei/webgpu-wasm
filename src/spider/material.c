@@ -59,7 +59,7 @@ SPMaterialID spCreateMaterial(const SPMaterialDesc* desc) {
         }
     };
 
-    _spCreateAndLoadTextures(image_descs, ARRAY_LEN(image_descs));
+    _spCreateAndLoadTextures(image_descs, SP_ARRAY_LEN(image_descs));
 
     WGPUSamplerDescriptor sampler_desc = {
         .addressModeU = WGPUAddressMode_Repeat,
@@ -76,7 +76,7 @@ SPMaterialID spCreateMaterial(const SPMaterialDesc* desc) {
     material->sampler = wgpuDeviceCreateSampler(_sp_state.device, &sampler_desc);
     DEBUG_PRINT(DEBUG_PRINT_TYPE_CREATE_MATERIAL, "mat_creation: created sampler\n");
     
-    WGPUBindGroupEntry vert_bindings[] = {
+    WGPUBindGroupEntry uniform_bindings[] = {
         {
             .binding = 0,
             .buffer = _sp_state.buffers.uniform.model,
@@ -92,26 +92,45 @@ SPMaterialID spCreateMaterial(const SPMaterialDesc* desc) {
             .size = sizeof(_SPUboCamera),
             .sampler = NULL,
             .textureView = NULL,
+        },
+        {
+            .binding = 2,
+            .buffer = _sp_state.buffers.uniform.light,
+            .offset = 0,
+            .size = sizeof(_SPUboCamera),
+            .sampler = NULL,
+            .textureView = NULL,
         }
     };
 
+    WGPUBindGroupDescriptor uniform_bg_desc = {
+        .layout = _sp_state.pipelines.render.forward.uniform_bind_group_layout,
+        .entryCount = SP_ARRAY_LEN(uniform_bindings),
+        .entries = uniform_bindings
+    };
+    material->bind_groups.uniform = wgpuDeviceCreateBindGroup(_sp_state.device, &uniform_bg_desc);
+    DEBUG_PRINT(DEBUG_PRINT_TYPE_CREATE_MATERIAL, "mat_creation: created uniform bind group\n");
+
+    WGPUBindGroupEntry vert_bindings[] = {};
     WGPUBindGroupDescriptor vert_bg_desc = {
         .layout = _sp_state.pipelines.render.forward.vert.bind_group_layout,
-        .entryCount = ARRAY_LEN(vert_bindings),
+        .entryCount = SP_ARRAY_LEN(vert_bindings),
         .entries = vert_bindings
     };
     material->bind_groups.vert = wgpuDeviceCreateBindGroup(_sp_state.device, &vert_bg_desc);
     DEBUG_PRINT(DEBUG_PRINT_TYPE_CREATE_MATERIAL, "mat_creation: created vert bind group\n");
-    SPIDER_ASSERT(_sp_state.pools.light.info.size > 0 && _sp_state.pools.light.data[1].depth_view);
+
+
+    SP_ASSERT(_sp_state.pools.light.info.size > 0 && _sp_state.pools.light.data[1].depth_view);
     
     WGPUBindGroupEntry frag_bindings[] = {
         {
             .binding = 0,
-            .buffer = _sp_state.buffers.uniform.light,
+            .buffer = NULL,
             .offset = 0,
-            .size = sizeof(_SPUboLight),
+            .size = 0,
             .sampler = NULL,
-            .textureView = NULL,
+            .textureView = material->albedo.view,
         },
         {
             .binding = 1,
@@ -127,15 +146,15 @@ SPMaterialID spCreateMaterial(const SPMaterialDesc* desc) {
             .offset = 0,
             .size = 0,
             .sampler = NULL,
-            .textureView = material->albedo.view,
+            .textureView = material->normal.view ? material->normal.view :_sp_state.default_textures.normal.view,
         },
         {
             .binding = 3,
             .buffer = NULL,
             .offset = 0,
             .size = 0,
-            .sampler = NULL,
-            .textureView = material->normal.view ? material->normal.view :_sp_state.default_textures.normal.view,
+            .sampler = material->sampler,
+            .textureView = NULL,
         },
         {
             .binding = 4,
@@ -150,13 +169,29 @@ SPMaterialID spCreateMaterial(const SPMaterialDesc* desc) {
             .buffer = NULL,
             .offset = 0,
             .size = 0,
+            .sampler = material->sampler,
+            .textureView = NULL,
+        },
+        {
+            .binding = 6,
+            .buffer = NULL,
+            .offset = 0,
+            .size = 0,
             .sampler = NULL,
             .textureView = _sp_state.pools.light.data[1].depth_view, // TODO: currently just 1 light supported
+        },
+        {
+            .binding = 7,
+            .buffer = NULL,
+            .offset = 0,
+            .size = 0,
+            .sampler = material->sampler,
+            .textureView = NULL,
         },
     };
     WGPUBindGroupDescriptor frag_bg_desc = {
         .layout = _sp_state.pipelines.render.forward.frag.bind_group_layout,
-        .entryCount = ARRAY_LEN(frag_bindings),
+        .entryCount = SP_ARRAY_LEN(frag_bindings),
         .entries = frag_bindings
     };
     material->bind_groups.frag = wgpuDeviceCreateBindGroup(_sp_state.device, &frag_bg_desc);
@@ -211,7 +246,7 @@ void _spCreateAndLoadTextures(_SPTextureViewFromImageDescriptor descriptors[], c
         if(!pixel_data) {
             DEBUG_PRINT(DEBUG_PRINT_WARNING, "Couldn't load '%s'\n", file);
         }
-        SPIDER_ASSERT(pixel_data);
+        SP_ASSERT(pixel_data);
         int comps = comp_map[read_comps];
         DEBUG_PRINT(DEBUG_PRINT_WARNING, "loaded image %s (%d, %d, %d / %d)\n", file, width, height, read_comps, comps);
 
@@ -240,7 +275,7 @@ void _spCreateAndLoadTextures(_SPTextureViewFromImageDescriptor descriptors[], c
         };
 
         WGPUCreateBufferMappedResult result = wgpuDeviceCreateBufferMapped(_sp_state.device, &buffer_desc);
-        SPIDER_ASSERT(result.data && result.dataLength == width * height * comps);
+        SP_ASSERT(result.data && result.dataLength == width * height * comps);
         memcpy(result.data, pixel_data, result.dataLength);
         stbi_image_free(pixel_data);
         wgpuBufferUnmap(result.buffer);

@@ -10,11 +10,12 @@
 
 #include <cglm/cglm.h>
 
-#define SPIDER_ASSERT(assertion) assert(assertion)
-#define SPIDER_MALLOC(size) malloc(size)
-#define ARRAY_LEN(arr) sizeof(arr) / sizeof(arr[0])
+#define SP_ASSERT(assertion) assert(assertion)
+#define SP_MALLOC(size) malloc(size)
+#define SP_ARRAY_LEN(arr) sizeof(arr) / sizeof(arr[0])
 
 #define _SP_RELEASE_RESOURCE(Type, Name) if(Name) {wgpu##Type##Release(Name); Name = NULL;}
+#define _SP_GET_DEFAULT_IF_ZERO(value, default_value) value ? value : default_value
 
 #define SP_INVALID_ID (0)
 

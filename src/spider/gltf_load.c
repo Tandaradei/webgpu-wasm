@@ -20,19 +20,20 @@ SPSceneNodeID spLoadGltf(const char* file) {
 
         // cache materials - use material pointer as identifier
         uint32_t material_count = data->materials_count;
-        SPMaterialID* material_map = SPIDER_MALLOC(sizeof(SPMaterialID) * material_count);
-        cgltf_material** mat_ptr_to_index = SPIDER_MALLOC(sizeof(cgltf_material*) * material_count);
+        SPMaterialID* material_map = SP_MALLOC(sizeof(SPMaterialID) * material_count);
+        cgltf_material** mat_ptr_to_index = SP_MALLOC(sizeof(cgltf_material*) * material_count);
 
         for(uint32_t mat = 0; mat < material_count; mat++) {
             DEBUG_PRINT(DEBUG_PRINT_WARNING, "Load material %d\n", mat);
             cgltf_material* material =&data->materials[mat];
             mat_ptr_to_index[mat] = material;
             SPMaterialID mat_id = _spLoadMaterialFromGltf(material, file);
-            SPIDER_ASSERT(mat_id.id);
+            SP_ASSERT(mat_id.id);
             material_map[mat] = mat_id;
         }
 
         cgltf_result buffers_result = cgltf_load_buffers(&options, data, file);
+        SP_ASSERT(buffers_result == cgltf_result_success);
 
         uint32_t mesh_node_count = 0;
         uint32_t prim_node_count = 0;
@@ -44,7 +45,7 @@ SPSceneNodeID spLoadGltf(const char* file) {
                     .rot = {0.0f, 0.0f, 0.0f},
                     .scale = {1.0f, 1.0f, 1.0f}
                 },
-                .parent = SP_INVALID_ID
+                .parent = {SP_INVALID_ID}
             });
         }
 
@@ -89,9 +90,9 @@ SPSceneNodeID spLoadGltf(const char* file) {
                 }
                 if(mat < material_count) {
                     SPMaterialID material_id = material_map[mat];
-                    SPIDER_ASSERT(mesh_id.id && material_id.id);
+                    SP_ASSERT(mesh_id.id && material_id.id);
                     if(mesh_id.id != SP_INVALID_ID && material_id.id != SP_INVALID_ID) {
-                        SPSceneNodeID prim_node_id = spCreateRenderMeshSceneNode(&(SPRenderMeshSceneNodeDesc){
+                        spCreateRenderMeshSceneNode(&(SPRenderMeshSceneNodeDesc){
                             .mesh = mesh_id,
                             .material = material_id,
                             .transform = &(SPTransform) {
@@ -116,15 +117,15 @@ SPSceneNodeID spLoadGltf(const char* file) {
 }
 
 SPMeshID _spLoadMeshPrimitiveFromGltf(const cgltf_primitive* prim, const char* gltf_path) {
-    SPIDER_ASSERT(prim && gltf_path);
+    SP_ASSERT(prim && gltf_path);
     SPMeshID mesh_id = {SP_INVALID_ID};
 
     if(prim->attributes_count > 0) {
         uint16_t vertex_count = prim->attributes[0].data->count;
         uint16_t index_count = prim->indices->count;
         DEBUG_PRINT(DEBUG_PRINT_GLTF_LOAD, "%s: found %d vertices and %d indices\n", gltf_path, vertex_count, index_count);
-        SPVertex* vertex_data = SPIDER_MALLOC(sizeof (SPVertex) * vertex_count);
-        uint16_t* index_data = SPIDER_MALLOC(sizeof (uint16_t) * index_count);
+        SPVertex* vertex_data = SP_MALLOC(sizeof (SPVertex) * vertex_count);
+        uint16_t* index_data = SP_MALLOC(sizeof (uint16_t) * index_count);
         memcpy(index_data, &prim->indices->buffer_view->buffer->data[prim->indices->buffer_view->offset], sizeof (uint16_t) * index_count);
         for(uint32_t attr_index = 0; attr_index < prim->attributes_count; attr_index++) {
             const cgltf_attribute* attr = &prim->attributes[attr_index];
@@ -188,7 +189,7 @@ SPMeshID _spLoadMeshPrimitiveFromGltf(const cgltf_primitive* prim, const char* g
 }
 
 SPMaterialID _spLoadMaterialFromGltf(const cgltf_material* mat, const char* gltf_path) {
-    SPIDER_ASSERT(mat && gltf_path);
+    SP_ASSERT(mat && gltf_path);
     SPMaterialID mat_id = {0};
     char albedo[100] = {0};
     char* albedo_ptr = NULL;

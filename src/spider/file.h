@@ -5,7 +5,7 @@
 
 typedef struct _SPFileReadResult {
     uint32_t size;
-    char* data;
+    uint8_t* data;
 } _SPFileReadResult;
 
 /*
