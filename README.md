@@ -9,6 +9,13 @@ To further support this point, this project is entirely written in C99 and uses 
 If you have a WebGPU compatible browser (https://github.com/gpuweb/gpuweb/wiki/Implementation-Status) you can watch the most recent demo live at https://tandaradei.github.io/
 
 # State of Work
+## 2020-06-08
+![Dear ImGui windows on top of rendered scene](demo/state_of_work_20200608.png)
+* Added backend for Dear ImGui (via cimgui C bindings)
+* Added input handling
+    * Used for UI
+    * Used for camera movement in the scene
+* Big refactoring of RenderPipelines
 ## 2020-06-01
 ![Sponza scene imported from glTF file](demo/state_of_work_20200601.png)
 * Added SceneNode tree structure for scene hierarchy
