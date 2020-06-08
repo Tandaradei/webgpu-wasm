@@ -6,14 +6,16 @@
 #include "debug.h"
 #include "shader.h"
 #include "buffer.h"
+#include "input.h"
 #include "state.h"
 
 extern _SPState _sp_state;
 
 void _spImGuiInit(const SPInitImGuiDesc* desc) {
-	_sp_state.imgui_state.max_vertices = _SP_GET_DEFAULT_IF_ZERO(desc->max_vertices, _SP_IMGUI_MAX_VERTICES_DEFAULT);
-	_sp_state.imgui_state.display_size.width = desc->display_size.width;
-	_sp_state.imgui_state.display_size.height = desc->display_size.height;
+	_sp_state.imgui.max_vertices = _SP_GET_DEFAULT_IF_ZERO(desc->max_vertices, _SP_IMGUI_MAX_VERTICES_DEFAULT);
+	_sp_state.imgui.max_cmd_lists = _SP_GET_DEFAULT_IF_ZERO(desc->max_cmd_lists, _SP_IMGUI_MAX_CMD_LISTS_DEFAULT);
+	_sp_state.imgui.display_size.width = desc->display_size.width;
+	_sp_state.imgui.display_size.height = desc->display_size.height;
 
 	igCreateContext(NULL);
 	igStyleColorsDark(igGetStyle());
@@ -21,15 +23,15 @@ void _spImGuiInit(const SPInitImGuiDesc* desc) {
 	ImFontAtlas_AddFontDefault(io->Fonts, NULL);
 	io->BackendFlags |= ImGuiBackendFlags_RendererHasVtxOffset;
 
-	_sp_state.imgui_state.vertex_buffer = _spCreateGpuBuffer(&(_SPGpuBufferDesc){
+	_sp_state.imgui.vertex_buffer = _spCreateGpuBuffer(&(_SPGpuBufferDesc){
 		.label = "imgui-vertex-buffer",
 		.usage = WGPUBufferUsage_Vertex | WGPUBufferUsage_CopyDst,
-		.size = _sp_state.imgui_state.max_vertices * sizeof(ImDrawVert),
+		.size = _sp_state.imgui.max_vertices * sizeof(ImDrawVert),
 	});
-	_sp_state.imgui_state.index_buffer = _spCreateGpuBuffer(&(_SPGpuBufferDesc){
+	_sp_state.imgui.index_buffer = _spCreateGpuBuffer(&(_SPGpuBufferDesc){
 		.label = "imgui-index-buffer",
 		.usage = WGPUBufferUsage_Index | WGPUBufferUsage_CopyDst,
-		.size = _sp_state.imgui_state.max_vertices * 3 * sizeof(ImDrawIdx),
+		.size = _sp_state.imgui.max_vertices * 3 * sizeof(ImDrawIdx),
 	});
 
 	// Load font texture into WGPUTexture
@@ -57,8 +59,8 @@ void _spImGuiInit(const SPInitImGuiDesc* desc) {
 			.sampleCount = 1,
 		};
 
-		_sp_state.imgui_state.font_texture = wgpuDeviceCreateTexture(_sp_state.device, &texture_desc);
-		SP_ASSERT(_sp_state.imgui_state.font_texture);
+		_sp_state.imgui.font_texture = wgpuDeviceCreateTexture(_sp_state.device, &texture_desc);
+		SP_ASSERT(_sp_state.imgui.font_texture);
 
 		WGPUBufferDescriptor buffer_desc = {
 			.usage = WGPUBufferUsage_CopySrc,
@@ -78,7 +80,7 @@ void _spImGuiInit(const SPInitImGuiDesc* desc) {
 		};
 
 		WGPUTextureCopyView texture_copy_view = {
-            .texture = _sp_state.imgui_state.font_texture,
+            .texture = _sp_state.imgui.font_texture,
             .mipLevel = 0,
             .arrayLayer = 0,
             .origin = {0, 0, 0},
@@ -104,8 +106,8 @@ void _spImGuiInit(const SPInitImGuiDesc* desc) {
 			.aspect = WGPUTextureAspect_All,
 		};
 
-		_sp_state.imgui_state.font_texture_view = wgpuTextureCreateView(_sp_state.imgui_state.font_texture, &texture_view_desc);
-		SP_ASSERT(_sp_state.imgui_state.font_texture_view);
+		_sp_state.imgui.font_texture_view = wgpuTextureCreateView(_sp_state.imgui.font_texture, &texture_view_desc);
+		SP_ASSERT(_sp_state.imgui.font_texture_view);
 
 		WGPUSamplerDescriptor sampler_desc = {
 			.label = "imgui-font-sampler",
@@ -120,11 +122,11 @@ void _spImGuiInit(const SPInitImGuiDesc* desc) {
 			.compare = WGPUCompareFunction_Undefined,
 		};
 
-		_sp_state.imgui_state.font_sampler = wgpuDeviceCreateSampler(_sp_state.device, &sampler_desc);
-		SP_ASSERT(_sp_state.imgui_state.font_sampler);
+		_sp_state.imgui.font_sampler = wgpuDeviceCreateSampler(_sp_state.device, &sampler_desc);
+		SP_ASSERT(_sp_state.imgui.font_sampler);
 	}
 	// Pipeline creation
-	_sp_state.imgui_state.pipeline = _spCreateRenderPipeline(&(_SPRenderPipelineDesc){
+	_sp_state.imgui.pipeline = _spCreateRenderPipeline(&(_SPRenderPipelineDesc){
 		.vertex_buffers = {
 			{
 				.array_stride = sizeof(ImDrawVert),
@@ -214,7 +216,7 @@ void _spImGuiInit(const SPInitImGuiDesc* desc) {
 			(float)desc->display_size.width, 
 			(float)desc->display_size.height
 		};
-		_sp_state.imgui_state.uniform_buffer = _spCreateGpuBuffer(&(_SPGpuBufferDesc){
+		_sp_state.imgui.uniform_buffer = _spCreateGpuBuffer(&(_SPGpuBufferDesc){
 			.label = "imgui-uniform-buffer",
 			.usage = WGPUBufferUsage_Uniform,
 			.size = sizeof(ImVec2),
@@ -229,18 +231,18 @@ void _spImGuiInit(const SPInitImGuiDesc* desc) {
 				.binding = 0,
 				.offset = 0,
 				.size = sizeof(ImVec2),
-				.buffer = _sp_state.imgui_state.uniform_buffer.buffer,
+				.buffer = _sp_state.imgui.uniform_buffer.buffer,
 			}
 		};
 
 		WGPUBindGroupDescriptor bg_desc = {
-			.layout = _sp_state.imgui_state.pipeline.uniform_bind_group_layout,
+			.layout = _sp_state.imgui.pipeline.uniform_bind_group_layout,
 			.entryCount = SP_ARRAY_LEN(bg_entries),
 			.entries = bg_entries,
 		};
 
-		_sp_state.imgui_state.bind_groups.uniform = wgpuDeviceCreateBindGroup(_sp_state.device, &bg_desc);
-		SP_ASSERT(_sp_state.imgui_state.bind_groups.uniform);
+		_sp_state.imgui.bind_groups.uniform = wgpuDeviceCreateBindGroup(_sp_state.device, &bg_desc);
+		SP_ASSERT(_sp_state.imgui.bind_groups.uniform);
 	}
 
 	// Create vertex bind group
@@ -248,13 +250,13 @@ void _spImGuiInit(const SPInitImGuiDesc* desc) {
 		WGPUBindGroupEntry bg_entries[] = {};
 
 		WGPUBindGroupDescriptor bg_desc = {
-			.layout = _sp_state.imgui_state.pipeline.vert.bind_group_layout,
+			.layout = _sp_state.imgui.pipeline.vert.bind_group_layout,
 			.entryCount = SP_ARRAY_LEN(bg_entries),
 			.entries = bg_entries,
 		};
 
-		_sp_state.imgui_state.bind_groups.vert = wgpuDeviceCreateBindGroup(_sp_state.device, &bg_desc);
-		SP_ASSERT(_sp_state.imgui_state.bind_groups.vert);
+		_sp_state.imgui.bind_groups.vert = wgpuDeviceCreateBindGroup(_sp_state.device, &bg_desc);
+		SP_ASSERT(_sp_state.imgui.bind_groups.vert);
 	}
 
 	// Create fragment bind group
@@ -264,26 +266,53 @@ void _spImGuiInit(const SPInitImGuiDesc* desc) {
 				.binding = 0,
 				.offset = 0,
 				.size = 0,
-				.textureView = _sp_state.imgui_state.font_texture_view,
+				.textureView = _sp_state.imgui.font_texture_view,
 			},
 			{
 				.binding = 1,
 				.offset = 0,
 				.size = 0,
-				.sampler = _sp_state.imgui_state.font_sampler,
+				.sampler = _sp_state.imgui.font_sampler,
 			}
 		};
 
 		WGPUBindGroupDescriptor bg_desc = {
-			.layout = _sp_state.imgui_state.pipeline.frag.bind_group_layout,
+			.layout = _sp_state.imgui.pipeline.frag.bind_group_layout,
 			.entryCount = SP_ARRAY_LEN(bg_entries),
 			.entries = bg_entries,
 		};
 
-		_sp_state.imgui_state.bind_groups.frag = wgpuDeviceCreateBindGroup(_sp_state.device, &bg_desc);
-		SP_ASSERT(_sp_state.imgui_state.bind_groups.frag);
+		_sp_state.imgui.bind_groups.frag = wgpuDeviceCreateBindGroup(_sp_state.device, &bg_desc);
+		SP_ASSERT(_sp_state.imgui.bind_groups.frag);
 	}
 
+	// Setup CPU buffers for vertex and index updates
+	_sp_state.imgui.update.vertex.data = SP_MALLOC(_sp_state.imgui.max_vertices * sizeof(ImDrawVert));
+	_sp_state.imgui.update.vertex.offsets = SP_MALLOC(_sp_state.imgui.max_cmd_lists * sizeof(uint32_t));
+
+	_sp_state.imgui.update.index.data = SP_MALLOC(_sp_state.imgui.max_vertices * 3 * sizeof(ImDrawIdx));
+	_sp_state.imgui.update.index.offsets = SP_MALLOC(_sp_state.imgui.max_cmd_lists * sizeof(uint32_t));
+
+	io->KeyMap[ImGuiKey_Tab] 		= SPKey_Tab;
+	io->KeyMap[ImGuiKey_LeftArrow] 	= SPKey_ArrowLeft;
+	io->KeyMap[ImGuiKey_RightArrow] = SPKey_ArrowRight;
+	io->KeyMap[ImGuiKey_UpArrow] 	= SPKey_ArrowUp;
+	io->KeyMap[ImGuiKey_DownArrow] 	= SPKey_ArrowDown;
+	io->KeyMap[ImGuiKey_PageUp] 	= SPKey_PageUp;
+	io->KeyMap[ImGuiKey_PageDown] 	= SPKey_PageDown;
+	io->KeyMap[ImGuiKey_Home] 		= SPKey_Home;
+	io->KeyMap[ImGuiKey_End] 		= SPKey_End;
+	io->KeyMap[ImGuiKey_Delete] 	= SPKey_Delete;
+	io->KeyMap[ImGuiKey_Backspace] 	= SPKey_Backspace;
+	io->KeyMap[ImGuiKey_Space] 		= SPKey_Space;
+	io->KeyMap[ImGuiKey_Enter] 		= SPKey_Enter;
+	io->KeyMap[ImGuiKey_Escape] 	= SPKey_Escape;
+	io->KeyMap[ImGuiKey_A] 			= SPKey_A;
+	io->KeyMap[ImGuiKey_C] 			= SPKey_C;
+	io->KeyMap[ImGuiKey_V] 			= SPKey_V;
+	io->KeyMap[ImGuiKey_X] 			= SPKey_X;
+	io->KeyMap[ImGuiKey_Y] 			= SPKey_Y;
+	io->KeyMap[ImGuiKey_Z] 			= SPKey_Z;
 }
 
 void _spImGuiShutdown(_SPImGuiState* imgui) {
@@ -300,6 +329,11 @@ void _spImGuiShutdown(_SPImGuiState* imgui) {
 	_SP_RELEASE_RESOURCE(Buffer, 			imgui->uniform_buffer.buffer);
 	_SP_RELEASE_RESOURCE(BindGroup,			imgui->bind_groups.vert);
 	_SP_RELEASE_RESOURCE(BindGroup,			imgui->bind_groups.frag);
+
+	free(imgui->update.vertex.data);
+	free(imgui->update.vertex.offsets);
+	free(imgui->update.index.data);
+	free(imgui->update.index.offsets);
 }
 
 void _spImGuiNewFrame(uint32_t width, uint32_t height, float delta_time) {
@@ -309,7 +343,27 @@ void _spImGuiNewFrame(uint32_t width, uint32_t height, float delta_time) {
 	io->DisplaySize.y = (float)height;
 	io->DeltaTime = delta_time;
 
-	// TODO: add input handling
+	io->MousePos.x = _sp_state.input.mouse_position.x;
+	io->MousePos.y = _sp_state.input.mouse_position.y;
+
+	io->KeyAlt = _sp_state.input.modifiers & SPInputModifiers_Alt;
+	io->KeyCtrl = _sp_state.input.modifiers & SPInputModifiers_Control;
+	io->KeyShift = _sp_state.input.modifiers & SPInputModifiers_Shift;
+	io->KeyMods = 
+		((_sp_state.input.modifiers & SPInputModifiers_Alt) ? ImGuiKeyModFlags_Alt : 0) |
+		((_sp_state.input.modifiers & SPInputModifiers_Control) ? ImGuiKeyModFlags_Ctrl : 0) |
+		((_sp_state.input.modifiers & SPInputModifiers_Shift) ? ImGuiKeyModFlags_Shift : 0) |
+		((_sp_state.input.modifiers & SPInputModifiers_Meta) ? ImGuiKeyModFlags_Super : 0);
+	for(uint32_t key = 1; key < _SP_INPUT_KEY_COUNT; key++) {
+		io->KeysDown[key] = _spInputGetKeyState(&_sp_state.input, key) & SPKeyState_Pressed;
+	}
+	for(uint32_t button = 1; button < _SP_INPUT_MOUSE_BUTTON_COUNT; button++) {
+		io->MouseDown[button - 1] = _spInputGetMouseButtonState(&_sp_state.input, button) & SPMouseButtonState_Pressed;
+	}
+	if(_sp_state.input.utf8_code[0] >= 32) {
+		ImGuiIO_AddInputCharactersUTF8(io, _sp_state.input.utf8_code);
+	}
+	memset(_sp_state.input.utf8_code, 0, 32);
 
 	igNewFrame();
 }
@@ -325,13 +379,13 @@ void _spImGuiRender(WGPUTextureView view) {
 
 	// ----
 	// Update vertex and index buffers
-	ImDrawVert* vertex_data = SP_MALLOC(_sp_state.imgui_state.max_vertices * sizeof(ImDrawVert));
-	uint32_t* vertex_offsets = SP_MALLOC(draw_data->CmdListsCount * sizeof(uint32_t));
+	ImDrawVert* vertex_data = _sp_state.imgui.update.vertex.data;
+	uint32_t* vertex_offsets = _sp_state.imgui.update.vertex.offsets;
 	vertex_offsets[0] = 0;
 	uint32_t vertex_data_offset = 0;
 
-	ImDrawVert* index_data = SP_MALLOC(_sp_state.imgui_state.max_vertices * 3 * sizeof(ImDrawIdx));
-	uint32_t* index_offsets = SP_MALLOC(draw_data->CmdListsCount * sizeof(uint32_t));
+	ImDrawIdx* index_data = _sp_state.imgui.update.index.data;
+	uint32_t* index_offsets = _sp_state.imgui.update.index.offsets;
 	index_offsets[0] = 0;
 	uint32_t index_data_offset = 0;
 
@@ -380,10 +434,8 @@ void _spImGuiRender(WGPUTextureView view) {
 	const uint32_t index_data_size = index_data_offset;
 	SP_ASSERT(index_data_size % 4 == 0);
 
-	_spRecordCopyDataToBuffer(_sp_state.cmd_enc, _sp_state.imgui_state.vertex_buffer, 0, vertex_data, vertex_data_size);
-	free(vertex_data);
-	_spRecordCopyDataToBuffer(_sp_state.cmd_enc, _sp_state.imgui_state.index_buffer, 0, index_data, index_data_size);
-	free(index_data);
+	_spRecordCopyDataToBuffer(_sp_state.cmd_enc, _sp_state.imgui.vertex_buffer, 0, vertex_data, vertex_data_size);
+	_spRecordCopyDataToBuffer(_sp_state.cmd_enc, _sp_state.imgui.index_buffer, 0, index_data, index_data_size);
 	// ----
 
 	WGPURenderPassColorAttachmentDescriptor color_attachment = {
@@ -410,13 +462,13 @@ void _spImGuiRender(WGPUTextureView view) {
 	};
 	
 	WGPURenderPassEncoder pass_enc = wgpuCommandEncoderBeginRenderPass(_sp_state.cmd_enc, &render_pass);
-	wgpuRenderPassEncoderSetPipeline(pass_enc, _sp_state.imgui_state.pipeline.pipeline);
+	wgpuRenderPassEncoderSetPipeline(pass_enc, _sp_state.imgui.pipeline.pipeline);
 	const uint32_t dynamic_offsets_uniform[] = {0}; 
-	wgpuRenderPassEncoderSetBindGroup(pass_enc, 0, _sp_state.imgui_state.bind_groups.uniform, SP_ARRAY_LEN(dynamic_offsets_uniform), dynamic_offsets_uniform);
-	wgpuRenderPassEncoderSetBindGroup(pass_enc, 1, _sp_state.imgui_state.bind_groups.vert, 0, NULL);
-	wgpuRenderPassEncoderSetBindGroup(pass_enc, 2, _sp_state.imgui_state.bind_groups.frag, 0, NULL);
-	wgpuRenderPassEncoderSetIndexBuffer(pass_enc, _sp_state.imgui_state.index_buffer.buffer, 0, 0);
-	wgpuRenderPassEncoderSetVertexBuffer(pass_enc, 0, _sp_state.imgui_state.vertex_buffer.buffer, 0, 0);
+	wgpuRenderPassEncoderSetBindGroup(pass_enc, 0, _sp_state.imgui.bind_groups.uniform, SP_ARRAY_LEN(dynamic_offsets_uniform), dynamic_offsets_uniform);
+	wgpuRenderPassEncoderSetBindGroup(pass_enc, 1, _sp_state.imgui.bind_groups.vert, 0, NULL);
+	wgpuRenderPassEncoderSetBindGroup(pass_enc, 2, _sp_state.imgui.bind_groups.frag, 0, NULL);
+	wgpuRenderPassEncoderSetIndexBuffer(pass_enc, _sp_state.imgui.index_buffer.buffer, 0, 0);
+	wgpuRenderPassEncoderSetVertexBuffer(pass_enc, 0, _sp_state.imgui.vertex_buffer.buffer, 0, 0);
 	//wgpuRenderPassEncoderSetViewport(pass_enc, 0.0f, 0.0f, io->DisplaySize.x, io->DisplaySize.y, 1.0f, 0.0f);
 
 	uint32_t cmd_list_count = draw_data->CmdListsCount;
@@ -445,7 +497,4 @@ void _spImGuiRender(WGPUTextureView view) {
 
 	wgpuRenderPassEncoderEndPass(pass_enc);
 	_SP_RELEASE_RESOURCE(RenderPassEncoder, pass_enc);
-
-	free(vertex_offsets);
-	free(index_offsets);
 }

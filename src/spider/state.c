@@ -137,10 +137,17 @@ void spInit(const SPInitDesc* desc) {
 	});
 
 	_sp_state.show_stats = desc->show_stats;
+	emscripten_set_keydown_callback(EMSCRIPTEN_EVENT_TARGET_WINDOW, NULL, true, _spEmscriptenKeyCallback);
+	emscripten_set_keyup_callback(EMSCRIPTEN_EVENT_TARGET_WINDOW, NULL, true, _spEmscriptenKeyCallback);
+	emscripten_set_keypress_callback(EMSCRIPTEN_EVENT_TARGET_WINDOW, NULL, true, _spEmscriptenKeyCallback);
+
+	emscripten_set_mousedown_callback("#canvas", NULL, true, _spEmscriptenMouseCallback);
+	emscripten_set_mouseup_callback("#canvas", NULL, true, _spEmscriptenMouseCallback);
+	emscripten_set_mousemove_callback("#canvas", NULL, true, _spEmscriptenMouseCallback);
 }
 
 void spShutdown(void) {
-	_spImGuiShutdown(&_sp_state.imgui_state);
+	_spImGuiShutdown(&_sp_state.imgui);
 
 	for(uint32_t i = 0; i < _sp_state.pools.mesh.info.size; i++) {
 		SPMesh* mesh = &(_sp_state.pools.mesh.data[i]);
@@ -228,10 +235,41 @@ void spShutdown(void) {
 
 }
 
-void spUpdate(float delta_time) {
-	_spUpdate(delta_time);
+void spBeginUI(float delta_time) {
 	_spImGuiNewFrame(_sp_state.surface_size.width, _sp_state.surface_size.height, delta_time);
-	igShowMetricsWindow(&_sp_state.show_stats);
+}
+
+void spUpdate(float delta_time) {
+	_spInputResetKeyStates(&_sp_state.input);
+	_spUpdate(delta_time);
+	static bool input_open = true;
+	igBegin("Input Tester", &input_open, ImGuiWindowFlags_None);
+	if(igCollapsingHeaderTreeNodeFlags("Keyboard", ImGuiTreeNodeFlags_None)) {
+		igInputText("Text input", _sp_state.test_buffer, 100, ImGuiInputTextFlags_None, NULL, NULL);
+		igPushItemFlag(ImGuiItemFlags_Disabled, true);
+		for(uint32_t key = 1; key < _SP_INPUT_KEY_COUNT; key++) {
+			SPKeyState key_state = _spInputGetKeyState(&_sp_state.input, key);
+			bool is_pressed = key_state & SPKeyState_Pressed;
+			igCheckbox(_spInputGetStringForKey(key), &is_pressed);
+		}
+		igPopItemFlag();
+	}
+	if(igCollapsingHeaderTreeNodeFlags("Mouse", ImGuiTreeNodeFlags_None)) {
+		igPushItemFlag(ImGuiItemFlags_Disabled, true);
+		int mouse_pos[2] = {
+			_sp_state.input.mouse_position.x,
+			_sp_state.input.mouse_position.y
+		};
+		igSliderInt2("Position", mouse_pos, 0, _sp_state.surface_size.width, "%u");
+		for(uint32_t button = 1; button < _SP_INPUT_MOUSE_BUTTON_COUNT; button++) {
+			SPMouseButtonState button_state = _spInputGetMouseButtonState(&_sp_state.input, button);
+			bool is_pressed = button_state & SPMouseButtonState_Pressed;
+			igCheckbox(_spInputGetStringForMouseButton(button), &is_pressed);
+		}
+		igPopItemFlag();
+	}
+	igEnd();
+	//igShowMetricsWindow(&_sp_state.show_stats);
 }
 
 
@@ -412,8 +450,98 @@ SPLight* spGetLight(SPLightID light_id) {
 	return NULL;
 }
 
+SPKeyState spGetKeyState(SPKey key) {
+	return _spInputGetKeyState(&_sp_state.input, key);
+}
+bool spGetKeyPressed(SPKey key) {
+	return _spInputGetKeyState(&_sp_state.input, key) & SPKeyState_Pressed;
+}
+
+bool spGetKeyDown(SPKey key) {
+	return _spInputGetKeyState(&_sp_state.input, key) & SPKeyState_Down;
+}
+
+bool spGetKeyUp(SPKey key) {
+	return _spInputGetKeyState(&_sp_state.input, key) & SPKeyState_Up;
+}
+
+SPMouseButtonState spGetMouseButtonState(SPMouseButton button) {
+	return _spInputGetMouseButtonState(&_sp_state.input, button);
+}
+
+bool spGetMouseButtonPressed(SPMouseButton button) {
+	return _spInputGetMouseButtonState(&_sp_state.input, button) & SPMouseButtonState_Pressed;
+}
+
+bool spGetMouseButtonDown(SPMouseButton button) {
+	return _spInputGetMouseButtonState(&_sp_state.input, button) & SPMouseButtonState_Down;
+}
+
+bool spGetMouseButtonUp(SPMouseButton button) {
+	return _spInputGetMouseButtonState(&_sp_state.input, button) & SPMouseButtonState_Up;
+}
+
+uint32_t spGetMousePositionX() {
+	return _sp_state.input.mouse_position.x;
+}
+uint32_t spGetMousePositionY() {
+	return _sp_state.input.mouse_position.y;
+}
+
 void _spErrorCallback(WGPUErrorType type, char const * message, void * userdata) {
 	printf("[%d] error(%d): %s", _sp_state.frame_index, (int)type, message);
+}
+
+int _spEmscriptenKeyCallback(int eventType, const EmscriptenKeyboardEvent* keyEvent, void* userData) {
+	_sp_state.input.modifiers = 
+		(keyEvent->altKey ? SPInputModifiers_Alt : 0) |
+		(keyEvent->ctrlKey ? SPInputModifiers_Control : 0) |
+		(keyEvent->shiftKey ? SPInputModifiers_Shift : 0) |
+		(keyEvent->metaKey ? SPInputModifiers_Meta : 0);
+	if(eventType == EMSCRIPTEN_EVENT_KEYDOWN) {
+		SPKey key = _spInputGetKeyForString(keyEvent->code);
+		if(key == SPKey_None) {
+			return 0;
+		}
+		if(!keyEvent->repeat) {
+			_spInputSetKeyState(&_sp_state.input, key, SPKeyState_Down | SPKeyState_Pressed);
+		}
+	}
+	else if(eventType == EMSCRIPTEN_EVENT_KEYUP) {
+		SPKey key = _spInputGetKeyForString(keyEvent->code);
+		if(key == SPKey_None) {
+			return 0;
+		}
+		_spInputSetKeyState(&_sp_state.input, key, SPKeyState_Up);
+	}
+	else if(eventType == EMSCRIPTEN_EVENT_KEYPRESS) {
+		memcpy(_sp_state.input.utf8_code, keyEvent->key, 32);
+	}
+	return 0;
+}
+
+int _spEmscriptenMouseCallback(int eventType, const EmscriptenMouseEvent *mouseEvent, void *userData) {
+	if(eventType == EMSCRIPTEN_EVENT_MOUSEMOVE) {
+		_sp_state.input.mouse_position.x = mouseEvent->targetX;
+		_sp_state.input.mouse_position.y = mouseEvent->targetY;
+		return 0;
+	}
+	if(eventType == EMSCRIPTEN_EVENT_MOUSEDOWN || eventType == EMSCRIPTEN_EVENT_MOUSEUP) {
+		SPMouseButton button = _spInputGetMouseButtonForId(mouseEvent->button);
+		if(button == SPMouseButton_None) {
+			return 0;
+		}
+
+		if(eventType == EMSCRIPTEN_EVENT_MOUSEDOWN) {
+			_spInputSetMouseButtonState(&_sp_state.input, button, SPMouseButtonState_Down | SPMouseButtonState_Pressed);
+			return 1; // Event consumed
+		}
+		else if(eventType == EMSCRIPTEN_EVENT_MOUSEUP) {
+			_spInputSetMouseButtonState(&_sp_state.input, button, SPMouseButtonState_Up);
+			return 1; // Event consumed
+		}
+	}
+	return 0;
 }
 
 void _spCreateForwardRenderPipeline() {

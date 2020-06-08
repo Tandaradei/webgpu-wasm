@@ -19,6 +19,9 @@
 
 #define SP_INVALID_ID (0)
 
+#define REF(Type_Name) Type_Name[static 1]
+#define CONST_REF(Type_Name) const Type_Name[static 1]
+
 
 
 #endif // SPIDER_IMPL_H_

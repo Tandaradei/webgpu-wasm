@@ -42,6 +42,7 @@ set(SOURCE_FILES
     src/spider/shader.c
     src/spider/render_pipeline.c
     src/spider/buffer.c
+    src/spider/input.c
     external/cimgui/cimgui.cpp
     external/cimgui/imgui/imgui.cpp
     external/cimgui/imgui/imgui_draw.cpp

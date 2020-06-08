@@ -17,95 +17,99 @@ SPSceneNodeID spLoadGltf(const char* file) {
     
     if(result == cgltf_result_success) {
         DEBUG_PRINT(DEBUG_PRINT_GLTF_LOAD, "%s: parsed file\n", file);
-
-        // cache materials - use material pointer as identifier
-        uint32_t material_count = data->materials_count;
-        SPMaterialID* material_map = SP_MALLOC(sizeof(SPMaterialID) * material_count);
-        cgltf_material** mat_ptr_to_index = SP_MALLOC(sizeof(cgltf_material*) * material_count);
-
-        for(uint32_t mat = 0; mat < material_count; mat++) {
-            DEBUG_PRINT(DEBUG_PRINT_WARNING, "Load material %d\n", mat);
-            cgltf_material* material =&data->materials[mat];
-            mat_ptr_to_index[mat] = material;
-            SPMaterialID mat_id = _spLoadMaterialFromGltf(material, file);
-            SP_ASSERT(mat_id.id);
-            material_map[mat] = mat_id;
-        }
-
+        
         cgltf_result buffers_result = cgltf_load_buffers(&options, data, file);
-        SP_ASSERT(buffers_result == cgltf_result_success);
-
+        
         uint32_t mesh_node_count = 0;
         uint32_t prim_node_count = 0;
+        
+        if(buffers_result == cgltf_result_success) {
+            // cache materials - use material pointer as identifier
+            uint32_t material_count = data->materials_count;
+            SPMaterialID* material_map = SP_MALLOC(sizeof(SPMaterialID) * material_count);
+            cgltf_material** mat_ptr_to_index = SP_MALLOC(sizeof(cgltf_material*) * material_count);
 
-        if(data->nodes_count > 1) {
-            root_id = spCreateEmptySceneNode(&(SPEmptySceneNodeDesc){
-                .transform = &(SPTransform) {
+            for(uint32_t mat = 0; mat < material_count; mat++) {
+                DEBUG_PRINT(DEBUG_PRINT_WARNING, "Load material %d\n", mat);
+                cgltf_material* material =&data->materials[mat];
+                mat_ptr_to_index[mat] = material;
+                SPMaterialID mat_id = _spLoadMaterialFromGltf(material, file);
+                SP_ASSERT(mat_id.id);
+                material_map[mat] = mat_id;
+            }
+
+
+            if(data->nodes_count > 1) {
+                root_id = spCreateEmptySceneNode(&(SPEmptySceneNodeDesc){
+                    .transform = &(SPTransform) {
+                        .pos = {0.0f, 0.0f, 0.0f},
+                        .rot = {0.0f, 0.0f, 0.0f},
+                        .scale = {1.0f, 1.0f, 1.0f}
+                    },
+                    .parent = {SP_INVALID_ID}
+                });
+            }
+
+            for(uint32_t n = 0; n < data->nodes_count; n++) {
+                const cgltf_node* node = &data->nodes[n];
+                SPTransform transform = {
                     .pos = {0.0f, 0.0f, 0.0f},
                     .rot = {0.0f, 0.0f, 0.0f},
-                    .scale = {1.0f, 1.0f, 1.0f}
-                },
-                .parent = {SP_INVALID_ID}
-            });
-        }
-
-        for(uint32_t n = 0; n < data->nodes_count; n++) {
-            const cgltf_node* node = &data->nodes[n];
-            SPTransform transform = {
-                .pos = {0.0f, 0.0f, 0.0f},
-                .rot = {0.0f, 0.0f, 0.0f},
-                .scale = {1.0f, 1.0f, 1.0f},
-            };
-            if(node->has_translation) {
-                memcpy(transform.pos, node->translation, sizeof(vec3));
-            }
-            if(node->has_rotation) {
-                glm_quat_axis((float*)node->rotation, transform.rot);
-            }
-            if(node->has_scale) {
-                memcpy(transform.scale, node->scale, sizeof(vec3));
-            }
-            SPSceneNodeID node_id = spCreateEmptySceneNode(&(SPEmptySceneNodeDesc){
-                .transform = &transform,
-                .parent = root_id
-            });
-            if(root_id.id == SP_INVALID_ID) {
-                root_id = node_id;
-            }
-
-            const cgltf_mesh* mesh = node->mesh;
-            spSceneNodeSetChildrenCapacity(spGetSceneNode(node_id), mesh->primitives_count);
-
-            for(uint32_t p = 0; p < mesh->primitives_count; p++) {
-                const cgltf_primitive* prim = &mesh->primitives[p];
-
-                DEBUG_PRINT(DEBUG_PRINT_GLTF_LOAD, "Load primitive %d\n", p);
-                SPMeshID mesh_id = _spLoadMeshPrimitiveFromGltf(prim, file);
-                
-                DEBUG_PRINT(DEBUG_PRINT_GLTF_LOAD, "Created mesh %d\n", mesh_id.id);
-                // search for material in the list of pre-loaded materials
-                uint32_t mat = 0;
-                while(mat < material_count && mat_ptr_to_index[mat] != prim->material) {
-                    mat++;
+                    .scale = {1.0f, 1.0f, 1.0f},
+                };
+                if(node->has_translation) {
+                    memcpy(transform.pos, node->translation, sizeof(vec3));
                 }
-                if(mat < material_count) {
-                    SPMaterialID material_id = material_map[mat];
-                    SP_ASSERT(mesh_id.id && material_id.id);
-                    if(mesh_id.id != SP_INVALID_ID && material_id.id != SP_INVALID_ID) {
-                        spCreateRenderMeshSceneNode(&(SPRenderMeshSceneNodeDesc){
-                            .mesh = mesh_id,
-                            .material = material_id,
-                            .transform = &(SPTransform) {
-                                .pos = {0.0f, 0.0f, 0.0f},
-                                .rot = {0.0f, 0.0f, 0.0f},
-                                .scale = {1.0f, 1.0f, 1.0f}
-                            },
-                            .parent = node_id
-                        });
-                        prim_node_count++;
+                if(node->has_rotation) {
+                    glm_quat_axis((float*)node->rotation, transform.rot);
+                }
+                if(node->has_scale) {
+                    memcpy(transform.scale, node->scale, sizeof(vec3));
+                }
+                SPSceneNodeID node_id = spCreateEmptySceneNode(&(SPEmptySceneNodeDesc){
+                    .transform = &transform,
+                    .parent = root_id
+                });
+                if(root_id.id == SP_INVALID_ID) {
+                    root_id = node_id;
+                }
+
+                const cgltf_mesh* mesh = node->mesh;
+                spSceneNodeSetChildrenCapacity(spGetSceneNode(node_id), mesh->primitives_count);
+
+                for(uint32_t p = 0; p < mesh->primitives_count; p++) {
+                    const cgltf_primitive* prim = &mesh->primitives[p];
+
+                    DEBUG_PRINT(DEBUG_PRINT_GLTF_LOAD, "Load primitive %d\n", p);
+                    SPMeshID mesh_id = _spLoadMeshPrimitiveFromGltf(prim, file);
+                    
+                    DEBUG_PRINT(DEBUG_PRINT_GLTF_LOAD, "Created mesh %d\n", mesh_id.id);
+                    // search for material in the list of pre-loaded materials
+                    uint32_t mat = 0;
+                    while(mat < material_count && mat_ptr_to_index[mat] != prim->material) {
+                        mat++;
+                    }
+                    if(mat < material_count) {
+                        SPMaterialID material_id = material_map[mat];
+                        SP_ASSERT(mesh_id.id && material_id.id);
+                        if(mesh_id.id != SP_INVALID_ID && material_id.id != SP_INVALID_ID) {
+                            spCreateRenderMeshSceneNode(&(SPRenderMeshSceneNodeDesc){
+                                .mesh = mesh_id,
+                                .material = material_id,
+                                .transform = &(SPTransform) {
+                                    .pos = {0.0f, 0.0f, 0.0f},
+                                    .rot = {0.0f, 0.0f, 0.0f},
+                                    .scale = {1.0f, 1.0f, 1.0f}
+                                },
+                                .parent = node_id
+                            });
+                            prim_node_count++;
+                        }
                     }
                 }
             }
+            free(material_map);
+            free(mat_ptr_to_index);
         }
         cgltf_free(data);
         DEBUG_PRINT(DEBUG_PRINT_GLTF_LOAD, "%s: Created %d (Empty) mesh nodes with %d (RenderMesh) primitive nodes\n", file, mesh_node_count, prim_node_count);

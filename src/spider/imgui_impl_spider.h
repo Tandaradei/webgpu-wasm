@@ -2,6 +2,7 @@
 #define SPIDER_imgui_impl_spider_H_
 
 #define _SP_IMGUI_MAX_VERTICES_DEFAULT 65536
+#define _SP_IMGUI_MAX_CMD_LISTS_DEFAULT 1024
 
 #define CIMGUI_DEFINE_ENUMS_AND_STRUCTS
 #include <cimgui.h>
@@ -11,6 +12,7 @@
 
 typedef struct SPInitImGuiDesc {
     uint32_t max_vertices;
+    uint32_t max_cmd_lists;
 
     // TODO: this should be dynamic
     struct {
@@ -24,6 +26,7 @@ typedef struct SPInitImGuiDesc {
 
 typedef struct _SPImGuiState {
     uint32_t max_vertices;
+    uint32_t max_cmd_lists;
 
     _SPGpuBuffer vertex_buffer;
     _SPGpuBuffer index_buffer;
@@ -45,6 +48,17 @@ typedef struct _SPImGuiState {
         WGPUBindGroup frag;
     } bind_groups;
     // ---
+
+    struct {
+        struct {
+            ImDrawVert* data;
+            uint32_t* offsets;
+        } vertex;
+        struct {
+            ImDrawIdx* data;
+            uint32_t* offsets;
+        } index;
+    } update;
 
 
 } _SPImGuiState;

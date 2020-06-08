@@ -10,6 +10,7 @@
 #include "render_pipeline.h"
 #include "light.h"
 #include "imgui_impl_spider.h"
+#include "input.h"
 
 #define _SP_MATERIAL_POOL_DEFAULT 8
 #define _SP_MESH_POOL_DEFAULT 256
@@ -136,11 +137,13 @@ typedef struct _SPState {
         _SPMaterialTexture ao;
     } default_textures;
 
-    _SPImGuiState imgui_state;
+    _SPImGuiState imgui;
+    _SPInputState input;
     
     bool show_stats;
 
     WGPUBindGroup shadow_bind_group;
+    char test_buffer[100];
 
 } _SPState;
 
@@ -153,6 +156,7 @@ void spInit(const SPInitDesc* desc);
 Releases all remaining resources and frees allocated data
 */
 void spShutdown(void);
+void spBeginUI(float delta_time);
 /* 
 Updates the model, view and projection matrices and copies them
 in their respective buffers buffer
@@ -194,6 +198,17 @@ NULL if not a valid id
 */
 SPLight* spGetLight(SPLightID light_id);
 
+SPKeyState spGetKeyState(SPKey key);
+bool spGetKeyPressed(SPKey key);
+bool spGetKeyDown(SPKey key);
+bool spGetKeyUp(SPKey key);
+SPMouseButtonState spGetMouseButtonState(SPMouseButton button);
+bool spGetMouseButtonPressed(SPMouseButton button);
+bool spGetMouseButtonDown(SPMouseButton button);
+bool spGetMouseButtonUp(SPMouseButton button);
+uint32_t spGetMousePositionX();
+uint32_t spGetMousePositionY();
+
 // ----------------------------------
 // PRIVATE
 /*
@@ -224,6 +239,11 @@ void _spFreePoolIndex(_SPPool* pool, int slot_index);
 
 // TODO: Add description
 void _spErrorCallback(WGPUErrorType type, char const * message, void * userdata);
+
+typedef struct EmscriptenKeyboardEvent EmscriptenKeyboardEvent;
+int _spEmscriptenKeyCallback(int eventType, const EmscriptenKeyboardEvent* keyEvent, void* userData);
+typedef struct EmscriptenMouseEvent EmscriptenMouseEvent;
+int _spEmscriptenMouseCallback(int eventType, const EmscriptenMouseEvent *mouseEvent, void *userData);
 
 // TODO: Add description
 void _spUpdateDirtyNodes(void);
