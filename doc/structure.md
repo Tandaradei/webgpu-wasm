@@ -1,9 +1,0 @@
-- was ist eine Grafik/GPU-API?
-- warum braucht man im Web Zugriff auf die GPU?
-- Unterschied zu WebGL/warum WebGPU?
-- aktueller Stand
-- was soll noch kommen
-- Chancen und was könnte in Zukunft damit gemacht werden
-- Nutzen außerhalb von Grafik
-- emscripten/wie bekommt man C-Programme als WebApp ins Web?
-- Beschreibung des Projektes und wie man es Benutzen kann um 3D-Szenen im Web anzuzeigen

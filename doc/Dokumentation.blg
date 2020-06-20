@@ -1,17 +1,19 @@
 [0] Config.pm:304> INFO - This is Biber 2.13
 [0] Config.pm:307> INFO - Logfile is 'Dokumentation.blg'
-[28] biber-MSWIN32:315> INFO - === 
-[44] Biber.pm:375> INFO - Reading 'Dokumentation.bcf'
-[139] Biber.pm:905> INFO - Found 7 citekeys in bib section 0
-[155] Biber.pm:4196> INFO - Processing section 0
-[156] Utils.pm:75> INFO - Globbing data source 'bibliography.bib'
-[166] Utils.pm:91> INFO - Globbed data source 'bibliography.bib' to bibliography.bib
-[177] Biber.pm:4373> INFO - Looking for bibtex format file 'bibliography.bib' for section 0
-[180] bibtex.pm:1462> INFO - LaTeX decoding ...
-[188] bibtex.pm:1281> INFO - Found BibTeX data source 'bibliography.bib'
-[224] UCollate.pm:68> INFO - Overriding locale 'en-US' defaults 'normalization = NFD' with 'normalization = prenormalized'
-[224] UCollate.pm:68> INFO - Overriding locale 'en-US' defaults 'variable = shifted' with 'variable = non-ignorable'
-[224] Biber.pm:4024> INFO - Sorting list 'nty/global//global/global' of type 'entry' with template 'nty' and locale 'en-US'
-[224] Biber.pm:4030> INFO - No sort tailoring available for locale 'en-US'
-[234] bbl.pm:648> INFO - Writing 'Dokumentation.bbl' with encoding 'UTF-8'
-[236] bbl.pm:751> INFO - Output to Dokumentation.bbl
+[25] biber-MSWIN32:315> INFO - === 
+[42] Biber.pm:375> INFO - Reading 'Dokumentation.bcf'
+[134] Biber.pm:905> INFO - Found 31 citekeys in bib section 0
+[148] Biber.pm:4196> INFO - Processing section 0
+[149] Utils.pm:75> INFO - Globbing data source 'references.bib'
+[157] Utils.pm:91> INFO - Globbed data source 'references.bib' to references.bib
+[168] Biber.pm:4373> INFO - Looking for bibtex format file 'references.bib' for section 0
+[175] bibtex.pm:1462> INFO - LaTeX decoding ...
+[200] bibtex.pm:1281> INFO - Found BibTeX data source 'references.bib'
+[296] Utils.pm:300> WARN - I didn't find a database entry for 'khronos:gltf' (section 0)
+[327] UCollate.pm:68> INFO - Overriding locale 'en-US' defaults 'normalization = NFD' with 'normalization = prenormalized'
+[327] UCollate.pm:68> INFO - Overriding locale 'en-US' defaults 'variable = shifted' with 'variable = non-ignorable'
+[327] Biber.pm:4024> INFO - Sorting list 'nty/global//global/global' of type 'entry' with template 'nty' and locale 'en-US'
+[328] Biber.pm:4030> INFO - No sort tailoring available for locale 'en-US'
+[353] bbl.pm:648> INFO - Writing 'Dokumentation.bbl' with encoding 'UTF-8'
+[364] bbl.pm:751> INFO - Output to Dokumentation.bbl
+[368] Biber.pm:110> INFO - WARNINGS: 1

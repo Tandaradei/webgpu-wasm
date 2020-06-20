@@ -19,7 +19,7 @@
 
 \refsection{0}
   \datalist[entry]{nty/global//global/global}
-    \entry{amd:threadripper_3990x}{online}{}
+    \entry{amd:threadripper_3990x}{misc}{}
       \name{author}{1}{}{%
         {{hash=bf70e453946d5be989799409fe1e53b9}{%
            family={{Advanced Micro Devices, Inc}},
@@ -36,10 +36,10 @@
       \field{labelnamesource}{author}
       \field{labeltitlesource}{title}
       \field{title}{AMD Ryzen™ Threadripper™ 3990X}
+      \field{type}{Hardware}
       \field{urlday}{3}
       \field{urlmonth}{6}
       \field{urlyear}{2020}
-      \field{year}{2020}
       \field{urldateera}{ce}
       \verb{urlraw}
       \verb https://www.amd.com/de/products/cpu/amd-ryzen-threadripper-3990x
@@ -48,7 +48,258 @@
       \verb https://www.amd.com/de/products/cpu/amd-ryzen-threadripper-3990x
       \endverb
     \endentry
-    \entry{intel:i3_9100}{online}{}
+    \entry{real_time_rendering}{book}{}
+      \name{author}{3}{}{%
+        {{hash=f6061b73d9bdb8fceb556ed41cd144a6}{%
+           family={Akenine-Möller},
+           familyi={A\bibinithyphendelim M\bibinitperiod},
+           given={Tomas},
+           giveni={T\bibinitperiod}}}%
+        {{hash=f2cd5883c9757f88d9a81f92ee663907}{%
+           family={Haines},
+           familyi={H\bibinitperiod},
+           given={Eric},
+           giveni={E\bibinitperiod}}}%
+        {{hash=eed616961e0274036a96489be8cd147e}{%
+           family={Hoffman},
+           familyi={H\bibinitperiod},
+           given={Naty},
+           giveni={N\bibinitperiod}}}%
+      }
+      \list{location}{1}{%
+        {Boca Raton, Fla}%
+      }
+      \list{publisher}{1}{%
+        {CRC Press}%
+      }
+      \strng{namehash}{dbfd5d60176b95f4ab27b0c00a1ff6fd}
+      \strng{fullhash}{dbfd5d60176b95f4ab27b0c00a1ff6fd}
+      \strng{bibnamehash}{dbfd5d60176b95f4ab27b0c00a1ff6fd}
+      \strng{authorbibnamehash}{dbfd5d60176b95f4ab27b0c00a1ff6fd}
+      \strng{authornamehash}{dbfd5d60176b95f4ab27b0c00a1ff6fd}
+      \strng{authorfullhash}{dbfd5d60176b95f4ab27b0c00a1ff6fd}
+      \field{sortinit}{A}
+      \field{sortinithash}{a3dcedd53b04d1adfd5ac303ecd5e6fa}
+      \field{labelnamesource}{author}
+      \field{labeltitlesource}{title}
+      \field{edition}{Fourth Edition}
+      \field{isbn}{978-1-351-81615-1}
+      \field{title}{Real-Time Rendering}
+      \field{year}{2018}
+    \endentry
+    \entry{dear_imgui}{misc}{}
+      \name{author}{2}{}{%
+        {{hash=278fbb27c5f41e27c29dbffddc757f15}{%
+           family={Cornut},
+           familyi={C\bibinitperiod},
+           given={Omar},
+           giveni={O\bibinitperiod}}}%
+        {{hash=af452ac643b1c6d7141860e1629e78a4}{%
+           family={{Dear ImGui community}},
+           familyi={D\bibinitperiod}}}%
+      }
+      \strng{namehash}{58f29e3cee47538ab42d2f3f59a1cd13}
+      \strng{fullhash}{58f29e3cee47538ab42d2f3f59a1cd13}
+      \strng{bibnamehash}{58f29e3cee47538ab42d2f3f59a1cd13}
+      \strng{authorbibnamehash}{58f29e3cee47538ab42d2f3f59a1cd13}
+      \strng{authornamehash}{58f29e3cee47538ab42d2f3f59a1cd13}
+      \strng{authorfullhash}{58f29e3cee47538ab42d2f3f59a1cd13}
+      \field{sortinit}{C}
+      \field{sortinithash}{4c244ceae61406cdc0cc2ce1cb1ff703}
+      \field{labelnamesource}{author}
+      \field{labeltitlesource}{title}
+      \field{title}{Dear ImGui}
+      \field{type}{Software (API)}
+      \field{urlday}{14}
+      \field{urlmonth}{6}
+      \field{urlyear}{2020}
+      \field{urldateera}{ce}
+      \verb{urlraw}
+      \verb https://github.com/ocornut/imgui
+      \endverb
+      \verb{url}
+      \verb https://github.com/ocornut/imgui
+      \endverb
+    \endentry
+    \entry{emscripten}{misc}{}
+      \name{author}{1}{}{%
+        {{hash=2494299d3b6db5e1a20f48cc990e9989}{%
+           family={{Emscripten Contributors (https://emscripten.org/docs/contributing/AUTHORS.html)}},
+           familyi={E\bibinitperiod}}}%
+      }
+      \strng{namehash}{2494299d3b6db5e1a20f48cc990e9989}
+      \strng{fullhash}{2494299d3b6db5e1a20f48cc990e9989}
+      \strng{bibnamehash}{2494299d3b6db5e1a20f48cc990e9989}
+      \strng{authorbibnamehash}{2494299d3b6db5e1a20f48cc990e9989}
+      \strng{authornamehash}{2494299d3b6db5e1a20f48cc990e9989}
+      \strng{authorfullhash}{2494299d3b6db5e1a20f48cc990e9989}
+      \field{extraname}{1}
+      \field{sortinit}{E}
+      \field{sortinithash}{c554bd1a0b76ea92b9f105fe36d9c7b0}
+      \field{labelnamesource}{author}
+      \field{labeltitlesource}{title}
+      \field{title}{Emscripten}
+      \field{type}{Software (Werkzeug)}
+      \field{urlday}{15}
+      \field{urlmonth}{6}
+      \field{urlyear}{2020}
+      \field{urldateera}{ce}
+      \verb{urlraw}
+      \verb https://emscripten.org/
+      \endverb
+      \verb{url}
+      \verb https://emscripten.org/
+      \endverb
+    \endentry
+    \entry{emsdk}{misc}{}
+      \name{author}{1}{}{%
+        {{hash=2494299d3b6db5e1a20f48cc990e9989}{%
+           family={{Emscripten Contributors (https://emscripten.org/docs/contributing/AUTHORS.html)}},
+           familyi={E\bibinitperiod}}}%
+      }
+      \strng{namehash}{2494299d3b6db5e1a20f48cc990e9989}
+      \strng{fullhash}{2494299d3b6db5e1a20f48cc990e9989}
+      \strng{bibnamehash}{2494299d3b6db5e1a20f48cc990e9989}
+      \strng{authorbibnamehash}{2494299d3b6db5e1a20f48cc990e9989}
+      \strng{authornamehash}{2494299d3b6db5e1a20f48cc990e9989}
+      \strng{authorfullhash}{2494299d3b6db5e1a20f48cc990e9989}
+      \field{extraname}{2}
+      \field{sortinit}{E}
+      \field{sortinithash}{c554bd1a0b76ea92b9f105fe36d9c7b0}
+      \field{labelnamesource}{author}
+      \field{labeltitlesource}{title}
+      \field{title}{Getting Started}
+      \field{type}{Software (Werkzeug)}
+      \field{urlday}{15}
+      \field{urlmonth}{6}
+      \field{urlyear}{2020}
+      \field{urldateera}{ce}
+      \verb{urlraw}
+      \verb https://emscripten.org/docs/getting_started/index.html
+      \endverb
+      \verb{url}
+      \verb https://emscripten.org/docs/getting_started/index.html
+      \endverb
+    \endentry
+    \entry{google:chrome_canary}{misc}{}
+      \name{author}{1}{}{%
+        {{hash=bc6e9a2117eb19721db6770dfaa5e89e}{%
+           family={{Google Corporation}},
+           familyi={G\bibinitperiod}}}%
+      }
+      \strng{namehash}{bc6e9a2117eb19721db6770dfaa5e89e}
+      \strng{fullhash}{bc6e9a2117eb19721db6770dfaa5e89e}
+      \strng{bibnamehash}{bc6e9a2117eb19721db6770dfaa5e89e}
+      \strng{authorbibnamehash}{bc6e9a2117eb19721db6770dfaa5e89e}
+      \strng{authornamehash}{bc6e9a2117eb19721db6770dfaa5e89e}
+      \strng{authorfullhash}{bc6e9a2117eb19721db6770dfaa5e89e}
+      \field{extraname}{1}
+      \field{sortinit}{G}
+      \field{sortinithash}{62eb2aa29549e4fdbd3cb154ec5711cb}
+      \field{labelnamesource}{author}
+      \field{labeltitlesource}{title}
+      \field{title}{Chrome Canary}
+      \field{type}{Software (Anwendung)}
+      \field{urlday}{12}
+      \field{urlmonth}{6}
+      \field{urlyear}{2020}
+      \field{urldateera}{ce}
+      \verb{urlraw}
+      \verb https://www.google.com/intl/de/chrome/canary/
+      \endverb
+      \verb{url}
+      \verb https://www.google.com/intl/de/chrome/canary/
+      \endverb
+    \endentry
+    \entry{chromium}{misc}{}
+      \name{author}{1}{}{%
+        {{hash=bc6e9a2117eb19721db6770dfaa5e89e}{%
+           family={{Google Corporation}},
+           familyi={G\bibinitperiod}}}%
+      }
+      \strng{namehash}{bc6e9a2117eb19721db6770dfaa5e89e}
+      \strng{fullhash}{bc6e9a2117eb19721db6770dfaa5e89e}
+      \strng{bibnamehash}{bc6e9a2117eb19721db6770dfaa5e89e}
+      \strng{authorbibnamehash}{bc6e9a2117eb19721db6770dfaa5e89e}
+      \strng{authornamehash}{bc6e9a2117eb19721db6770dfaa5e89e}
+      \strng{authorfullhash}{bc6e9a2117eb19721db6770dfaa5e89e}
+      \field{extraname}{2}
+      \field{sortinit}{G}
+      \field{sortinithash}{62eb2aa29549e4fdbd3cb154ec5711cb}
+      \field{labelnamesource}{author}
+      \field{labeltitlesource}{title}
+      \field{title}{Chromium}
+      \field{type}{Software (Anwendung)}
+      \field{urlday}{15}
+      \field{urlmonth}{6}
+      \field{urlyear}{2020}
+      \field{urldateera}{ce}
+      \verb{urlraw}
+      \verb https://www.chromium.org/Home
+      \endverb
+      \verb{url}
+      \verb https://www.chromium.org/Home
+      \endverb
+    \endentry
+    \entry{google:dawn}{misc}{}
+      \name{author}{1}{}{%
+        {{hash=bc6e9a2117eb19721db6770dfaa5e89e}{%
+           family={{Google Corporation}},
+           familyi={G\bibinitperiod}}}%
+      }
+      \strng{namehash}{bc6e9a2117eb19721db6770dfaa5e89e}
+      \strng{fullhash}{bc6e9a2117eb19721db6770dfaa5e89e}
+      \strng{bibnamehash}{bc6e9a2117eb19721db6770dfaa5e89e}
+      \strng{authorbibnamehash}{bc6e9a2117eb19721db6770dfaa5e89e}
+      \strng{authornamehash}{bc6e9a2117eb19721db6770dfaa5e89e}
+      \strng{authorfullhash}{bc6e9a2117eb19721db6770dfaa5e89e}
+      \field{extraname}{3}
+      \field{sortinit}{G}
+      \field{sortinithash}{62eb2aa29549e4fdbd3cb154ec5711cb}
+      \field{labelnamesource}{author}
+      \field{labeltitlesource}{title}
+      \field{title}{Dawn, a WebGPU implementation}
+      \field{type}{Software (Implementierung)}
+      \field{urlday}{15}
+      \field{urlmonth}{6}
+      \field{urlyear}{2020}
+      \field{urldateera}{ce}
+      \verb{urlraw}
+      \verb https://dawn.googlesource.com/dawn
+      \endverb
+      \verb{url}
+      \verb https://dawn.googlesource.com/dawn
+      \endverb
+    \endentry
+    \entry{webgpu:implementation_status}{online}{}
+      \name{author}{1}{}{%
+        {{hash=bfd66c7ec909dee09741312b2ac29f22}{%
+           family={{GPU for the Web Community Group}},
+           familyi={G\bibinitperiod}}}%
+      }
+      \strng{namehash}{bfd66c7ec909dee09741312b2ac29f22}
+      \strng{fullhash}{bfd66c7ec909dee09741312b2ac29f22}
+      \strng{bibnamehash}{bfd66c7ec909dee09741312b2ac29f22}
+      \strng{authorbibnamehash}{bfd66c7ec909dee09741312b2ac29f22}
+      \strng{authornamehash}{bfd66c7ec909dee09741312b2ac29f22}
+      \strng{authorfullhash}{bfd66c7ec909dee09741312b2ac29f22}
+      \field{sortinit}{G}
+      \field{sortinithash}{62eb2aa29549e4fdbd3cb154ec5711cb}
+      \field{labelnamesource}{author}
+      \field{labeltitlesource}{title}
+      \field{title}{Implementation Status}
+      \field{urlday}{9}
+      \field{urlmonth}{6}
+      \field{urlyear}{2020}
+      \field{urldateera}{ce}
+      \verb{urlraw}
+      \verb https://github.com/gpuweb/gpuweb/wiki/Implementation-Status
+      \endverb
+      \verb{url}
+      \verb https://github.com/gpuweb/gpuweb/wiki/Implementation-Status
+      \endverb
+    \endentry
+    \entry{intel:i3_9100}{misc}{}
       \name{author}{1}{}{%
         {{hash=b7f0fb90e404efb48f8a85a517dec3c9}{%
            family={{Intel Corporation}},
@@ -66,10 +317,10 @@
       \field{labelnamesource}{author}
       \field{labeltitlesource}{title}
       \field{title}{Intel® Core™ i3 Prozessor 9100}
+      \field{type}{Hardware}
       \field{urlday}{3}
       \field{urlmonth}{6}
       \field{urlyear}{2020}
-      \field{year}{2020}
       \field{urldateera}{ce}
       \verb{urlraw}
       \verb https://ark.intel.com/content/www/de/de/ark/products/134870/intel-core-i3-9100-processor-6m-cache-up-to-4-20-ghz.html
@@ -78,7 +329,7 @@
       \verb https://ark.intel.com/content/www/de/de/ark/products/134870/intel-core-i3-9100-processor-6m-cache-up-to-4-20-ghz.html
       \endverb
     \endentry
-    \entry{intel:i9_9900k}{online}{}
+    \entry{intel:i9_9900k}{misc}{}
       \name{author}{1}{}{%
         {{hash=b7f0fb90e404efb48f8a85a517dec3c9}{%
            family={{Intel Corporation}},
@@ -96,16 +347,180 @@
       \field{labelnamesource}{author}
       \field{labeltitlesource}{title}
       \field{title}{Intel® Core™ i9-9900K Prozessor}
+      \field{type}{Hardware}
       \field{urlday}{3}
       \field{urlmonth}{6}
       \field{urlyear}{2020}
-      \field{year}{2020}
       \field{urldateera}{ce}
       \verb{urlraw}
       \verb https://ark.intel.com/content/www/de/de/ark/products/186605/intel-core-i9-9900k-processor-16m-cache-up-to-5-00-ghz.html
       \endverb
       \verb{url}
       \verb https://ark.intel.com/content/www/de/de/ark/products/186605/intel-core-i9-9900k-processor-16m-cache-up-to-5-00-ghz.html
+      \endverb
+    \endentry
+    \entry{renderdoc}{misc}{}
+      \name{author}{2}{}{%
+        {{hash=6f6625c2b97d4e6bae74834671217ffd}{%
+           family={Karlsson},
+           familyi={K\bibinitperiod},
+           given={Baldur},
+           giveni={B\bibinitperiod}}}%
+        {{hash=7630921c51e21c86fb34a69ecc4c09e4}{%
+           family={{RenderDoc community}},
+           familyi={R\bibinitperiod}}}%
+      }
+      \strng{namehash}{07dc8f14c417f472cc875df273ae6b4d}
+      \strng{fullhash}{07dc8f14c417f472cc875df273ae6b4d}
+      \strng{bibnamehash}{07dc8f14c417f472cc875df273ae6b4d}
+      \strng{authorbibnamehash}{07dc8f14c417f472cc875df273ae6b4d}
+      \strng{authornamehash}{07dc8f14c417f472cc875df273ae6b4d}
+      \strng{authorfullhash}{07dc8f14c417f472cc875df273ae6b4d}
+      \field{sortinit}{K}
+      \field{sortinithash}{d3edc18d54b9438a72c24c925bfb38f4}
+      \field{labelnamesource}{author}
+      \field{labeltitlesource}{title}
+      \field{title}{RenderDoc}
+      \field{type}{Software (Anwendung)}
+      \field{urlday}{12}
+      \field{urlmonth}{6}
+      \field{urlyear}{2020}
+      \field{urldateera}{ce}
+      \verb{urlraw}
+      \verb https://renderdoc.org
+      \endverb
+      \verb{url}
+      \verb https://renderdoc.org
+      \endverb
+    \endentry
+    \entry{sponza}{misc}{}
+      \name{author}{1}{}{%
+        {{hash=364378d45b69f33fd50d5d62ae518626}{%
+           family={{Khronos Group}},
+           familyi={K\bibinitperiod}}}%
+      }
+      \strng{namehash}{364378d45b69f33fd50d5d62ae518626}
+      \strng{fullhash}{364378d45b69f33fd50d5d62ae518626}
+      \strng{bibnamehash}{364378d45b69f33fd50d5d62ae518626}
+      \strng{authorbibnamehash}{364378d45b69f33fd50d5d62ae518626}
+      \strng{authornamehash}{364378d45b69f33fd50d5d62ae518626}
+      \strng{authorfullhash}{364378d45b69f33fd50d5d62ae518626}
+      \field{extraname}{1}
+      \field{sortinit}{K}
+      \field{sortinithash}{d3edc18d54b9438a72c24c925bfb38f4}
+      \field{labelnamesource}{author}
+      \field{labeltitlesource}{title}
+      \field{note}{\small \texttt{Original Crytek Sponza model provided at: http://www.crytek.com/cryengine/cryengine3/downloads glTF conversion provided by @Themaister at: http://themaister.net/sponza-gltf-pbr/ There is no explicitly stated license for the model. The source page states: \quotize{The Atrium Sponza Palace, Dubrovnik, is an elegant and improved model created by Frank Meinl. The original Sponza model was created by Marko Dabrovic in early 2002. Over the years, the Sponza Atrium scene has become one of the most popular 3D scenes for testing global illumination and radiosity due to it's specific architectural structure which is particularly complex for global illumination light. However, nowadays it is considered as a simple model, thus it was decided to crate a new model with highly improved appearance and scene complexity. It is donated to the public for radiosity and is represented in several different formats (3ds, Obj) for use with various commercial 3D applications and renderers.}}}
+      \field{title}{Sponza}
+      \field{type}{3D-Modell}
+      \field{urlday}{15}
+      \field{urlmonth}{6}
+      \field{urlyear}{2020}
+      \field{urldateera}{ce}
+      \verb{urlraw}
+      \verb https://github.com/KhronosGroup/glTF-Sample-Models/tree/master/2.0/Sponza
+      \endverb
+      \verb{url}
+      \verb https://github.com/KhronosGroup/glTF-Sample-Models/tree/master/2.0/Sponza
+      \endverb
+    \endentry
+    \entry{khronos:webgl}{online}{}
+      \name{author}{1}{}{%
+        {{hash=364378d45b69f33fd50d5d62ae518626}{%
+           family={{Khronos Group}},
+           familyi={K\bibinitperiod}}}%
+      }
+      \strng{namehash}{364378d45b69f33fd50d5d62ae518626}
+      \strng{fullhash}{364378d45b69f33fd50d5d62ae518626}
+      \strng{bibnamehash}{364378d45b69f33fd50d5d62ae518626}
+      \strng{authorbibnamehash}{364378d45b69f33fd50d5d62ae518626}
+      \strng{authornamehash}{364378d45b69f33fd50d5d62ae518626}
+      \strng{authorfullhash}{364378d45b69f33fd50d5d62ae518626}
+      \field{extraname}{2}
+      \field{sortinit}{K}
+      \field{sortinithash}{d3edc18d54b9438a72c24c925bfb38f4}
+      \field{labelnamesource}{author}
+      \field{labeltitlesource}{title}
+      \field{title}{Stage3D}
+      \field{type}{Software (API)}
+      \field{urlday}{15}
+      \field{urlmonth}{6}
+      \field{urlyear}{2020}
+      \field{urldateera}{ce}
+      \verb{urlraw}
+      \verb https://www.khronos.org/webgl/
+      \endverb
+      \verb{url}
+      \verb https://www.khronos.org/webgl/
+      \endverb
+    \endentry
+    \entry{llvm}{misc}{}
+      \name{author}{1}{}{%
+        {{hash=4d27c8d4ec737c6ae4ce1cc304898087}{%
+           family={{LLVM community}},
+           familyi={L\bibinitperiod}}}%
+      }
+      \strng{namehash}{4d27c8d4ec737c6ae4ce1cc304898087}
+      \strng{fullhash}{4d27c8d4ec737c6ae4ce1cc304898087}
+      \strng{bibnamehash}{4d27c8d4ec737c6ae4ce1cc304898087}
+      \strng{authorbibnamehash}{4d27c8d4ec737c6ae4ce1cc304898087}
+      \strng{authornamehash}{4d27c8d4ec737c6ae4ce1cc304898087}
+      \strng{authorfullhash}{4d27c8d4ec737c6ae4ce1cc304898087}
+      \field{sortinit}{L}
+      \field{sortinithash}{dad3efd0836470093a7b4a7bb756eb8c}
+      \field{labelnamesource}{author}
+      \field{labeltitlesource}{title}
+      \field{title}{LLVM}
+      \field{type}{Software (Werkzeug)}
+      \field{urlday}{15}
+      \field{urlmonth}{6}
+      \field{urlyear}{2020}
+      \field{urldateera}{ce}
+      \verb{urlraw}
+      \verb https://llvm.org/
+      \endverb
+      \verb{url}
+      \verb https://llvm.org/
+      \endverb
+    \endentry
+    \entry{webgpu:api_spec}{online}{}
+      \name{author}{3}{}{%
+        {{hash=0305774cc0a405e4a07ca1eb67b55304}{%
+           family={Malyshau},
+           familyi={M\bibinitperiod},
+           given={Dzmitry},
+           giveni={D\bibinitperiod}}}%
+        {{hash=c7a8b6bd19265b7ec67c69b46a8087ca}{%
+           family={Fan},
+           familyi={F\bibinitperiod},
+           given={Justin},
+           giveni={J\bibinitperiod}}}%
+        {{hash=54b3ea105346ec408180e260bec7c4d5}{%
+           family={Ninomiya},
+           familyi={N\bibinitperiod},
+           given={Kai},
+           giveni={K\bibinitperiod}}}%
+      }
+      \strng{namehash}{71e140cf6ecedb7fd8a0b58c83223dfb}
+      \strng{fullhash}{71e140cf6ecedb7fd8a0b58c83223dfb}
+      \strng{bibnamehash}{71e140cf6ecedb7fd8a0b58c83223dfb}
+      \strng{authorbibnamehash}{71e140cf6ecedb7fd8a0b58c83223dfb}
+      \strng{authornamehash}{71e140cf6ecedb7fd8a0b58c83223dfb}
+      \strng{authorfullhash}{71e140cf6ecedb7fd8a0b58c83223dfb}
+      \field{sortinit}{M}
+      \field{sortinithash}{2e5c2f51f7fa2d957f3206819bf86dc3}
+      \field{labelnamesource}{author}
+      \field{labeltitlesource}{title}
+      \field{title}{WebGPU Editor’s Draft, 8 June 2020}
+      \field{urlday}{9}
+      \field{urlmonth}{6}
+      \field{urlyear}{2020}
+      \field{urldateera}{ce}
+      \verb{urlraw}
+      \verb https://gpuweb.github.io/gpuweb/
+      \endverb
+      \verb{url}
+      \verb https://gpuweb.github.io/gpuweb/
       \endverb
     \endentry
     \entry{gpu_history}{misc}{}
@@ -136,7 +551,157 @@
       \verb http://www.mathcs.emory.edu/~cheung/Courses/355/Syllabus/94-CUDA/Docs/gpu-hist-paper.pdf
       \endverb
     \endentry
-    \entry{nvidia:gtx_1650}{online}{}
+    \entry{microsoft:d3d11on12}{misc}{}
+      \name{author}{1}{}{%
+        {{hash=b9a8b868588ad4bc6b36c29936e26423}{%
+           family={{Microsoft Corporation}},
+           familyi={M\bibinitperiod}}}%
+      }
+      \strng{namehash}{b9a8b868588ad4bc6b36c29936e26423}
+      \strng{fullhash}{b9a8b868588ad4bc6b36c29936e26423}
+      \strng{bibnamehash}{b9a8b868588ad4bc6b36c29936e26423}
+      \strng{authorbibnamehash}{b9a8b868588ad4bc6b36c29936e26423}
+      \strng{authornamehash}{b9a8b868588ad4bc6b36c29936e26423}
+      \strng{authorfullhash}{b9a8b868588ad4bc6b36c29936e26423}
+      \field{extraname}{1}
+      \field{sortinit}{M}
+      \field{sortinithash}{2e5c2f51f7fa2d957f3206819bf86dc3}
+      \field{labelnamesource}{author}
+      \field{labeltitlesource}{title}
+      \field{title}{D3D11On12}
+      \field{type}{Software (API)}
+      \field{urlday}{12}
+      \field{urlmonth}{6}
+      \field{urlyear}{2020}
+      \field{urldateera}{ce}
+      \verb{urlraw}
+      \verb https://github.com/microsoft/D3D11On12
+      \endverb
+      \verb{url}
+      \verb https://github.com/microsoft/D3D11On12
+      \endverb
+    \endentry
+    \entry{microsoft:pix}{misc}{}
+      \name{author}{1}{}{%
+        {{hash=b9a8b868588ad4bc6b36c29936e26423}{%
+           family={{Microsoft Corporation}},
+           familyi={M\bibinitperiod}}}%
+      }
+      \strng{namehash}{b9a8b868588ad4bc6b36c29936e26423}
+      \strng{fullhash}{b9a8b868588ad4bc6b36c29936e26423}
+      \strng{bibnamehash}{b9a8b868588ad4bc6b36c29936e26423}
+      \strng{authorbibnamehash}{b9a8b868588ad4bc6b36c29936e26423}
+      \strng{authornamehash}{b9a8b868588ad4bc6b36c29936e26423}
+      \strng{authorfullhash}{b9a8b868588ad4bc6b36c29936e26423}
+      \field{extraname}{2}
+      \field{sortinit}{M}
+      \field{sortinithash}{2e5c2f51f7fa2d957f3206819bf86dc3}
+      \field{labelnamesource}{author}
+      \field{labeltitlesource}{title}
+      \field{title}{PIX on Windows}
+      \field{type}{Software (Anwendung)}
+      \field{urlday}{12}
+      \field{urlmonth}{6}
+      \field{urlyear}{2020}
+      \field{urldateera}{ce}
+      \verb{urlraw}
+      \verb https://devblogs.microsoft.com/pix/
+      \endverb
+      \verb{url}
+      \verb https://devblogs.microsoft.com/pix/
+      \endverb
+    \endentry
+    \entry{microsoft:wsl}{misc}{}
+      \name{author}{1}{}{%
+        {{hash=b9a8b868588ad4bc6b36c29936e26423}{%
+           family={{Microsoft Corporation}},
+           familyi={M\bibinitperiod}}}%
+      }
+      \strng{namehash}{b9a8b868588ad4bc6b36c29936e26423}
+      \strng{fullhash}{b9a8b868588ad4bc6b36c29936e26423}
+      \strng{bibnamehash}{b9a8b868588ad4bc6b36c29936e26423}
+      \strng{authorbibnamehash}{b9a8b868588ad4bc6b36c29936e26423}
+      \strng{authornamehash}{b9a8b868588ad4bc6b36c29936e26423}
+      \strng{authorfullhash}{b9a8b868588ad4bc6b36c29936e26423}
+      \field{extraname}{3}
+      \field{sortinit}{M}
+      \field{sortinithash}{2e5c2f51f7fa2d957f3206819bf86dc3}
+      \field{labelnamesource}{author}
+      \field{labeltitlesource}{title}
+      \field{title}{What is the Windows Subsystem for Linux?}
+      \field{type}{Software (Werkzeug)}
+      \field{urlday}{15}
+      \field{urlmonth}{6}
+      \field{urlyear}{2020}
+      \field{urldateera}{ce}
+      \verb{urlraw}
+      \verb https://docs.microsoft.com/de-de/windows/wsl/about
+      \endverb
+      \verb{url}
+      \verb https://docs.microsoft.com/de-de/windows/wsl/about
+      \endverb
+    \endentry
+    \entry{mozilla:firefox_nightly}{misc}{}
+      \name{author}{1}{}{%
+        {{hash=24707b006eaf5e53e63d51d5c8c867f9}{%
+           family={{Mozilla Foundation}},
+           familyi={M\bibinitperiod}}}%
+      }
+      \strng{namehash}{24707b006eaf5e53e63d51d5c8c867f9}
+      \strng{fullhash}{24707b006eaf5e53e63d51d5c8c867f9}
+      \strng{bibnamehash}{24707b006eaf5e53e63d51d5c8c867f9}
+      \strng{authorbibnamehash}{24707b006eaf5e53e63d51d5c8c867f9}
+      \strng{authornamehash}{24707b006eaf5e53e63d51d5c8c867f9}
+      \strng{authorfullhash}{24707b006eaf5e53e63d51d5c8c867f9}
+      \field{extraname}{1}
+      \field{sortinit}{M}
+      \field{sortinithash}{2e5c2f51f7fa2d957f3206819bf86dc3}
+      \field{labelnamesource}{author}
+      \field{labeltitlesource}{title}
+      \field{title}{Firefox Nighlty}
+      \field{type}{Software (Anwendung)}
+      \field{urlday}{12}
+      \field{urlmonth}{6}
+      \field{urlyear}{2020}
+      \field{urldateera}{ce}
+      \verb{urlraw}
+      \verb https://www.mozilla.org/de/firefox/all/#product-desktop-nightly
+      \endverb
+      \verb{url}
+      \verb https://www.mozilla.org/de/firefox/all/#product-desktop-nightly
+      \endverb
+    \endentry
+    \entry{mozilla:wgpu}{misc}{}
+      \name{author}{1}{}{%
+        {{hash=24707b006eaf5e53e63d51d5c8c867f9}{%
+           family={{Mozilla Foundation}},
+           familyi={M\bibinitperiod}}}%
+      }
+      \strng{namehash}{24707b006eaf5e53e63d51d5c8c867f9}
+      \strng{fullhash}{24707b006eaf5e53e63d51d5c8c867f9}
+      \strng{bibnamehash}{24707b006eaf5e53e63d51d5c8c867f9}
+      \strng{authorbibnamehash}{24707b006eaf5e53e63d51d5c8c867f9}
+      \strng{authornamehash}{24707b006eaf5e53e63d51d5c8c867f9}
+      \strng{authorfullhash}{24707b006eaf5e53e63d51d5c8c867f9}
+      \field{extraname}{2}
+      \field{sortinit}{M}
+      \field{sortinithash}{2e5c2f51f7fa2d957f3206819bf86dc3}
+      \field{labelnamesource}{author}
+      \field{labeltitlesource}{title}
+      \field{title}{wgpu}
+      \field{type}{Software (Implementierung)}
+      \field{urlday}{15}
+      \field{urlmonth}{6}
+      \field{urlyear}{2020}
+      \field{urldateera}{ce}
+      \verb{urlraw}
+      \verb https://hg.mozilla.org/mozilla-central/file/tip/gfx/wgpu
+      \endverb
+      \verb{url}
+      \verb https://hg.mozilla.org/mozilla-central/file/tip/gfx/wgpu
+      \endverb
+    \endentry
+    \entry{nvidia:gtx_1650}{misc}{}
       \name{author}{1}{}{%
         {{hash=9ad14fae09b617d96cb4af76c555b394}{%
            family={{NVIDIA Corporation}},
@@ -154,10 +719,10 @@
       \field{labelnamesource}{author}
       \field{labeltitlesource}{title}
       \field{title}{NVIDIA GeForce GTX 1650}
+      \field{type}{Hardware}
       \field{urlday}{3}
       \field{urlmonth}{6}
       \field{urlyear}{2020}
-      \field{year}{2020}
       \field{urldateera}{ce}
       \verb{urlraw}
       \verb https://www.nvidia.com/de-de/geforce/graphics-cards/gtx-1650/
@@ -166,7 +731,7 @@
       \verb https://www.nvidia.com/de-de/geforce/graphics-cards/gtx-1650/
       \endverb
     \endentry
-    \entry{nvidia:rtx_2080ti}{online}{}
+    \entry{nvidia:rtx_2080ti}{misc}{}
       \name{author}{1}{}{%
         {{hash=9ad14fae09b617d96cb4af76c555b394}{%
            family={{NVIDIA Corporation}},
@@ -184,16 +749,137 @@
       \field{labelnamesource}{author}
       \field{labeltitlesource}{title}
       \field{title}{NVIDIA GeForce RTX 2080Ti}
+      \field{type}{Hardware}
       \field{urlday}{3}
       \field{urlmonth}{6}
       \field{urlyear}{2020}
-      \field{year}{2020}
       \field{urldateera}{ce}
       \verb{urlraw}
       \verb https://www.nvidia.com/de-de/geforce/graphics-cards/rtx-2080-ti
       \endverb
       \verb{url}
       \verb https://www.nvidia.com/de-de/geforce/graphics-cards/rtx-2080-ti
+      \endverb
+    \endentry
+    \entry{nvidia:nsight_graphics}{misc}{}
+      \name{author}{1}{}{%
+        {{hash=9ad14fae09b617d96cb4af76c555b394}{%
+           family={{NVIDIA Corporation}},
+           familyi={N\bibinitperiod}}}%
+      }
+      \strng{namehash}{9ad14fae09b617d96cb4af76c555b394}
+      \strng{fullhash}{9ad14fae09b617d96cb4af76c555b394}
+      \strng{bibnamehash}{9ad14fae09b617d96cb4af76c555b394}
+      \strng{authorbibnamehash}{9ad14fae09b617d96cb4af76c555b394}
+      \strng{authornamehash}{9ad14fae09b617d96cb4af76c555b394}
+      \strng{authorfullhash}{9ad14fae09b617d96cb4af76c555b394}
+      \field{extraname}{3}
+      \field{sortinit}{N}
+      \field{sortinithash}{98cf339a479c0454fe09153a08675a15}
+      \field{labelnamesource}{author}
+      \field{labeltitlesource}{title}
+      \field{title}{NVIDIA® Nsight™ Graphics}
+      \field{type}{Software (Anwendung)}
+      \field{urlday}{12}
+      \field{urlmonth}{6}
+      \field{urlyear}{2020}
+      \field{urldateera}{ce}
+      \verb{urlraw}
+      \verb https://developer.nvidia.com/nsight-graphics
+      \endverb
+      \verb{url}
+      \verb https://developer.nvidia.com/nsight-graphics
+      \endverb
+    \endentry
+    \entry{wasm}{misc}{}
+      \name{author}{1}{}{%
+        {{hash=4447911e80f8da3ca1a0d0a3ab220486}{%
+           family={{WebAssembly community}},
+           familyi={W\bibinitperiod}}}%
+      }
+      \strng{namehash}{4447911e80f8da3ca1a0d0a3ab220486}
+      \strng{fullhash}{4447911e80f8da3ca1a0d0a3ab220486}
+      \strng{bibnamehash}{4447911e80f8da3ca1a0d0a3ab220486}
+      \strng{authorbibnamehash}{4447911e80f8da3ca1a0d0a3ab220486}
+      \strng{authornamehash}{4447911e80f8da3ca1a0d0a3ab220486}
+      \strng{authorfullhash}{4447911e80f8da3ca1a0d0a3ab220486}
+      \field{sortinit}{W}
+      \field{sortinithash}{1af34bd8c148ffb32de1494636b49713}
+      \field{labelnamesource}{author}
+      \field{labeltitlesource}{title}
+      \field{title}{WebAssembly}
+      \field{type}{Spezifikation}
+      \field{urlday}{15}
+      \field{urlmonth}{6}
+      \field{urlyear}{2020}
+      \field{urldateera}{ce}
+      \verb{urlraw}
+      \verb https://webassembly.org/
+      \endverb
+      \verb{url}
+      \verb https://webassembly.org/
+      \endverb
+    \endentry
+    \entry{weissflog:handles}{online}{}
+      \name{author}{1}{}{%
+        {{hash=6214908b1f897ea76c4d95e0f8c17abb}{%
+           family={Weissflog},
+           familyi={W\bibinitperiod},
+           given={Andre},
+           giveni={A\bibinitperiod}}}%
+      }
+      \strng{namehash}{6214908b1f897ea76c4d95e0f8c17abb}
+      \strng{fullhash}{6214908b1f897ea76c4d95e0f8c17abb}
+      \strng{bibnamehash}{6214908b1f897ea76c4d95e0f8c17abb}
+      \strng{authorbibnamehash}{6214908b1f897ea76c4d95e0f8c17abb}
+      \strng{authornamehash}{6214908b1f897ea76c4d95e0f8c17abb}
+      \strng{authorfullhash}{6214908b1f897ea76c4d95e0f8c17abb}
+      \field{extraname}{1}
+      \field{sortinit}{W}
+      \field{sortinithash}{1af34bd8c148ffb32de1494636b49713}
+      \field{labelnamesource}{author}
+      \field{labeltitlesource}{title}
+      \field{title}{Handles are the better pointers}
+      \field{urlday}{15}
+      \field{urlmonth}{6}
+      \field{urlyear}{2020}
+      \field{urldateera}{ce}
+      \verb{urlraw}
+      \verb https://floooh.github.io/2018/06/17/handles-vs-pointers.html
+      \endverb
+      \verb{url}
+      \verb https://floooh.github.io/2018/06/17/handles-vs-pointers.html
+      \endverb
+    \endentry
+    \entry{weissflog:structs}{online}{}
+      \name{author}{1}{}{%
+        {{hash=6214908b1f897ea76c4d95e0f8c17abb}{%
+           family={Weissflog},
+           familyi={W\bibinitperiod},
+           given={Andre},
+           giveni={A\bibinitperiod}}}%
+      }
+      \strng{namehash}{6214908b1f897ea76c4d95e0f8c17abb}
+      \strng{fullhash}{6214908b1f897ea76c4d95e0f8c17abb}
+      \strng{bibnamehash}{6214908b1f897ea76c4d95e0f8c17abb}
+      \strng{authorbibnamehash}{6214908b1f897ea76c4d95e0f8c17abb}
+      \strng{authornamehash}{6214908b1f897ea76c4d95e0f8c17abb}
+      \strng{authorfullhash}{6214908b1f897ea76c4d95e0f8c17abb}
+      \field{extraname}{2}
+      \field{sortinit}{W}
+      \field{sortinithash}{1af34bd8c148ffb32de1494636b49713}
+      \field{labelnamesource}{author}
+      \field{labeltitlesource}{title}
+      \field{title}{Modern C for C++ Peeps}
+      \field{urlday}{15}
+      \field{urlmonth}{6}
+      \field{urlyear}{2020}
+      \field{urldateera}{ce}
+      \verb{urlraw}
+      \verb https://floooh.github.io/2019/09/27/modern-c-for-cpp-peeps.html
+      \endverb
+      \verb{url}
+      \verb https://floooh.github.io/2019/09/27/modern-c-for-cpp-peeps.html
       \endverb
     \endentry
     \entry{2080_ti_graphics_card}{misc}{}
@@ -213,6 +899,7 @@
       \field{labelnamesource}{author}
       \field{labeltitlesource}{title}
       \field{title}{Picture of a Zotax Gaming 2080 ti Graphics Card}
+      \field{type}{Bild}
       \field{urlday}{3}
       \field{urlmonth}{6}
       \field{urlyear}{2020}
@@ -225,7 +912,36 @@
       \verb https://commons.wikimedia.org/wiki/File:Zotac_Gaming_GTX_2080_ti.jpg
       \endverb
     \endentry
+    \entry{adobe:stage3d}{online}{}
+      \name{author}{1}{}{%
+        {{hash=f95e8679bf3071e22969b73a59ae1756}{%
+           family={{Wikipedia, the free encyclopedia}},
+           familyi={W\bibinitperiod}}}%
+      }
+      \strng{namehash}{f95e8679bf3071e22969b73a59ae1756}
+      \strng{fullhash}{f95e8679bf3071e22969b73a59ae1756}
+      \strng{bibnamehash}{f95e8679bf3071e22969b73a59ae1756}
+      \strng{authorbibnamehash}{f95e8679bf3071e22969b73a59ae1756}
+      \strng{authornamehash}{f95e8679bf3071e22969b73a59ae1756}
+      \strng{authorfullhash}{f95e8679bf3071e22969b73a59ae1756}
+      \field{sortinit}{W}
+      \field{sortinithash}{1af34bd8c148ffb32de1494636b49713}
+      \field{labelnamesource}{author}
+      \field{labeltitlesource}{title}
+      \field{title}{Stage3D}
+      \field{urlday}{15}
+      \field{urlmonth}{6}
+      \field{urlyear}{2020}
+      \field{urldateera}{ce}
+      \verb{urlraw}
+      \verb https://en.wikipedia.org/wiki/Stage3D
+      \endverb
+      \verb{url}
+      \verb https://en.wikipedia.org/wiki/Stage3D
+      \endverb
+    \endentry
   \enddatalist
+  \missing{khronos:gltf}
 \endrefsection
 \endinput
 
