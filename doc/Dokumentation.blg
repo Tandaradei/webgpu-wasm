@@ -1,19 +1,17 @@
 [0] Config.pm:304> INFO - This is Biber 2.13
 [0] Config.pm:307> INFO - Logfile is 'Dokumentation.blg'
-[25] biber-MSWIN32:315> INFO - === 
+[26] biber-MSWIN32:315> INFO - === 
 [42] Biber.pm:375> INFO - Reading 'Dokumentation.bcf'
-[134] Biber.pm:905> INFO - Found 31 citekeys in bib section 0
-[148] Biber.pm:4196> INFO - Processing section 0
-[149] Utils.pm:75> INFO - Globbing data source 'references.bib'
-[157] Utils.pm:91> INFO - Globbed data source 'references.bib' to references.bib
-[168] Biber.pm:4373> INFO - Looking for bibtex format file 'references.bib' for section 0
-[175] bibtex.pm:1462> INFO - LaTeX decoding ...
-[200] bibtex.pm:1281> INFO - Found BibTeX data source 'references.bib'
-[296] Utils.pm:300> WARN - I didn't find a database entry for 'khronos:gltf' (section 0)
-[327] UCollate.pm:68> INFO - Overriding locale 'en-US' defaults 'normalization = NFD' with 'normalization = prenormalized'
-[327] UCollate.pm:68> INFO - Overriding locale 'en-US' defaults 'variable = shifted' with 'variable = non-ignorable'
-[327] Biber.pm:4024> INFO - Sorting list 'nty/global//global/global' of type 'entry' with template 'nty' and locale 'en-US'
-[328] Biber.pm:4030> INFO - No sort tailoring available for locale 'en-US'
-[353] bbl.pm:648> INFO - Writing 'Dokumentation.bbl' with encoding 'UTF-8'
-[364] bbl.pm:751> INFO - Output to Dokumentation.bbl
-[368] Biber.pm:110> INFO - WARNINGS: 1
+[137] Biber.pm:905> INFO - Found 46 citekeys in bib section 0
+[150] Biber.pm:4196> INFO - Processing section 0
+[151] Utils.pm:75> INFO - Globbing data source 'references.bib'
+[159] Utils.pm:91> INFO - Globbed data source 'references.bib' to references.bib
+[170] Biber.pm:4373> INFO - Looking for bibtex format file 'references.bib' for section 0
+[179] bibtex.pm:1462> INFO - LaTeX decoding ...
+[221] bibtex.pm:1281> INFO - Found BibTeX data source 'references.bib'
+[410] UCollate.pm:68> INFO - Overriding locale 'en-US' defaults 'variable = shifted' with 'variable = non-ignorable'
+[410] UCollate.pm:68> INFO - Overriding locale 'en-US' defaults 'normalization = NFD' with 'normalization = prenormalized'
+[410] Biber.pm:4024> INFO - Sorting list 'nty/global//global/global' of type 'entry' with template 'nty' and locale 'en-US'
+[410] Biber.pm:4030> INFO - No sort tailoring available for locale 'en-US'
+[445] bbl.pm:648> INFO - Writing 'Dokumentation.bbl' with encoding 'UTF-8'
+[461] bbl.pm:751> INFO - Output to Dokumentation.bbl

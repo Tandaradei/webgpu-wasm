@@ -237,6 +237,9 @@ In dieser Bachelorarbeit geht es um die neuartige Grafik-API WebGPU, die einen N
 \acro{API}[API]{Application Programming Interface (dt. Programmierschnittstelle)}
 \acro{WSL}[WSL]{Windows Subsystem for Linux}
 \acro{GLSL}[GLSL]{OpenGL Shading Language}
+\acro{HLSL}[HLSL]{High Level Shading Language}
+\acro{PBR}[PBR]{Physically Based Rendering}
+\acro{AMD}[AMD]{Advanced Micro Devices, Inc}
 \end{acronym}
 %---
 \cleardoublepage
@@ -271,7 +274,7 @@ In dieser Bachelorarbeit geht es um die neuartige Grafik-API WebGPU, die einen N
 \label{sub:GPU_tasks}
 Wie der Name, \textit{\textbf{Grafik}prozessor} oder \textit{\textbf{graphics} processing unit}, schon andeutet, ist der Primärzweck einer \ac{GPU} die Erstellung und Manipulation von Bildinhalten und anschließender Ausgabe dieser an ein Anzeigegerät. Während eine \ac{CPU} generell darauf ausgelegt ist, ein weites Spektrum von Aufgaben sequenziell bearbeiten zu können, ist eine \ac{GPU} darauf spezialisiert möglichst viele einfache Aufgaben, insbesondere Fließkommaoperationen, parallel zu bearbeiten. Diesen Unterschied sieht man direkt, wenn man die Leistungsdaten aktueller \ac{CPU}s und \ac{GPU}s vergleicht:
 
-\begin{minipage}{1.0\textwidth}
+\begin{table}
 \begin{center}
 \begin{tabular}{ |l|r|r| }
     \hline
@@ -292,9 +295,10 @@ Wie der Name, \textit{\textbf{Grafik}prozessor} oder \textit{\textbf{graphics} p
     NVIDIA GeForce GTX 1650 \cite{nvidia:gtx_1650} & 896 & 1.485 / 1.665 \\
     \hline
 \end{tabular}
+Legende: \colorbox{lightblue}{\ac{CPU}} und \colorbox{lightgreen}{\ac{GPU}}
 \end{center}
-Legende: \colorbox{lightblue}{\ac{CPU}} \colorbox{lightgreen}{\ac{GPU}}
-\end{minipage}
+\caption{Vergleich aktueller CPUs und GPUs}
+\end{table}
 
 Hier sieht man sofort, dass \ac{GPU}s eine um mehrere Größenordnungen höhere Anzahl von Kernen haben, welche allerdings mit einer niedrigeren Taktrate laufen. Zwar konnte in den letzten Jahren ein starker Anstieg von Prozessorkernen in Endbenutzer-\ac{CPU}s beobachtet werden, doch auch eine explizite Workstation-\ac{CPU}, wie ein AMD Ryzen™ Threadripper™ 3990X \cite{amd:threadripper_3990x} mit 64 physischen und durch \ac{SMT} 128 logischen Prozessorkernen ist weit von den Kernzahlen einer aktuellen Einstiegs-\ac{GPU} entfernt. Wie schon angemerkt, kann man die Prozessorkerne von \ac{CPU}s und \ac{GPU}s nicht direkt vergleichen, jedoch zeigen sie deutlich die Spezialisierung der \ac{GPU}s auf parallele Verarbeitung mit einem erhöhtem Datendurchsatz. 
 
@@ -310,13 +314,7 @@ Mittlerweile haben die meisten Endbenutzer-\ac{CPU}s eine integrierte \ac{GPU} (
     \label{fig:2080_ti_graphics_card}
 \end{figure}
 
-\subsection{Geschichte \cite[Vgl.][]{gpu_history}}
-\label{sub:GPU_history}
-\textit{Der Begriff \quotize{\ac{GPU}} wurde erst 1999 von NVIDIA eingeführt, jedoch werden im folgenden der Einfachheit halber alle vorherigen Chips mit ähnlicher Funktion unter dem Begriff \quotize{\ac{GPU}} zusammengefasst.}
-
-Bis in die frühen 1980er Jahre waren \ac{GPU}s nicht mehr als integrierte Bildspeicher und dafür zuständig einfache Linienformen auf den Rasterbildschirm zu zeichnen. Erst ab 1987 wurden weitere Funktionen hinzugefügt. So zum Beispiel Rasterung von Polygonenflächen (anstatt von Polygonkanten), Vertex Beleuchtung, Tiefenpuffer und Farbüberblendung. Im Jahre 1992 wurde von Silicon Graphics Inc. mit OpenGL, die bis heute meist verwendete und unterstützte \ac{API} für Grafikprogrammierung eingeführt.
-
-\section{Rendering-Pipeline}
+\section{Rendering-Pipeline \cite[Vgl.][The Graphics Rendering Pipeline]{real_time_rendering}}
 \label{sec:render_pipeline}
 \begin{quote}
 The main function of the [graphics rendering] pipeline is to generate, or \textit{render}, a two-dimensional image, given a virtual camera, three-dimensional objects, light sources, and more. The rendering pipeline is thus the underlying tool for real-time rendering.
@@ -324,9 +322,10 @@ The main function of the [graphics rendering] pipeline is to generate, or \texti
 -- Real-Time Rendering \cite[S. 11]{real_time_rendering}
 \end{quote}
 
-
 \subsection{Architektur}
-Grundsätzlich besteht die Rendering-Pipeline aus vier Abschnitten, die mehr oder weniger frei programmierbar sind (siehe Abbildung \ref{fig:render_pipeline}). Generell läuft der Abschnitt \textit{Anwendung} auf der \ac{CPU} (kann aber auch mithilfe von \ac{GPU}-Compute auf der \ac{GPU} implementiert werden) und beschreibt die Logik der Anwendung. Die drei folgenden Abschnitte \textit{Geometrieverarbeitung}, \textit{Rasterung} und \textit{Pixelverarbeitung} laufen alle auf der \ac{GPU}, wobei die \textit{Geometrie-} und \textit{Pixelverarbeitung} hier frei mit \textit{Shadern} programmierbar sind und die \textit{Rasterung} nur über Parameter konfiguriert werden kann.
+Grundsätzlich besteht die Rendering-Pipeline aus vier Abschnitten, die mehr oder weniger frei programmierbar sind (siehe Abbildung \ref{fig:render_pipeline}). Generell läuft der Abschnitt \textit{Anwendung} auf der \ac{CPU} (kann aber auch teilweise mithilfe von \ac{GPU}-Compute auf der \ac{GPU} implementiert werden) und beschreibt die Logik der Anwendung. Die drei folgenden Abschnitte \textit{Geometrieverarbeitung}, \textit{Rasterung} und \textit{Pixelverarbeitung} laufen alle auf der \ac{GPU}, wobei die \textit{Geometrie-} und \textit{Pixelverarbeitung} hier frei mit \textit{Shadern} programmierbar sind und die \textit{Rasterung} nur über Parameter konfiguriert werden kann.
+
+Ursprünglich wurde der Begriff \textit{Shader} für Programme benutzt, die zur Farb- und Helligkeitsbestimmung einer 3D-Szene beigetragen haben. Da diese Aufgaben sich dann als Spezialität der \ac{GPU} herausgestellt haben, wurde der Begriff \textit{Shader} immer weiter gefasst und bezeichnet heute grundsätzlich ein \ac{GPU}-Programm.
 
 \begin{figure}
     \includegraphics[width=\textwidth]{images/render_pipeline.png}
@@ -344,11 +343,12 @@ Der Abschnitt \textit{Anwendung} kann nicht konkret beschrieben werden, da er si
 Damit bereitet der Abschnitt \textit{Anwendung} die Daten für die restlichen Abschnitte vor und entscheidet, was dafür in Betrachtung gezogen wird (zum Beispiel nur Objekte in Blickrichtung der virtuellen Kamera).
 
 \subsection{Geometrieverarbeitung}
+\label{sub:geometry_processing}
 Die \textit{Geometrieverarbeitung} ist dafür zuständig, die Geometriedaten (\textit{vertices} (Eckpunkte)) für die Rasterung vorzubereiten. Dafür müssen die \textit{vertices} meist zuerst von ihrer lokalen Position (innerhalb des Objektes) in die Position innerhalb des Sichtfeldes der virtuellen Kamera umgewandelt werden. 
 
 \begin{figure}
     \includegraphics[width=\textwidth]{images/mvp_matrix.png}
-    \caption{Transformation von Objekt bezogenen Vertexdaten in den \textit{world space}, dann in den \textit{view space} und schlussendlich in den \textit{clip space}. Die finale Umwandlung vom \textit{clip space} in den \textit{screen space} passiert dabei automatisch und verschiebt den Ursprung von der Mitte in entweder die ober oder untere (abhängig von der verwendeten Grafik-API) linke Ecke.}
+    \caption{Transformation von Objekt bezogenen Vertexdaten in den \textit{world space}, dann in den \textit{view space} und schlussendlich in den \textit{clip space}. Die finale Umwandlung vom \textit{clip space} in den \textit{screen space} passiert dabei automatisch und verschiebt den Ursprung von der Mitte in entweder die ober oder untere (abhängig von der verwendeten Grafik-API) linke Ecke. Quelle: \url{https://learnopengl.com/img/getting-started/coordinate\_systems.png} \cite{learnopengl:coordinate_systems}}
     \label{fig:mvp_matrix}
 \end{figure}
 
@@ -356,9 +356,9 @@ Dies passiert normalerweise mithilfe mehrerer Matrizen (siehe Abbildung \ref{fig
 
 Die \textit{Model}-Matrix ist dabei abhängig von der Transformation des jeweiligen Objektes im \textit{world space}. Aus der Transformation der Kamera ergibt sich die \textit{View}-Matrix und die \textit{Projection}-Matrix wird aus den speziellen Eigenschaften der Kamera (Sichtfeld und \textit{near-}/\textit{far-plane} bei einer perspektivischen Projektion) gebildet. Manchmal werden die einzelnen Matrizen \textit{Model}, \textit{View} und \textit{Projection} auch zur sogenannten \textit{ModelViewProjection}-Matrix zusammengefasst um die Anzahl der Vektor-Matrix-Multiplikationen zu verringern.
 
-Der Abschnitt Geometrieverarbeitung ist bis auf die finale Umwandlung vom \textit{clip space} in den \textit{screen space} frei programmierbar. Dabei wird ein sogenannter \textit{Shader} (Programm, das auf der \ac{GPU} läuft, kommt vom englischen \textit{to shade} (dt. schattieren), also dem Bestimmen der Helligkeitswerte eines Pixels) für jeden Vertex aufgerufen. Da dieser Abschnitt aber auf der \ac{GPU} läuft, kann man die Geometrieverarbeitung aber nicht mit einer üblichen Programmiersprache für \ac{CPU}s implementieren, sondern muss eine Programmiersprache für \textit{Shader}, wie zum Beispiel GLSL verwenden. Die Syntax von \ac{GLSL} ist dabei stark an der von C angelehnt. 
+Der Abschnitt Geometrieverarbeitung ist bis auf die finale Umwandlung vom \textit{clip space} in den \textit{screen space} frei programmierbar. Dabei wird ein zugewiesener Vertex-\textit{Shader} für jeden Vertex aufgerufen. Da dieser Abschnitt aber auf der \ac{GPU} läuft, kann man die Geometrieverarbeitung aber nicht mit einer üblichen Programmiersprache für \ac{CPU}s implementieren, sondern muss eine Programmiersprache für \textit{Shader}, wie zum Beispiel GLSL verwenden. Die Syntax von \ac{GLSL} ist dabei stark an der von C angelehnt. 
 
-In Listing \ref{lst:vertex_shader} sieht man die Implementierung der Geometrieverarbeitung in der, bei dieser Arbeit entstandenen, \textbf{spider}-Engine. Dabei werden die Matrizen \textit{Model}, \textit{View} und \textit{Projection} einzeln dem Shader übergeben und sind für alle Shader-Ausführungen (für dieses Objekt) konstant. Jedoch unterscheiden sich bei jeder Ausführung die Daten des jeweiligen Vertex, für den der Shader ausgeführt wird. Diese spezifischen Daten bekommt der Shader in den 4 Eingangsparametern ab Zeile 14 übergeben:
+In Listing \ref{lst:vertex_shader} sieht man die Implementierung der Geometrieverarbeitung in der, bei dieser Arbeit entstandenen, \textbf{spider}-Engine. Dabei werden die Matrizen \textit{Model}, \textit{View} und \textit{Projection} einzeln dem Shader übergeben und sind für alle Shader-Ausführungen (für dieses Objekt) konstant. Jedoch unterscheiden sich bei jeder Ausführung die Daten des jeweiligen Vertex, für den der \textit{Shader }ausgeführt wird. Diese spezifischen Daten bekommt der Shader in den 4 Eingangsparametern ab Zeile 14 übergeben:
 \begin{itemize}
 \item{\textit{inPosition}: die Position des Vertex innerhalb des Objektes}
 \item{\textit{inTexCoords}: die Texturkoordinaten des Vertex, zur späteren Bestimmung von Materialeigenschaften in der Pixelverarbeitung}
@@ -413,25 +413,230 @@ void main() {
 \end{lstlisting}
 \end{minipage}
 \subsection{Rasterung}
+\label{sub:rasterizing}
+Nach der \textit{Geometrieverarbeitung} sind nun alle Vertices des Polygons (im Folgenden zur Vereinfachung als Beispiel ein Dreieck) in den \textit{screen space} transformiert worden. Falls die Vertices im Bild liegen, d.h sie haben sowohl im vertikalen, als auch horizontalen Bereich des \textit{screen space} Werte zwischen 0 und 1, müssen nun die Pixel bestimmt werden, die in dem Dreieck liegen. Bei Polygonen die teilweise innerhalb und teilweise außerhalb des sichtbaren Bereichs liegen, wird das Polygon automatisch so zerstückelt, dass nur die sichtbaren Teile berücksichtigt werden (siehe Abbildung \ref{fig:screen_space}).
+
+\begin{figure}
+    \includegraphics[width=\textwidth]{images/screen_space_rasterizing.png}
+    \caption{Zwei Dreiecke \textbf{T1} und \textbf{T2} im \textit{screen space}. \textbf{T1} wird hierbei komplett gerastert und \textbf{T2} erst so zerteilt, dass nur der sichtbare Bereich gerastert werden muss.}
+    \label{fig:screen_space}
+\end{figure}
+
+Die \textit{Rasterung} ist hierbei fest in der Hardware einer \ac{GPU} verbaut und kann nur per Parameter konfiguriert werden. Dazu zählen zum Beispiel:
+
+\begin{itemize}
+\item{Art der zu rasternden Primitive: Punkte, Linien oder Dreiecke}
+\item{Wie soll die Vorderseite eines Dreiecks bestimmt werden? Vertices sind entweder im oder gegen den Uhrzeigersinn angeordnet}
+\item{Welche Seiten eines Dreieckes sollen berücksichtigt werden? Nur die Vorderseite, nur die Rückseite oder beide?}
+\end{itemize}
+
+Nun wird für jeden Pixel, der im Polygon liegt, die Vertexeigenschaften, d.h. die Ausgansparameter der Geometrieverarbeitung, zwischen den Vertices des Polygons interpoliert (siehe Abbildung \ref{fig:barycentric_color}). Für jeden dieser Pixel wird dann mit den interpolierten Eigenschaften als Eingangsparameter der \textit{Pixel-Shader}, oder auch \textit{Fragment-Shader}, zum finalen Abschnitt der Pixelverarbeitung aufgerufen. 
+
+\begin{figure}
+    \includegraphics[scale=1]{images/barycentriccolor.png}
+    \caption{Interpolation von Vertexdaten innerhalb eines Dreiecks am Beispiel der Farbinformation der Vertices mithilfe von baryzentrischen Koordinaten \cite{scratchapixel:barycentric_color}}
+    \label{fig:barycentric_color}
+\end{figure}
 
 \subsection{Pixelverarbeitung}
+In der \textit{Pixelverarbeitung} wird der finale Farbwert eines Pixels berechnet im \textit{Framebuffer} gespeichert. Der \textit{Framebuffer} besteht dabei aus einem (oder auch mehreren) \textit{color buffer}, was im Prinzip ein zwei dimensionales Array (in Größe der Pixelanzahl: Breite * Höhe) für Farbwerte ist. Dazu kommt ein gleich großer \textit{depth buffer} der für jeden Pixel einen Tiefenwert (Distanz zur Kamera) abspeichert. Mit dem \textit{depth buffer} kann somit pro Pixel verglichen werden, ob der aktuell zu bearbeitende Punkt näher an der Kamera (Farbwert des Punktes wird berechnet und überschreibt den Tiefenwert) oder weiter weg ist (Punkt wird nicht weiter beachtet).
 
+Der \textit{depth buffer} bietet hierbei den Vorteil, dass die Polygone nicht von \quotize{hinten (fern) nach vorne (nah)} gezeichnet werden müssen. Dadurch, dass jeder Punkt nur mit dem aktuell der Kamera am nächsten verglichen werden muss, können die Polygone in beliebiger Reihenfolge bearbeitet werden. Dies gilt allerdings nur für opake, nicht transparente, Objekte. Bei teil-transparenten Objekte muss trotzdem noch auf die Zeichenreihenfolge geachtet werden.
 
-\section{Grafik-API}
-\subsection{Die Anfänge}
-\subsection{•}
-\subsection{\quotize{Moderne} Grafik-APIs}
+Falls der gerasterte Pixel erfolgreich mit dem aktuellen Tiefenwert verglichen wurde, d.h. er ist näher an der Kamera wird für ihn der \textit{Pixel-Shader}, im folgenden als \textit{Fragment-Shader} bezeichnet, aufgerufen. Als Beispiel kann hier der \textit{Fragment-Shader} für \ac{PBR} in der \textbf{spider}-Engine gesehen werden (siehe Anhang \ref{appendix:b}). Der  \textit{Fragment-Shader} berechnet dabei aus den interpolierten Vertexdaten und anderen Eingaben (zum Beispiel zusätzliche Daten wie Texturen) einen Farb- und Transparenzwert. Auch kann hier der Pixel noch verworfen werden, wenn zum Beispiel ein Transparenzwert von \textbf{0} (voll-transparent) berechnet wurde.
+
+Die Pixelverarbeitung kann man also wiederum in drei Teilabschnitte unterteilen: 
+\begin{itemize}
+\item[1)]{Vergleichen mit dem aktuellen Tiefenwert aus dem \textit{depth buffer}}
+\item[2)]{Berechnen des Farbwertes}
+\item[3)]{Zusammenfügen mit dem aktuell im \textit{color buffer} gespeicherten Farbwert}
+\end{itemize} 
+Dabei ist hier nur der Teilabschnitt 2) frei per \textit{Shader} programmierbar. Teilabschnitte 1) und 3) können ähnlich wie im Abschnitt Rasterung (\ref{sub:rasterizing}) mit Parametern konfiguriert werden.
+
+\section{Grafik-APIs \cite[Vgl.][The Evolution of Programmable Shading and APIs]{real_time_rendering}}
+\textit{Der Begriff \quotize{\ac{GPU}} wurde erstmals 1999 von NVIDIA eingeführt, jedoch werden im folgenden der Einfachheit halber alle vorherigen Chips mit ähnlicher Funktion unter dem Begriff \quotize{\ac{GPU}} zusammengefasst.}
+
+\begin{figure}
+    \includegraphics[width=\textwidth]{images/api_timeline.png}
+    \caption{Zeitlinie mit wichtigen Grafik-API- und Hardwareerscheinungen \cite[S. 38]{real_time_rendering}}
+    \label{fig:barycentric_color}
+\end{figure}
+
+Analog zu den Programmiersprachen für \ac{CPU}s, wurden auch Ideen zur Programmierung von \ac{GPU}s, entwickelt bevor es die Hardware unterstützt hat. So wurden frei programmierbare \textit{Shader} wurde erstmals in Cooks \textit{Shade Trees} \cite{cook:shade_trees} erwähnt. Daraufhin wurde in den späten 1980er Jahren die RenderMan Shading Language \cite{pixar:rsl} entwickelt, welche auch heute noch in der Filmproduktion eingesetzt wird. Zu diesem Zeitpunkt waren \ac{GPU}s aber nichts weiter wie fest in die Hardware implementierte Bildspeicher mit einfachsten Funktionen \cite[Vgl.][]{gpu_history}.
+
+Die erste \ac{GPU} zur Beschleunigung von 3D-Szenen, die 3dfx Voodoo \cite{wikipedia:3dfx_voodoo}, hatte die Rendering-Pipeline direkt in die Hardware implementiert. Auch die NVIDIA GeForce 256 \cite{wikipedia:geforce256}, die erste \ac{GPU}, die auch tatsächlich so bezeichnet wurde, konnte nicht programmiert werden. Dafür konnte die integrierte Rendering-Pipeline zumindest konfiguriert werden.
+
+Im Jahre 2001 ist mit der NVIDIA Geforce 3 \cite{wikipedia:geforce3} die erste teilweise programmierbare \ac{GPU} erschienen. Durch die Grafik-APIs Microsoft DirectX 8.0 und das nicht-proprietäre OpenGL konnte hier die \textit{Vertex-Shader} mit einer Assembly-artigen Sprache programmiert werden. Mit DirectX 8.0 wurde auch das Konzept des \textit{Shader Model (SM)} \cite[Vgl.][Shader model comparison]{wikipedia:hlsl} eingeführt, welches spezifiziert welche Eigenschaften (zum Beispiel, wie viele Register dem Shader-Programm zur Verfügung stehen), die jeweilige Hardware erfüllen muss. Zwar unterstütze DirectX 8.0 auch programmierbare \textit{Pixel-Shader} (in OpenGL \textit{Fragment-Shader} genannt), jedoch waren diese noch sehr eingeschränkt im Funktionsumfang.
+
+Dabei funktionieren \ac{GPU}s bis heute so, dass das gleiche Shader-Programm gleichzeitig auf mehrere Eingabedaten mit der selben Struktur, zum Beispiel Vertexdaten bei einem \textit{Vertex-Shader}, angewandt wird. Dadurch konnten in den Shader-Programmen für die ersten \ac{GPU}s noch keine Verzweigungen benutzt werden, da diese ja potentiell zu unterschiedliche Anweisungen für die jeweiligen Daten führen. Dies wurde von Shader-Programmierern dadurch umgangen, dass einfach alle Anweisungen aller potentiellen Verzweigungen nacheinander ausgeführt wurden und danach die nicht gebrauchten Ergebnisse verworfen wurden. Das führte zwar zu \quotize{nutzlosen} Berechnungen, jedoch war dies durch die Parallelität insgesamt immer noch schneller, als die Daten sequentiell zu verarbeiten.
+
+Mit dem Erscheinen von DirectX 9.0 mit Shader Model 2.0 im Jahre 2002, hatten Programmierer endlich die volle Kontrolle über sowohl \textit{Vertex-} als auch \textit{Fragment-Shader}. Für den offenen Standard OpenGL wurde diese Möglichkeit relativ zeitgleich durch \textit{extensions} ermöglicht. Außerdem konnten die Shader nun in einer C ähnlichen Sprache geschrieben werden: \ac{HLSL} \cite{wikipedia:hlsl} für DirectX und \ac{GLSL} \cite{wikipedia:hlsl} für OpenGL. Mit der Einführung des Shader Model 3.0 im Jahre 2004 konnte nun endlich auch ein dynamischer Programmablauf mit Verzweigungen im Shader benutzt werden. Mit der Einführung der Spielekonsole Nintendo Wii Ende 2006 wurde auch eine der letzten \ac{GPU}s mit fester Rendering-Pipeline eingeführt. 
+
+Ebenfalls wurde Ende 2006 DirectX 10.0 und Shader Model 4.0 eingeführt, welche eine neue Art von Shadern (\textit{Geometry-Shader}) und die Vereinheitlichung des Shader-Designs mit sich brachte. Mit DirectX 11.0 und Shader Model 5.0 im Jahre 2009 wurden schließlich unter anderem \textit{Compute-Shader} eingeführt. Die Version von OpenGL mit ähnlichem Funktionsumfang ist dabei 4.3.
+
+Bis dahin war das Paradigma für Grafik-APIs dem Entwickler so viel Arbeit wie möglich abzunehmen und zum Beispiel im Treiber Eingaben zu validieren und Ressourcen (zum Beispiel Texturen und Buffer) automatisch zu verwalten. Dies änderte sich 2013 mit der Einführung von Mantle durch den \ac{CPU}- und \ac{GPU}- Hersteller \ac{AMD} als Alternative zu Direct3D und OpenGL. Die Idee hinter der API, die in Zusammenarbeit mit dem Videospielentwickler DICE entwickelt wurde, war es, den Overhead im Grafiktreiber so viel wie möglich zu reduzieren und diese Kontrolle dem Entwickler zurückzugeben. Microsoft hat die Ideen hinter Mantle aufgenommen und 2015 mit DirectX 12.0 eine DirectX Version dieses neuen Paradigmas veröffentlicht. Wichtig ist hier, dass DirectX 12 keinen Fokus auf neuen Funktionen hat, sondern nur die Verwendung der API radikal geändert hat. Bei der Einführung von DirectX 12.0 hatte es die gleichen Funktionalitäten wie das damals aktuelle DirectX 11.3. Auch Apple hat 2014 mit Metal ihre eigene \quotize{low-overhead} API veröffentlicht. Diese debütierte zuerst auf den mobilen Geräten wie iPhone und iPad, war jedoch ein Jahr später auch auf Macs verfügbar. Währenddessen hatte AMD ihre Arbeit zu Mantle an das für OpenGL zuständige Konsortium Khronos Group gestiftet. Diese führte 2016 mit Vulkan ihre Version einer \quotize{low-overhead} API ein. Ähnlich wie bei den DirectX-Versionen 11 und 12, hat Vulkan hier OpenGL nicht abgelöst, sondern stellt nur eine Alternative dar. Mit Vulkan wurde auch eine Zwischensprache (engl. \textit{intermediate language}) für Shader-Programme, ähnlich wie LLVM IR, mit dem Namen SPIR-V eingeführt, die es dem Entwickler erlaubt Shader vor zu kompilieren.
+
+Für mobile Geräte gibt es OpenGL ES (\quotize{Embedded Systems}) welches 2003 als eine im Funktionsumfang verringerte Version von OpenGL 1.3 veröffentlicht wurde. OpenGL ES 1.0 beschrieb noch eine feste Rendering-Pipeline, welche aber durch Version 2.0 im Jahr 2007 die Möglichkeiten zur Shader-Programmierung erhielt. OpenGL ES 3.0 wurde schließlich 2012 eingeführt und brachte viele bekannte Funktionen der \quotize{großen Brüder} OpenGL und DirectX mit.
+
+Die Grafik-API für Webbrowser WebGL basiert wiederum auf OpenGL ES, wurde 2011 veröffentlicht und ist mit Version 2.0 von OpenGL ES im Funktionsumfang äquivalent. WebGL 2.0 wurde 2017 eingeführt und nutzt OpenGL ES 3.0.
+
 
 \chapter{WebGPU}
 \label{cha:webgpu}
 
-\section{GPU im Web}
-Mit dem rasanten Beliebtheitszuwachs von webbasierten Anwendungen, die nicht lokal installiert werden müssen und direkt im Webbrowser benutzt werden können, wurden auch Rufe nach einer Möglichkeit, 3D-Grafiken effizient in einem Webbrowser anzuzeigen, laut. Mit den beiden im Jahr 2011 eingeführten Web-Grafik-APIs \textit{Stage3D} \cite{adobe:stage3d} als Teil des \textit{Adobe Flash Player} und das offene und nativ in \textit{JavaScript} verfügbare \textit{WebGL} \cite{khronos:webgl} der \textit{Khronos Group}.
-\section{Unterschied zu WebGL}
+\section{Entstehung \cite[Vgl.][]{wikipedia:webgpu}}
+Da WebGL auf dem alten API-Paradigma von OpenGL und DirectX vor Version 12 beruht, wurden Rufe laut, dass es auch eine \quotize{moderne} Grafik-API für Webbrowser geben sollte, um deren Vorteile auch im Web nutzen zu können.
+
+Die ersten Vorstöße dazu gab es als Google Mitarbeiter bei einer Präsentation Mitte 2016 für die WebGL Arbeitsgruppe über die grundlegenden Ideen und Prinzipien für eine moderne Grafik-API fürs Web, damals noch als \quotize{WebGL Next} bezeichnet, sprachen. Diese Ideen wurden dann Anfang 2017 von der Khronos Group aufgegriffen und in einem Meeting hat ein Google Team dann ihren mit \quotize{NXT} betitelten Prototypen präsentiert, welcher im Webbrowser Chromium lief und sich an Konzepten von Vulkan, DirectX 12 und Metal bediente. Teams von Apple und Mozilla hatten außerdem Prototypen für Safari und Servo (die Browser Engine für Firefox) gebaut, welche sich an Apples Metal API orientiert haben. 
+
+Kurze Zeit später wurde die W3C Gruppe \quotize{GPU for the Web} gegründet und \quotize{WebGPU} als Arbeitstitel für die neue API beschlossen \cite{golem:webgpu}. Nachdem die meisten oberflächlichen Probleme im Standardisierungsprozess Mitte 2018 gelöst waren, gab Googles Chrome Team bekannt, dass sie den zukünftigen \textbf{WebGPU} in ihren Webbrowser implementieren möchten.
+
 \section{Beschreibung}
+\begin{minipage} {\textwidth}
+\begin{quote}
+\quotize{The mission of the GPU on the Web Community Group is to provide an interface between the Web Platform and modern 3D graphics and computation capabilities present in native system platforms. The goal is to design a new Web API that exposes these modern technologies in a performant, powerful and safe manner. It should work with existing platform APIs such as Direct3D 12 from Microsoft, Metal from Apple, and Vulkan from the Khronos Group. This API will also expose the generic computational facilities available in today's GPUs to the Web, and investigate shader languages to produce a cross-platform solution.}
+
+-- GPU for the Web Community Group \cite{w3:community_gpu}
+\end{quote}
+\end{minipage}
+
+\textbf{WebGPU} soll hierbei ähnlich wie bei Vulkan und OpenGL, und DirectX 12 und 11 nicht WebGL direkt ablösen, sondern erstmal nur eine Alternative bilden.
+
+\section{WGSL}
+\subsection{Übersicht}
+Mit WGSL \cite{w3:wgsl} soll auch \textbf{WebGPU} eine eigene Shader-Sprache bekommen. Bisherige Implementierungen unterstützen jedoch bisher nur SPIR-V. Dadurch konnte der Verfasser leider keine praktischen Erfahrungen bei der Verwendung von WGSL machen. Die \textbf{spider}-Engine, die diese Arbeit begleitet hat, verwendet daher GLSL-Shader, die zu SPIR-V kompiliert werden. Trotzdem werden im Folgenden die Grundprinzipien und Beispiele zu WGSL besprochen, da es in Zukunft wohl ein wichtiger Bestandteil von \textbf{WebGPU} sein wird.
+
+\subsection{Kritik an WGSL}
+WGSL soll \quotize{trivial von und zu SPIR-V konvertierbar} \cite[Vgl.][Goals]{w3:wgsl} sein, was unter anderem die Frage aufwirft, warum dann WGSL überhaupt benötigt wird \cite[Vgl.][]{github:wgsl_terrible}. Durch die Nähe zu der Zwischensprache SPIR-V ist die Syntax von WGSL für Entwickler, die mit einer bisherigen Shader-Sprache vertraut sind, nicht sehr üblich. Auch gibt es nicht die aus den meisten Programmiersprachen bekannten Schleifenstrukturen, sondern nur eine \texttt{loop}-Anweisung, aber nicht direkt \texttt{for}, \texttt{while} oder \texttt{do-while} \cite[Vgl.][]{github:wgsl_loop}. In Zukunft soll nur noch WGSL als Shader-Sprache akzeptiert werden. Dazu müssten die bei vielen Entwicklern schon bestehenden GLSL- oder HLSL-Shader erst konvertiert werden. Dies würde in etwas so aussehen:
+
+\texttt{GLSL/HLSL -> SPIR-V -> WGSL -> *WebGPU* -> SPIR-V/DXIL/MSL}
+
+Für die Umwandlung von GLSL/HLSL zu SPIR-V gibt es bereits zahlreiche Tools, welche produktiv getestet und eingesetzt wurden, wie zum Beispiel, das in diesem Projekt genutzte \textit{glslc}, welches in der Shader-Werkzeugsammlung \textit{shaderc} \cite{shaderc} enthalten ist. Der abschließende Schritt, bei dem \textbf{WebGPU} den WGSL-Shader-Code wieder in \texttt{SPIR-V/DXIL/MSL} umwandeln muss, ist nötig, da WebGPU auf den jeweiligen nativen Grafik-APIs (Vulkan, DirectX 12, Metal) aufbaut, welche keinen WGSL-Shader-Code nutzen können.
+
+Die Ursache für die Entscheidung für WGSL und gegen SPIR-V als primäres Shader-Code-Format, liegt wohl einerseits an der für das Web übliche Praxis, von Menschen lesbare Datenformate zu verwenden (kein Binärcode). Anderseits scheint es wohl rechtliche Spannungen zwischen Apple und der für SPIR-V verantwortlichen Khronos Group zu geben \cite[Vgl.][]{hacker_news:apple_khronos}.
+
+\subsection{Datentypen}
+
+\subsubsection{Skalare Typen}
+\label{sub:scalars}
+\begin{table}[htb]
+\begin{center}
+\begin{tabular}{ |l|l|l|l| }
+    \hline
+    \textbf{Typ} & \textbf{Beschreibung} & \textbf{GLSL} & \textbf{HLSL} \\
+    \hline
+    \multicolumn{4}{|l|}{Boolean} \\
+    \hline
+    \texttt{bool} & Entweder \texttt{true} oder \texttt{false} & \texttt{bool} & \texttt{bool} \\
+    \hline
+    \multicolumn{4}{|l|}{Numerisch} \\
+    \hline
+    \texttt{i32} & 32-bit Integer mit Vorzeichen & \texttt{int} & \texttt{int} \\
+    \hline
+    \texttt{u32} & 32-bit Integer ohne Vorzeichen & \texttt{uint} & \texttt{uint} \\
+    \hline
+    \texttt{f32} & 32-bit Fließkommazahl nach IEEE 754 & \texttt{float} & \texttt{float} \\
+    \hline
+    \textit{-} & 64-bit Fließkommazahl nach IEEE 754 & \texttt{double} & \texttt{double} \\
+    \hline
+\end{tabular}
+\end{center}
+\caption{Skalare Typen in WGSL mit den äquivalenten Typen in GLSL und HLSL}
+\label{tab:scalars}
+\end{table}
+
+\subsubsection{Mehrkomponenten Typen}
+\paragraph{Vektortypen} \
+
+Vektortypen werden in WGSL mit 
+
+\texttt{vec\textit{N}<\textit{T}>}
+
+deklariert, wobei \textit{N} für die Anzahl der Komponenten und \textit{T} für den Datentyp steht. \textit{N} muss dabei in \{2, 3, 4\} und \textit{T} muss einer der skalaren Typen aus Abschnitt \ref{sub:scalars} sein.
+
+Das äquivalente Gegenstück hierzu in GLSL wäre 
+
+\texttt{\textit{T}vec\textit{N}}
+
+wobei \textit{T} hier als Abkürzung eines skalaren Typen fungiert (b = \texttt{bool}, i = \texttt{int}, u = \texttt{uint}, d = \texttt{double}). Wenn \textit{T} weggelassen wird, wird der skalare Typ \texttt{float} verwendet, da dies der mit Abstand meist verwendete skalare Typ in der Shader-Programmierung ist. \textit{N} muss hier ebenfalls in \{2, 3, 4\} sein.
+
+Bei HLSL werden Vektortypen wie folgt deklariert:
+
+\texttt{\textit{T}\texttt{N}}
+
+Wobei \textit{T} hier einer der skalaren Typen sein muss und \textit{N} entweder in \{1, 2, 3, 4\} oder gar nicht vorkommen darf. Das Weglassen von \textit{N} oder N = 1 resultieren beide in dem skalaren Typen \textit{T}.
+
+So würde ein 3-komponentiger Vektor vom Typ \texttt{f32} bzw. \texttt{float} in den jeweiligen Sprachen so aussehen:
+\begin{itemize}
+ \item WGSL: \texttt{vec3<f32>}
+ \item GLSL: \texttt{vec3}
+ \item HLSL: \texttt{float3}
+\end{itemize}
+
+\paragraph{Matrixtypen} \
+
+Analog zu Vektortypen werden Matrixtypen in WGSL mit
+
+\texttt{mat\textit{N}x\textit{M}<\textit{T}>}
+
+deklariert, wobei \textit{N} hier für die Anzahl der Spalten und \textit{M} für die Anzahl der Zeilen steht. \textit{N} und \textit{M} müssen wiederum beide in \{2, 3, 4\} sein. \textit{T} ist ein skalarer Typ aus Abschnitt \ref{sub:scalars}.
+
+In GLSL gibt es dafür
+
+\texttt{mat\textit{N}x\textit{M}}
+
+und als Abkürzung für eine Matrix mit quadratischer Form (Anzahl Spalten = Anzahl Zeilen)
+
+\texttt{mat\textit{N}}
+
+Matrixkomponenten sind immer vom Typ \texttt{float} oder \texttt{double}. Eine Matrix mit doppelter Genauigkeit wird mit \texttt{dmat\textit{N}x\textit{M}} bzw \texttt{dmat\textit{N}} deklariert.
+
+In HLSL werden die Matrixtypen ähnlich wie die Vektortypen deklariert:
+
+\texttt{\textit{T}\texttt{N}x\texttt{M}}
+
+wobei hier wie bei GLSL für \textit{T} jeder der skalare Typen benutzt werden kann. \textit{N} steht für die Anzahl der Spalten und \textit{M} für die Anzahl der Zeilen und beide müssen jeweils in \{1, 2, 3, 4\} sein.
+
+Eine quadratische Matrix mit 3 Spalten und 3 Zeilen vom Typ \texttt{f32} bzw. \texttt{float} wird also jeweils so erstellt:
+\begin{itemize}
+ \item WGSL: \texttt{mat3x3<f32>}
+ \item GLSL: \texttt{mat3x3} bzw. \texttt{mat3}
+ \item HLSL: \texttt{float3x3}
+\end{itemize}
+
+Um wiederum eine Matrix mit 3 Spalten und 2 Zeilen vom Typ \texttt{i32} bzw. \texttt{int} zu erstellen werden folgende Deklarationen benötigt:
+
+\begin{itemize}
+ \item WGSL: \texttt{mat3x2<i32>}
+ \item GLSL: \textit{-}
+ \item HLSL: \texttt{int3x2}
+\end{itemize}
+
+\paragraph{Swizzling} \
+
+Um auf die Komponenten eines Mehrkomponenten Typen zuzugreifen haben diese vordefinierte Felder. So hat ein 4-komponentiger Vektor zum Beispiel die Felder \texttt{x, y, z, w}. Da aber 4-komponentige Vektor auch häufig für Farbwerte benutzt werden, gibt es zusätzlich noch die Felder \texttt{r, g, b, a}, wobei dies aber nur andere Namen für die gleichen Komponenten sind: \texttt{x = r, y = g, z = b, w = a}. GLSL hat zusätzlich noch das Namensset \texttt{s, t, p, q}, das im Zusammenhang mit Texturkoordinaten benutzt wird.
+
+Eine Besonderheit in vielen Shader-Sprachen ist es, dass diese Felder frei kombiniert werden können um die einzelnen Komponenten umzustrukturieren, was \textit{swizzling} \cite{wikipedia:swizzling} genannt wird (siehe Listing \ref{lst:swizzling}).
+
+\begin{minipage}{\textwidth}
+\begin{lstlisting}[language=GLSL, label={lst:swizzling}, caption={\quotize{Swizzling} von Komponenten in GLSL}]
+vec4 some_vec = vec4(1.0, 2.0, 3.0, 4.0);
+// Get the second component
+float val = some_vec.y;
+// Get the fourth as the first, and the first as the second component of a new vec2
+vec2 other_vec = some_vec.ar; 
+// Write to the first, third and second component
+some_vec.xzy = vec3(0.0, some_vec.xx);
+// But you can't mix name sets
+vec3 faulty_vec = some_vec.xrr;
+\end{lstlisting}
+\end{minipage}
+
+Dabei wird es in WGSL nicht möglich sein, in mehrere Komponenten gleichzeitig zu schreiben, also einen \quotize{swizzled} Ausdruck auf der linken Seite einer Zuweisung zu haben \cite[Vgl.][Typed Storage]{w3:wgsl}.
+
 \section{Der aktuelle Stand}
 \subsection{Spezifikation}
-Die Spezifikation \cite{webgpu:api_spec} der \textbf{WebGPU}-\ac{API} ist zum Zeitpunkt des Verfassens dieses Abschnittes (09.06.2020) noch nicht abgeschlossen und wurde auch während dem Verlauf der Arbeit mehrmals erweitert und angepasst.
+Die Spezifikation \cite{w3:webgpu} der \textbf{WebGPU}-\ac{API} ist zum Zeitpunkt des Verfassens dieses Abschnittes (09.06.2020) noch nicht abgeschlossen und wurde auch während dem Verlauf der Arbeit mehrmals erweitert und angepasst.
 
 \subsection{Implementierung}
 \textit{Der aktuelle Stand der Implementierung in Webbrowsern kann unter \cite{webgpu:implementation_status} eingesehen werden.}
@@ -927,7 +1132,192 @@ int main() {
 \end{lstlisting}
 
 %---
-%\chapter{Anhang B}
+\chapter{Anhang B}
+\label{appendix:b}
+
+\begin{lstlisting}[language=glsl, label={lst:fragment_shader}, caption={Kompletter GLSL-Code des Fragment-Shaders der in der \textbf{spider}-Engine} für das \ac{PBR} benutzt wird]
+#version 450
+#extension GL_ARB_separate_shader_objects : enable
+#extension  GL_EXT_samplerless_texture_functions : enable
+
+layout(set = 0, binding = 1) uniform Camera {
+    mat4 view;
+    mat4 proj;
+    vec3 pos;
+} cam;
+
+layout(set = 0, binding = 2) uniform Light {
+    mat4 view;
+    mat4 proj;
+    vec4 pos3_range1;
+    vec4 color3_type1; // type: 0 directional, 1 spot, 2 point
+    vec4 dir3_fov1; // dir: for spot & dir, fov: for spot
+    vec4 area2_power1_padding1; // area: for dir
+} light;  // TODO: support more than 1 light
+
+layout(set = 2, binding = 0) uniform texture2D albedo_tex;
+layout(set = 2, binding = 1) uniform sampler albedo_sampler;
+layout(set = 2, binding = 2) uniform texture2D normal_tex;
+layout(set = 2, binding = 3) uniform sampler normal_sampler;
+layout(set = 2, binding = 4) uniform texture2D ao_roughness_metallic_tex;
+layout(set = 2, binding = 5) uniform sampler arm_sampler;
+layout(set = 2, binding = 6) uniform texture2D shadow_map;
+layout(set = 2, binding = 7) uniform sampler shadow_sampler;
+
+
+layout(location = 0) in vec3 fragPosWorld;
+layout(location = 1) in vec2 fragTexCoords;
+layout(location = 2) in vec3 fragNormal;
+layout(location = 3) in vec3 fragTangent;
+
+layout(location = 0) out vec4 outColor;
+
+const float PI = 3.14159265359;
+const float gamma = 2.2;
+
+const int sampleSize = 1;
+const float scale = 1.5;
+
+float getLightDepthOnPosSingle(vec2 coords_shadow_map) {
+    return texture( sampler2D( shadow_map, shadow_sampler ), coords_shadow_map.xy ).r;
+}
+
+float getLightDepthOnPosSampled(vec2 coords_shadow_map) {
+    float value = 0.0;
+    ivec2 texDim = textureSize(shadow_map, 0);
+    float dx = scale * 1.0 / float(texDim.x);
+    float dy = scale * 1.0 / float(texDim.y);
+    int count = 0;
+    for(int y = -sampleSize; y <= sampleSize; ++y) {
+        for(int x = -sampleSize; x <= sampleSize; ++x) {
+            value += getLightDepthOnPosSingle(coords_shadow_map + vec2(x * dx, y * dy));
+            count++;
+        }
+    }
+    return value / count;
+}
+
+float DistributionGGX(vec3 N, vec3 H, float roughness) {
+    float a      = roughness*roughness;
+    float a2     = a*a;
+    float NdotH  = max(dot(N, H), 0.0);
+    float NdotH2 = NdotH*NdotH;
+	
+    float num   = a2;
+    float denom = (NdotH2 * (a2 - 1.0) + 1.0);
+    denom = PI * denom * denom;
+	
+    return num / denom;
+}
+
+float GeometrySchlickGGX(float NdotV, float roughness) {
+    float r = (roughness + 1.0);
+    float k = (r*r) / 8.0;
+
+    float num   = NdotV;
+    float denom = NdotV * (1.0 - k) + k;
+	
+    return num / denom;
+}
+float GeometrySmith(vec3 N, vec3 V, vec3 L, float roughness) {
+    float NdotV = max(dot(N, V), 0.0);
+    float NdotL = max(dot(N, L), 0.0);
+    float ggx2  = GeometrySchlickGGX(NdotV, roughness);
+    float ggx1  = GeometrySchlickGGX(NdotL, roughness);
+	
+    return ggx1 * ggx2;
+}
+
+vec3 fresnelSchlick(float cosTheta, vec3 F0) {
+    return F0 + (1.0 - F0) * pow(1.0 - cosTheta, 5.0);
+}
+
+void main() {
+    const vec4 albedo_all = texture(sampler2D(albedo_tex, albedo_sampler), fragTexCoords).rgba;
+    const vec3 albedo = albedo_all.rgb;
+    const float alpha = albedo_all.a;
+    if(alpha == 0.0) {
+        discard;
+    }
+    vec3 tangent_space_normal = normalize(texture(sampler2D(normal_tex, normal_sampler), fragTexCoords).xyz * vec3(2.0, 2.0, 1.0) - vec3(1.0, 1.0, 0.0));
+    const vec3 ao_roughness_metallic = texture(sampler2D(ao_roughness_metallic_tex, arm_sampler), fragTexCoords).rgb;
+    const float ao          = ao_roughness_metallic.r;
+    const float roughness   = ao_roughness_metallic.g;
+    const float metallic    = ao_roughness_metallic.b;
+
+    vec3 Normal = normalize(fragNormal);
+    vec3 Tangent = normalize(fragTangent);
+    // enforce orthogonality
+    Tangent = normalize(Tangent - dot(Tangent, Normal) * Normal);
+    const vec3 Bitangent = cross(Tangent, Normal);
+    mat3 TBN = mat3(Tangent, Bitangent, Normal);
+    vec3 normal = normalize(TBN * tangent_space_normal);
+
+    vec3 N = normalize(normal);
+    vec3 V = normalize(cam.pos - fragPosWorld);
+    vec3 F0 = vec3(0.04); 
+    F0 = mix(F0, albedo, metallic);
+	           
+    // reflectance equation
+    vec3 Lo = vec3(0.0);
+    vec3 light_pos = light.pos3_range1.xyz;
+    float distance    = length(light_pos - fragPosWorld);
+    vec3 L = normalize(light_pos - fragPosWorld);
+    float light_fov = 1.0 - (light.dir3_fov1.w / 3.14);
+    float attenuation = light.area2_power1_padding1.z * (light_fov * light_fov);
+    attenuation *= max(1.0 - distance / light.pos3_range1.w, 0.0);
+    
+    // For spot lights
+    if(light.color3_type1.w == 1.0) {
+        const float light_angle_rad = acos(dot(light.dir3_fov1.xyz, -L));
+        attenuation *= pow(max(light.dir3_fov1.w * 0.5 - light_angle_rad, 0.0) / 3.14, 1.0 - (light_fov * light_fov));
+    }
+    // Shadow calculation
+    const vec4 pos_shadow_map = light.proj * light.view * vec4(fragPosWorld, 1.0);
+    vec4 pos_in_light_clip_space = pos_shadow_map / pos_shadow_map.w;
+    pos_in_light_clip_space.xy = pos_in_light_clip_space.xy * 0.5 + 0.5; // [-1,1] to [0,1]
+    pos_in_light_clip_space.y = 1.0 - pos_in_light_clip_space.y; // bottom-up to top-down
+    // [0, 0] of pos_in_light_clip_space.xy should now be the top left corner and [1, 1] the bottom right --> texture space
+
+    const float depth_bias = 0.00001; // Depth bias is not yet implemented in Chromium/dawn, so we have to "fake" it in the shader
+    if(attenuation > 0.0 && pos_in_light_clip_space.z > 0.0 && pos_in_light_clip_space.z < 1.0) {
+        const float light_depth_on_pos = getLightDepthOnPosSampled(pos_in_light_clip_space.xy);
+        if(pos_in_light_clip_space.w > 0.0 && light_depth_on_pos - depth_bias > pos_in_light_clip_space.z) {
+            attenuation = 0.0;
+        }
+    }
+    if(attenuation > 0.0) {
+        // calculate per-light radiance
+        vec3 H = normalize(V + L);
+        vec3 radiance     = light.color3_type1.rgb * attenuation;
+        
+        // cook-torrance brdf
+        float NDF = DistributionGGX(N, H, roughness);
+        float G   = GeometrySmith(N, V, L, roughness);
+        vec3 F    = fresnelSchlick(max(dot(H, V), 0.0), F0);
+        
+        vec3 kS = F;
+        vec3 kD = vec3(1.0) - kS;
+        kD *= 1.0 - metallic;
+        
+        vec3 numerator    = NDF * G * F;
+        float denominator = 4.0 * max(dot(N, V), 0.0) * max(dot(N, L), 0.0);
+        vec3 specular     = numerator / max(denominator, 0.001);  
+            
+        // add to outgoing radiance Lo
+        float NdotL = max(dot(N, L), 0.0);                
+        Lo += (kD * albedo / PI + specular) * radiance * NdotL;
+    }
+  
+    vec3 ambient = vec3(0.04) * albedo * ao;
+    vec3 color = ambient + Lo;
+	
+    color = color / (color + vec3(1.0));
+    color = pow(color, vec3(1.0/gamma));  
+   
+    outColor = vec4(color, alpha);
+}
+\end{lstlisting}
 
 
 \end{document}
