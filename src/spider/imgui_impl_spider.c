@@ -486,8 +486,9 @@ void _spImGuiRender(WGPUTextureView view) {
 			const uint32_t scissor_y = (uint32_t)pcmd->ClipRect.y;
 			const uint32_t scissor_w = (uint32_t)(pcmd->ClipRect.z - pcmd->ClipRect.x);
 			const uint32_t scissor_h = (uint32_t)(pcmd->ClipRect.w - pcmd->ClipRect.y);
-
-			wgpuRenderPassEncoderSetScissorRect(pass_enc, scissor_x, scissor_y, scissor_w, scissor_h);
+			
+			// TODO: setScissorRect is not yet supported on Firefox
+			//wgpuRenderPassEncoderSetScissorRect(pass_enc, scissor_x, scissor_y, scissor_w, scissor_h);
 			const uint32_t total_index_offset = index_offsets[cl_index] + pcmd->IdxOffset;
 			const uint32_t total_vertex_offset = vertex_offsets[cl_index] + pcmd->VtxOffset;
 			wgpuRenderPassEncoderDrawIndexed(pass_enc, pcmd->ElemCount, 1, total_index_offset, total_vertex_offset, 0);
