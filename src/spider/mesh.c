@@ -11,7 +11,7 @@ SPMeshID spCreateMesh(const SPMeshDesc* desc) {
     if(mesh_id.id == SP_INVALID_ID) {
         return mesh_id;
     }
-    int id = mesh_id.id;
+    uint32_t id = mesh_id.id;
     SPMesh* mesh = &(_sp_state.pools.mesh.data[id]);
     // Vertex buffer creation
     {

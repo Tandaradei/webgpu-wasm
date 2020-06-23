@@ -76,7 +76,8 @@ endif()
 set(CMAKE_REQUIRED_FLAGS "${EMCC_LINKER_FLAGS}")
 
 include_directories(
-    external/emscripten/system/include
+    ../emsdk/upstream/emscripten/system/include
+    #external/emscripten/system/include
     external/cglm/include
     external/stb
     external/cgltf

@@ -16,7 +16,7 @@ SPMaterialID spCreateMaterial(const SPMaterialDesc* desc) {
     if(material_id.id == SP_INVALID_ID) {
         return material_id;
     }
-    int id = material_id.id; 
+    uint32_t id = material_id.id; 
     SPMaterial* material = &(_sp_state.pools.material.data[id]);
 
     WGPUTextureViewDescriptor tex_view_desc_srgb_32 = {
@@ -221,7 +221,7 @@ void _spCreateAndLoadTextures(_SPTextureViewFromImageDescriptor descriptors[], c
         int width = 0;
         int height = 0;
         int read_comps = (int)(descriptors[i].channel_count);
-        const int comp_map[5] = {
+        const uint8_t comp_map[5] = {
             0,
             1, 
             2,
@@ -247,7 +247,7 @@ void _spCreateAndLoadTextures(_SPTextureViewFromImageDescriptor descriptors[], c
             DEBUG_PRINT(DEBUG_PRINT_WARNING, "Couldn't load '%s'\n", file);
         }
         SP_ASSERT(pixel_data);
-        int comps = comp_map[read_comps];
+        uint8_t comps = comp_map[read_comps];
         DEBUG_PRINT(DEBUG_PRINT_WARNING, "loaded image %s (%d, %d, %d / %d)\n", file, width, height, read_comps, comps);
 
         WGPUExtent3D texture_size = {

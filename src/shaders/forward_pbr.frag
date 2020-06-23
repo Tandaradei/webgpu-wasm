@@ -23,7 +23,7 @@ layout(set = 2, binding = 2) uniform texture2D normal_tex;
 layout(set = 2, binding = 3) uniform sampler normal_sampler;
 layout(set = 2, binding = 4) uniform texture2D ao_roughness_metallic_tex;
 layout(set = 2, binding = 5) uniform sampler arm_sampler;
-layout(set = 2, binding = 6) uniform texture2D shadow_map; // TODO: support more than 1 shadow map
+layout(set = 2, binding = 6) uniform texture2D shadow_map;
 layout(set = 2, binding = 7) uniform sampler shadow_sampler;
 
 
@@ -95,7 +95,12 @@ vec3 fresnelSchlick(float cosTheta, vec3 F0) {
 }
 
 void main() {
-    const vec3 albedo = texture(sampler2D(albedo_tex, albedo_sampler), fragTexCoords).rgb;
+    const vec4 albedo_all = texture(sampler2D(albedo_tex, albedo_sampler), fragTexCoords).rgba;
+    const vec3 albedo = albedo_all.rgb;
+    const float alpha = albedo_all.a;
+    if(alpha == 0.0) {
+        discard;
+    }
     vec3 tangent_space_normal = normalize(texture(sampler2D(normal_tex, normal_sampler), fragTexCoords).xyz * vec3(2.0, 2.0, 1.0) - vec3(1.0, 1.0, 0.0));
     const vec3 ao_roughness_metallic = texture(sampler2D(ao_roughness_metallic_tex, arm_sampler), fragTexCoords).rgb;
     const float ao          = ao_roughness_metallic.r;
@@ -104,74 +109,67 @@ void main() {
 
     vec3 Normal = normalize(fragNormal);
     vec3 Tangent = normalize(fragTangent);
-    Tangent = normalize(Tangent - dot(Tangent, Normal) * Normal); // enforce orthogonality
+    // enforce orthogonality
+    Tangent = normalize(Tangent - dot(Tangent, Normal) * Normal);
     const vec3 Bitangent = cross(Tangent, Normal);
     mat3 TBN = mat3(Tangent, Bitangent, Normal);
     vec3 normal = normalize(TBN * tangent_space_normal);
 
     vec3 N = normalize(normal);
-    #define NORMAL_DEBUG_VIEW 0
-    #if NORMAL_DEBUG_VIEW
-    vec3 colored_normal = N * 0.5 + 0.5;
-    outColor = vec4(colored_normal * vec3(1.0, 1.0, 1.0), 1.0);
-    #else
     vec3 V = normalize(cam.pos - fragPosWorld);
     vec3 F0 = vec3(0.04); 
     F0 = mix(F0, albedo, metallic);
 	           
     // reflectance equation
     vec3 Lo = vec3(0.0);
-    //for(int i = 0; i < 1; ++i) 
-    //{
-        vec3 light_pos = light.pos3_range1.xyz;
-        float distance    = length(light_pos - fragPosWorld);
-        vec3 L = normalize(light_pos - fragPosWorld);
-        float light_fov = 1.0 - (light.dir3_fov1.w / 3.14);
-        float attenuation = light.area2_power1_padding1.z * (light_fov * light_fov);
-        attenuation *= max(1.0 - distance / light.pos3_range1.w, 0.0);
-        
-        // For spot lights
-        if(light.color3_type1.w == 1.0) {
-            const float light_angle_rad = acos(dot(light.dir3_fov1.xyz, -L));
-            attenuation *= pow(max(light.dir3_fov1.w * 0.5 - light_angle_rad, 0.0) / 3.14, 1.0 - (light_fov * light_fov));
-        }
-        // Shadow calculation
-        const vec4 pos_shadow_map = light.proj * light.view * vec4(fragPosWorld, 1.0);
-        vec4 pos_in_light_clip_space = pos_shadow_map / pos_shadow_map.w;
-        pos_in_light_clip_space.xy = pos_in_light_clip_space.xy * 0.5 + 0.5; // [-1,1] to [0,1]
-        pos_in_light_clip_space.y = 1.0 - pos_in_light_clip_space.y; // bottom-up to top-down
-        // [0, 0] of pos_in_light_clip_space.xy should now be the top left corner and [1, 1] the bottom right --> texture space
+    vec3 light_pos = light.pos3_range1.xyz;
+    float distance    = length(light_pos - fragPosWorld);
+    vec3 L = normalize(light_pos - fragPosWorld);
+    float light_fov = 1.0 - (light.dir3_fov1.w / 3.14);
+    float attenuation = light.area2_power1_padding1.z * (light_fov * light_fov);
+    attenuation *= max(1.0 - distance / light.pos3_range1.w, 0.0);
+    
+    // For spot lights
+    if(light.color3_type1.w == 1.0) {
+        const float light_angle_rad = acos(dot(light.dir3_fov1.xyz, -L));
+        attenuation *= pow(max(light.dir3_fov1.w * 0.5 - light_angle_rad, 0.0) / 3.14, 1.0 - (light_fov * light_fov));
+    }
+    // Shadow calculation
+    const vec4 pos_shadow_map = light.proj * light.view * vec4(fragPosWorld, 1.0);
+    vec4 pos_in_light_clip_space = pos_shadow_map / pos_shadow_map.w;
+    pos_in_light_clip_space.xy = pos_in_light_clip_space.xy * 0.5 + 0.5; // [-1,1] to [0,1]
+    pos_in_light_clip_space.y = 1.0 - pos_in_light_clip_space.y; // bottom-up to top-down
+    // [0, 0] of pos_in_light_clip_space.xy should now be the top left corner and [1, 1] the bottom right --> texture space
 
-        const float depth_bias = 0.00001; // Depth bias is not yet implemented in Chromium/dawn, so we have to "fake" it in the shader
-        if(attenuation > 0.0 && pos_in_light_clip_space.z > 0.0 && pos_in_light_clip_space.z < 1.0) {
-            const float light_depth_on_pos = getLightDepthOnPosSampled(pos_in_light_clip_space.xy);
-            if(pos_in_light_clip_space.w > 0.0 && light_depth_on_pos - depth_bias > pos_in_light_clip_space.z) {
-                attenuation = 0.0;
-            }
+    const float depth_bias = 0.00001; // Depth bias is not yet implemented in Chromium/dawn, so we have to "fake" it in the shader
+    if(attenuation > 0.0 && pos_in_light_clip_space.z > 0.0 && pos_in_light_clip_space.z < 1.0) {
+        const float light_depth_on_pos = getLightDepthOnPosSampled(pos_in_light_clip_space.xy);
+        if(pos_in_light_clip_space.w > 0.0 && light_depth_on_pos - depth_bias > pos_in_light_clip_space.z) {
+            attenuation = 0.0;
         }
-        if(attenuation > 0.0) {
-            // calculate per-light radiance
-            vec3 H = normalize(V + L);
-            vec3 radiance     = light.color3_type1.rgb * attenuation;
+    }
+    if(attenuation > 0.0) {
+        // calculate per-light radiance
+        vec3 H = normalize(V + L);
+        vec3 radiance     = light.color3_type1.rgb * attenuation;
+        
+        // cook-torrance brdf
+        float NDF = DistributionGGX(N, H, roughness);
+        float G   = GeometrySmith(N, V, L, roughness);
+        vec3 F    = fresnelSchlick(max(dot(H, V), 0.0), F0);
+        
+        vec3 kS = F;
+        vec3 kD = vec3(1.0) - kS;
+        kD *= 1.0 - metallic;
+        
+        vec3 numerator    = NDF * G * F;
+        float denominator = 4.0 * max(dot(N, V), 0.0) * max(dot(N, L), 0.0);
+        vec3 specular     = numerator / max(denominator, 0.001);  
             
-            // cook-torrance brdf
-            float NDF = DistributionGGX(N, H, roughness);
-            float G   = GeometrySmith(N, V, L, roughness);
-            vec3 F    = fresnelSchlick(max(dot(H, V), 0.0), F0);
-            
-            vec3 kS = F;
-            vec3 kD = vec3(1.0) - kS;
-            kD *= 1.0 - metallic;
-            
-            vec3 numerator    = NDF * G * F;
-            float denominator = 4.0 * max(dot(N, V), 0.0) * max(dot(N, L), 0.0);
-            vec3 specular     = numerator / max(denominator, 0.001);  
-                
-            // add to outgoing radiance Lo
-            float NdotL = max(dot(N, L), 0.0);                
-            Lo += (kD * albedo / PI + specular) * radiance * NdotL;
-        }
-    //}   
+        // add to outgoing radiance Lo
+        float NdotL = max(dot(N, L), 0.0);                
+        Lo += (kD * albedo / PI + specular) * radiance * NdotL;
+    }
   
     vec3 ambient = vec3(0.04) * albedo * ao;
     vec3 color = ambient + Lo;
@@ -179,6 +177,5 @@ void main() {
     color = color / (color + vec3(1.0));
     color = pow(color, vec3(1.0/gamma));  
    
-    outColor = vec4(color, 1.0);
-    #endif
+    outColor = vec4(color, alpha);
 }

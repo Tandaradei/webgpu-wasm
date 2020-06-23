@@ -10,7 +10,7 @@ SPRenderMeshID spCreateRenderMesh(const SPRenderMeshDesc* desc) {
     if(rm_id.id == SP_INVALID_ID) {
         return rm_id;
     }
-    int id = rm_id.id; 
+    uint32_t id = rm_id.id; 
     SPRenderMesh* rm = &(_sp_state.pools.render_mesh.data[id]);
     rm->mesh_id = desc->mesh;
     rm->material_id = desc->material;

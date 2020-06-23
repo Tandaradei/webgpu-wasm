@@ -16,6 +16,7 @@
 extern _SPState _sp_state;
 
 void spInit(const SPInitDesc* desc) {
+	SP_ASSERT(desc->update_func);
 	_sp_state.device = emscripten_webgpu_get_device();
 	DEBUG_PRINT(DEBUG_PRINT_TYPE_INIT, "init: got device\n");
 	wgpuDeviceSetUncapturedErrorCallback(_sp_state.device, &_spErrorCallback, NULL);
@@ -38,8 +39,10 @@ void spInit(const SPInitDesc* desc) {
 	_sp_state.surface = wgpuInstanceCreateSurface(_sp_state.instance, &surf_desc);
 	DEBUG_PRINT(DEBUG_PRINT_TYPE_INIT, "init: created surface\n");
 
-	_sp_state.surface_size.width = desc->surface_size.width;
-	_sp_state.surface_size.height = desc->surface_size.height;
+	_sp_state.surface_size.width = _SP_GET_DEFAULT_IF_ZERO(desc->surface_size.width, _SP_SURFACE_WIDTH_DEFAULT);
+	_sp_state.surface_size.height = _SP_GET_DEFAULT_IF_ZERO(desc->surface_size.height, _SP_SURFACE_HEIGHT_DEFAULT);
+
+	_sp_state.update_func = desc->update_func;
 
 	WGPUSwapChainDescriptor sc_desc = {
 		.usage = WGPUTextureUsage_OutputAttachment,
@@ -235,181 +238,10 @@ void spShutdown(void) {
 
 }
 
-void spBeginUI(float delta_time) {
-	_spImGuiNewFrame(_sp_state.surface_size.width, _sp_state.surface_size.height, delta_time);
+void spStart(void) {
+	emscripten_set_main_loop(_spUpdate, _sp_state.fps_limit, false);
+	_sp_state.start_clock = clock();
 }
-
-void spUpdate(float delta_time) {
-	_spInputResetKeyStates(&_sp_state.input);
-	_spUpdate(delta_time);
-	static bool input_open = true;
-	igBegin("Input Tester", &input_open, ImGuiWindowFlags_None);
-	if(igCollapsingHeaderTreeNodeFlags("Keyboard", ImGuiTreeNodeFlags_None)) {
-		igInputText("Text input", _sp_state.test_buffer, 100, ImGuiInputTextFlags_None, NULL, NULL);
-		igPushItemFlag(ImGuiItemFlags_Disabled, true);
-		for(uint32_t key = 1; key < _SP_INPUT_KEY_COUNT; key++) {
-			SPKeyState key_state = _spInputGetKeyState(&_sp_state.input, key);
-			bool is_pressed = key_state & SPKeyState_Pressed;
-			igCheckbox(_spInputGetStringForKey(key), &is_pressed);
-		}
-		igPopItemFlag();
-	}
-	if(igCollapsingHeaderTreeNodeFlags("Mouse", ImGuiTreeNodeFlags_None)) {
-		igPushItemFlag(ImGuiItemFlags_Disabled, true);
-		int mouse_pos[2] = {
-			_sp_state.input.mouse_position.x,
-			_sp_state.input.mouse_position.y
-		};
-		igSliderInt2("Position", mouse_pos, 0, _sp_state.surface_size.width, "%u");
-		for(uint32_t button = 1; button < _SP_INPUT_MOUSE_BUTTON_COUNT; button++) {
-			SPMouseButtonState button_state = _spInputGetMouseButtonState(&_sp_state.input, button);
-			bool is_pressed = button_state & SPMouseButtonState_Pressed;
-			igCheckbox(_spInputGetStringForMouseButton(button), &is_pressed);
-		}
-		igPopItemFlag();
-	}
-	igEnd();
-	//igShowMetricsWindow(&_sp_state.show_stats);
-}
-
-
-void spRender(void) {
-	DEBUG_PRINT(DEBUG_PRINT_RENDER, "render: start\n");
-
-	WGPUTextureView view = wgpuSwapChainGetCurrentTextureView(_sp_state.swap_chain);
-	_spSortRenderMeshes();
-
-	// shadow maps
-	// ***
-	{
-		SPLight* light = spGetLight((SPLightID){1}); // TODO: currently just 1 light supported
-		if(light) {
-			
-			// TODO: [vertex-only, dawn] https://bugs.chromium.org/p/dawn/issues/detail?id=1367
-			// remove color attachment when vertex-only render pipelines are available
-			WGPURenderPassColorAttachmentDescriptor color_attachment = {
-				.attachment = light->color_view,
-				.loadOp = WGPULoadOp_Clear,
-				.storeOp = WGPUStoreOp_Store,
-				.clearColor = (WGPUColor){0.0f, 0.0f, 0.0, 1.0f}
-			};
-
-			WGPURenderPassDepthStencilAttachmentDescriptor depth_attachment = {
-				.attachment = light->depth_view,
-				.depthLoadOp = WGPULoadOp_Clear,
-				.depthStoreOp = WGPUStoreOp_Store,
-				.clearDepth = 0.0f,
-				.stencilLoadOp = WGPULoadOp_Clear,
-				.stencilStoreOp = WGPUStoreOp_Store,
-				.clearStencil = 0,
-			};
-
-			// TODO: [vertex-only, dawn] https://bugs.chromium.org/p/dawn/issues/detail?id=1367
-			// remove color attachment when vertex-only render pipelines are available
-			WGPURenderPassDescriptor render_pass = {
-				.colorAttachmentCount = 1,
-				.colorAttachments = &color_attachment,
-				.depthStencilAttachment = &depth_attachment,
-			};
-			WGPURenderPassEncoder shadow_pass_enc = wgpuCommandEncoderBeginRenderPass(_sp_state.cmd_enc, &render_pass);
-			wgpuRenderPassEncoderSetPipeline(shadow_pass_enc, _sp_state.pipelines.render.shadow.pipeline);
-			SPMesh* last_mesh = NULL;
-			for(SPRenderMeshID rm_id = {1}; rm_id.id < _sp_state.pools.render_mesh.info.size; rm_id.id++) {
-				SPRenderMesh* rm = spGetRenderMesh(rm_id);
-				if(rm) {
-					SPMesh* mesh = rm->_mesh;
-					if(mesh) {
-						if(last_mesh != mesh) {
-							wgpuRenderPassEncoderSetVertexBuffer(shadow_pass_enc, 0, mesh->vertex_buffer, 0, 0);
-							wgpuRenderPassEncoderSetIndexBuffer(shadow_pass_enc, mesh->index_buffer, 0, 0);
-							last_mesh = mesh;
-						}
-						uint32_t offsets_vert[] = { (rm_id.id - 1) * _sp_state.dynamic_alignment};
-						wgpuRenderPassEncoderSetBindGroup(shadow_pass_enc, 0, _sp_state.shadow_bind_group, SP_ARRAY_LEN(offsets_vert), offsets_vert);
-						wgpuRenderPassEncoderDrawIndexed(shadow_pass_enc, mesh->indices_count, 1, 0, 0, 0);
-					}
-				}
-			}
-			wgpuRenderPassEncoderEndPass(shadow_pass_enc);
-			wgpuRenderPassEncoderRelease(shadow_pass_enc);
-			DEBUG_PRINT(DEBUG_PRINT_RENDER, "render: finished render pass\n");
-		}
-	}
-	// ***
-
-	// main pass
-	// ***
-	{
-		WGPURenderPassColorAttachmentDescriptor color_attachment = {
-			.attachment = view,
-			.loadOp = WGPULoadOp_Clear,
-			.storeOp = WGPUStoreOp_Store,
-			.clearColor = (WGPUColor){0.0f, 0.0f, 0.0f, 1.0f}
-		};
-
-		WGPURenderPassDepthStencilAttachmentDescriptor depth_attachment = {
-			.attachment = _sp_state.depth_view,
-			.depthLoadOp = WGPULoadOp_Clear,
-			.depthStoreOp = WGPUStoreOp_Store,
-			.clearDepth = 0.0f,
-			.stencilLoadOp = WGPULoadOp_Clear,
-			.stencilStoreOp = WGPUStoreOp_Store,
-			.clearStencil = 0,
-		};
-
-		WGPURenderPassDescriptor render_pass = {
-			.colorAttachmentCount = 1,
-			.colorAttachments = &color_attachment,
-			.depthStencilAttachment = &depth_attachment,
-		};
-		_sp_state.pass_enc = wgpuCommandEncoderBeginRenderPass(_sp_state.cmd_enc, &render_pass);
-		wgpuRenderPassEncoderSetPipeline(_sp_state.pass_enc, _sp_state.pipelines.render.forward.pipeline);
-							
-
-		for(SPMaterialID mat_id = {1}; mat_id.id < _sp_state.pools.material.info.size; mat_id.id++) {
-			if(_sp_state.rm_counts_per_mat[mat_id.id - 1] == 0) {
-				continue;
-			}
-			SPMaterial* material = spGetMaterial(mat_id);
-			if(material) {
-				wgpuRenderPassEncoderSetBindGroup(_sp_state.pass_enc, 1, material->bind_groups.vert, 0, NULL);
-				wgpuRenderPassEncoderSetBindGroup(_sp_state.pass_enc, 2, material->bind_groups.frag, 0, NULL);
-				SPMesh* last_mesh = NULL;
-				uint32_t rm_count = _sp_state.rm_counts_per_mat[mat_id.id - 1];
-				for(uint32_t i = 0; i < rm_count; i++) {
-					SPRenderMeshID rm_id = _sp_state.sorted_rm[(mat_id.id - 1) * (_sp_state.pools.render_mesh.info.size - 1) + i];
-					SPRenderMesh* rm = spGetRenderMesh(rm_id);
-					if(rm) {
-						SPMesh* mesh = rm->_mesh;
-						if(mesh) {
-							if(last_mesh != mesh) {
-								wgpuRenderPassEncoderSetVertexBuffer(_sp_state.pass_enc, 0, mesh->vertex_buffer, 0, 0);
-								wgpuRenderPassEncoderSetIndexBuffer(_sp_state.pass_enc, mesh->index_buffer, 0, 0);
-								last_mesh = mesh;
-							}
-							uint32_t offsets_uniform[] = { (rm_id.id - 1) * _sp_state.dynamic_alignment, 0, 0};
-							wgpuRenderPassEncoderSetBindGroup(_sp_state.pass_enc, 0, material->bind_groups.uniform, SP_ARRAY_LEN(offsets_uniform), offsets_uniform);
-							wgpuRenderPassEncoderDrawIndexed(_sp_state.pass_enc, mesh->indices_count, 1, 0, 0, 0);
-						}
-					}
-				}
-			}
-		}
-
-		wgpuRenderPassEncoderEndPass(_sp_state.pass_enc);
-		wgpuRenderPassEncoderRelease(_sp_state.pass_enc);
-		DEBUG_PRINT(DEBUG_PRINT_RENDER, "render: finished render pass\n");
-		
-	}
-	// ***
-
-	_spImGuiRender(view);
-	_spSubmit();
-	
-	wgpuTextureViewRelease(view);
-	_sp_state.frame_index++;
-}
-
 
 SPCamera* spGetActiveCamera() {
 	return &(_sp_state.active_cam);
@@ -646,7 +478,7 @@ void _spCreateForwardRenderPipeline() {
 				.srcFactor = WGPUBlendFactor_One,
 				.dstFactor = WGPUBlendFactor_Zero,
 			},
-			.writeMask = WGPUColorWriteMask_All
+			.writeMask = WGPUColorWriteMask_Red | WGPUColorWriteMask_Green | WGPUColorWriteMask_Blue
 		}
 	});;
 
@@ -894,10 +726,10 @@ void _spInitPool(_SPPool* pool, size_t size) {
 	size_t gen_ctrs_size = sizeof(uint32_t) * pool->size;
 	pool->gen_ctrs = (uint32_t*) SP_MALLOC(gen_ctrs_size);
 	SP_ASSERT(pool->gen_ctrs);
-	pool->free_queue = (int*)SP_MALLOC(sizeof(int)*size);
+	pool->free_queue = (uint32_t*)SP_MALLOC(sizeof(uint32_t)*size);
 	SP_ASSERT(pool->free_queue);
 	/* never allocate the zero-th pool item since the invalid id is 0 */
-	for (int i = pool->size-1; i >= 1; i--) {
+	for (uint32_t i = pool->size-1; i >= 1; i--) {
 		pool->free_queue[pool->queue_top++] = i;
 	}
 	pool->last_index_plus_1 = 1;
@@ -915,11 +747,11 @@ void _spDiscardPool(_SPPool* pool) {
 	pool->queue_top = 0;
 }
 
-int _spAllocPoolIndex(_SPPool* pool) {
+uint32_t _spAllocPoolIndex(_SPPool* pool) {
 	SP_ASSERT(pool);
 	SP_ASSERT(pool->free_queue);
 	if (pool->queue_top > 0) {
-		int slot_index = pool->free_queue[--pool->queue_top];
+		uint32_t slot_index = pool->free_queue[--pool->queue_top];
 		SP_ASSERT((slot_index > 0) && (slot_index < pool->size));
 		if(slot_index + 1 > pool->last_index_plus_1) {
 			pool->last_index_plus_1 = slot_index + 1;
@@ -939,7 +771,7 @@ void _spFreePoolIndex(_SPPool* pool, int slot_index) {
 	SP_ASSERT(pool->queue_top < pool->size);
 	#ifdef SPIDER_DEBUG
 	/* debug check against double-free */
-	for (int i = 0; i < pool->queue_top; i++) {
+	for (uint32_t i = 0; i < pool->queue_top; i++) {
 		SP_ASSERT(pool->free_queue[i] != slot_index);
 	}
 	#endif
@@ -986,13 +818,193 @@ void _spUpdateProjection(void) {
 	);
 }
 
-void _spUpdate(float delta_time) {
+void _spUpdate(void) {
+    clock_t cur_clock = clock();
+    float delta_time_s = ((float)(cur_clock - _sp_state.start_clock) / CLOCKS_PER_SEC);
+    _sp_state.start_clock = cur_clock;
+
+	// ImGuiNewFrame should be first to allow (debug) UIs in each update function
+	_spImGuiNewFrame(_sp_state.surface_size.width, _sp_state.surface_size.height, delta_time_s);
+
+	_spInputResetKeyStates(&_sp_state.input);
+
+	static bool input_open = true;
+	igBegin("Input Tester", &input_open, ImGuiWindowFlags_None);
+	if(igCollapsingHeaderTreeNodeFlags("Keyboard", ImGuiTreeNodeFlags_None)) {
+		igInputText("Text input", _sp_state.test_buffer, 100, ImGuiInputTextFlags_None, NULL, NULL);
+		igPushItemFlag(ImGuiItemFlags_Disabled, true);
+		for(uint32_t key = 1; key < _SP_INPUT_KEY_COUNT; key++) {
+			SPKeyState key_state = _spInputGetKeyState(&_sp_state.input, key);
+			bool is_pressed = key_state & SPKeyState_Pressed;
+			igCheckbox(_spInputGetStringForKey(key), &is_pressed);
+		}
+		igPopItemFlag();
+	}
+	if(igCollapsingHeaderTreeNodeFlags("Mouse", ImGuiTreeNodeFlags_None)) {
+		igPushItemFlag(ImGuiItemFlags_Disabled, true);
+		int mouse_pos[2] = {
+			(int)_sp_state.input.mouse_position.x,
+			(int)_sp_state.input.mouse_position.y
+		};
+		igSliderInt2("Position", mouse_pos, 0, _sp_state.surface_size.width, "%u");
+		for(uint32_t button = 1; button < _SP_INPUT_MOUSE_BUTTON_COUNT; button++) {
+			SPMouseButtonState button_state = _spInputGetMouseButtonState(&_sp_state.input, button);
+			bool is_pressed = button_state & SPMouseButtonState_Pressed;
+			igCheckbox(_spInputGetStringForMouseButton(button), &is_pressed);
+		}
+		igPopItemFlag();
+	}
+	igEnd();
+
+	igShowMetricsWindow(&_sp_state.show_stats);
+	bool should_continue = _sp_state.update_func(delta_time_s);
+
 	_spUpdateDirtyNodes();
 	_spUpdateView();
 	_spUpdateProjection();
 	_spUpdateUboCamera();
 	_spUpdateUboModel();
 	_spUpdateUboLight();
+
+	_spRender();
+}
+
+
+void _spRender(void) {
+	DEBUG_PRINT(DEBUG_PRINT_RENDER, "render: start\n");
+
+	WGPUTextureView view = wgpuSwapChainGetCurrentTextureView(_sp_state.swap_chain);
+	_spSortRenderMeshes();
+
+	// shadow maps
+	// ***
+	{
+		SPLight* light = spGetLight((SPLightID){1}); // TODO: currently just 1 light supported
+		if(light) {
+			
+			// TODO: [vertex-only, dawn] https://bugs.chromium.org/p/dawn/issues/detail?id=1367
+			// remove color attachment when vertex-only render pipelines are available
+			WGPURenderPassColorAttachmentDescriptor color_attachment = {
+				.attachment = light->color_view,
+				.loadOp = WGPULoadOp_Clear,
+				.storeOp = WGPUStoreOp_Store,
+				.clearColor = (WGPUColor){0.0f, 0.0f, 0.0, 1.0f}
+			};
+
+			WGPURenderPassDepthStencilAttachmentDescriptor depth_attachment = {
+				.attachment = light->depth_view,
+				.depthLoadOp = WGPULoadOp_Clear,
+				.depthStoreOp = WGPUStoreOp_Store,
+				.clearDepth = 0.0f,
+				.stencilLoadOp = WGPULoadOp_Clear,
+				.stencilStoreOp = WGPUStoreOp_Store,
+				.clearStencil = 0,
+			};
+
+			// TODO: [vertex-only, dawn] https://bugs.chromium.org/p/dawn/issues/detail?id=1367
+			// remove color attachment when vertex-only render pipelines are available
+			WGPURenderPassDescriptor render_pass = {
+				.colorAttachmentCount = 1,
+				.colorAttachments = &color_attachment,
+				.depthStencilAttachment = &depth_attachment,
+			};
+			WGPURenderPassEncoder shadow_pass_enc = wgpuCommandEncoderBeginRenderPass(_sp_state.cmd_enc, &render_pass);
+			wgpuRenderPassEncoderSetPipeline(shadow_pass_enc, _sp_state.pipelines.render.shadow.pipeline);
+			SPMesh* last_mesh = NULL;
+			for(SPRenderMeshID rm_id = {1}; rm_id.id < _sp_state.pools.render_mesh.info.size; rm_id.id++) {
+				SPRenderMesh* rm = spGetRenderMesh(rm_id);
+				if(rm) {
+					SPMesh* mesh = rm->_mesh;
+					if(mesh) {
+						if(last_mesh != mesh) {
+							wgpuRenderPassEncoderSetVertexBuffer(shadow_pass_enc, 0, mesh->vertex_buffer, 0, 0);
+							wgpuRenderPassEncoderSetIndexBuffer(shadow_pass_enc, mesh->index_buffer, 0, 0);
+							last_mesh = mesh;
+						}
+						uint32_t offsets_vert[] = { (rm_id.id - 1) * _sp_state.dynamic_alignment};
+						wgpuRenderPassEncoderSetBindGroup(shadow_pass_enc, 0, _sp_state.shadow_bind_group, SP_ARRAY_LEN(offsets_vert), offsets_vert);
+						wgpuRenderPassEncoderDrawIndexed(shadow_pass_enc, mesh->indices_count, 1, 0, 0, 0);
+					}
+				}
+			}
+			wgpuRenderPassEncoderEndPass(shadow_pass_enc);
+			wgpuRenderPassEncoderRelease(shadow_pass_enc);
+			DEBUG_PRINT(DEBUG_PRINT_RENDER, "render: finished render pass\n");
+		}
+	}
+	// ***
+
+	// main pass
+	// ***
+	{
+		WGPURenderPassColorAttachmentDescriptor color_attachment = {
+			.attachment = view,
+			.loadOp = WGPULoadOp_Clear,
+			.storeOp = WGPUStoreOp_Store,
+			.clearColor = (WGPUColor){0.0f, 0.0f, 0.0f, 1.0f}
+		};
+
+		WGPURenderPassDepthStencilAttachmentDescriptor depth_attachment = {
+			.attachment = _sp_state.depth_view,
+			.depthLoadOp = WGPULoadOp_Clear,
+			.depthStoreOp = WGPUStoreOp_Store,
+			.clearDepth = 0.0f,
+			.stencilLoadOp = WGPULoadOp_Clear,
+			.stencilStoreOp = WGPUStoreOp_Store,
+			.clearStencil = 0,
+		};
+
+		WGPURenderPassDescriptor render_pass = {
+			.colorAttachmentCount = 1,
+			.colorAttachments = &color_attachment,
+			.depthStencilAttachment = &depth_attachment,
+		};
+		_sp_state.pass_enc = wgpuCommandEncoderBeginRenderPass(_sp_state.cmd_enc, &render_pass);
+		wgpuRenderPassEncoderSetPipeline(_sp_state.pass_enc, _sp_state.pipelines.render.forward.pipeline);
+							
+
+		for(SPMaterialID mat_id = {1}; mat_id.id < _sp_state.pools.material.info.size; mat_id.id++) {
+			if(_sp_state.rm_counts_per_mat[mat_id.id - 1] == 0) {
+				continue;
+			}
+			SPMaterial* material = spGetMaterial(mat_id);
+			if(material) {
+				wgpuRenderPassEncoderSetBindGroup(_sp_state.pass_enc, 1, material->bind_groups.vert, 0, NULL);
+				wgpuRenderPassEncoderSetBindGroup(_sp_state.pass_enc, 2, material->bind_groups.frag, 0, NULL);
+				SPMesh* last_mesh = NULL;
+				uint32_t rm_count = _sp_state.rm_counts_per_mat[mat_id.id - 1];
+				for(uint32_t i = 0; i < rm_count; i++) {
+					SPRenderMeshID rm_id = _sp_state.sorted_rm[(mat_id.id - 1) * (_sp_state.pools.render_mesh.info.size - 1) + i];
+					SPRenderMesh* rm = spGetRenderMesh(rm_id);
+					if(rm) {
+						SPMesh* mesh = rm->_mesh;
+						if(mesh) {
+							if(last_mesh != mesh) {
+								wgpuRenderPassEncoderSetVertexBuffer(_sp_state.pass_enc, 0, mesh->vertex_buffer, 0, 0);
+								wgpuRenderPassEncoderSetIndexBuffer(_sp_state.pass_enc, mesh->index_buffer, 0, 0);
+								last_mesh = mesh;
+							}
+							uint32_t offsets_uniform[] = { (rm_id.id - 1) * _sp_state.dynamic_alignment, 0, 0};
+							wgpuRenderPassEncoderSetBindGroup(_sp_state.pass_enc, 0, material->bind_groups.uniform, SP_ARRAY_LEN(offsets_uniform), offsets_uniform);
+							wgpuRenderPassEncoderDrawIndexed(_sp_state.pass_enc, mesh->indices_count, 1, 0, 0, 0);
+						}
+					}
+				}
+			}
+		}
+
+		wgpuRenderPassEncoderEndPass(_sp_state.pass_enc);
+		wgpuRenderPassEncoderRelease(_sp_state.pass_enc);
+		DEBUG_PRINT(DEBUG_PRINT_RENDER, "render: finished render pass\n");
+		
+	}
+	// ***
+
+	_spImGuiRender(view);
+	_spSubmit();
+	
+	wgpuTextureViewRelease(view);
+	_sp_state.frame_index++;
 }
 
 void _spSubmit(void) {

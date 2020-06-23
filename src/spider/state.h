@@ -18,12 +18,15 @@
 #define _SP_LIGHT_POOL_DEFAULT 8
 #define _SP_SCENE_NODE_POOL_DEFAULT 1024
 
+#define _SP_SURFACE_WIDTH_DEFAULT 1280
+#define _SP_SURFACE_HEIGHT_DEFAULT 720
+
 typedef struct _SPPool {
     size_t size;
     size_t last_index_plus_1;
     size_t queue_top;
     uint32_t* gen_ctrs;
-    int* free_queue;
+    uint32_t* free_queue;
 } _SPPool;
 
 typedef struct SPPoolsDesc {
@@ -41,6 +44,9 @@ typedef struct SPInitDesc {
         size_t width;
         size_t height;
     } surface_size;
+
+    bool (*update_func)(float delta_time_s);
+    uint32_t fps_limit;
 
     const SPCamera camera;
 
@@ -109,6 +115,10 @@ typedef struct _SPState {
         uint32_t height;
     } surface_size;
 
+    clock_t start_clock;
+    bool (*update_func)(float delta_time_s);
+    uint32_t fps_limit;
+
     uint32_t dynamic_alignment;
 
     uint32_t frame_index; // enough for ~10,000 hours @ 120 fps
@@ -156,17 +166,11 @@ void spInit(const SPInitDesc* desc);
 Releases all remaining resources and frees allocated data
 */
 void spShutdown(void);
-void spBeginUI(float delta_time);
-/* 
-Updates the model, view and projection matrices and copies them
-in their respective buffers buffer
-*/
-void spUpdate(float delta_time);
+
 /*
-Records the commands for the GPU and submits them
-Draws all valid RenderMeshes
+Starts the application update cycle
 */
-void spRender(void);
+void spStart(void);
 
 /*
 Returns a temporary pointer to the active camera 
@@ -233,7 +237,7 @@ void _spInitPool(_SPPool* pool, size_t size);
 /* Discard a pool */
 void _spDiscardPool(_SPPool* pool);
 /* Get the next free ID from a pool */
-int _spAllocPoolIndex(_SPPool* pool);
+uint32_t _spAllocPoolIndex(_SPPool* pool);
 /* Free an ID from a pool */
 void _spFreePoolIndex(_SPPool* pool, int slot_index);
 
@@ -255,10 +259,17 @@ void _spUpdateView(void);
 void _spUpdateProjection(void);
 
 // General
-/*
-Calls all internal updates
+/* 
+Updates the model, view and projection matrices and copies them
+in their respective buffers buffer
+Calls the custom update_func
 */
-void _spUpdate(float delta_time);
+void _spUpdate(void);
+/*
+Records the commands for the GPU and submits them
+Draws all valid RenderMeshes
+*/
+void _spRender(void);
 /*
 Creates a command buffer from the recorded commands
 and submits it to the queue

@@ -178,7 +178,7 @@ SPSceneNodeID _spCreateSceneNode(const _SPSceneNodeDesc* desc) {
     if(node_id.id == SP_INVALID_ID) {
         return node_id;
     }
-    int id = node_id.id; 
+    uint32_t id = node_id.id; 
     SPSceneNode* node = &(_sp_state.pools.scene_node.data[id]);
     if(desc->parent) {
         spSceneNodeSetParent(node, desc->parent);

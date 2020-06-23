@@ -1,21 +1,17 @@
-#include <emscripten/emscripten.h>
 #include "spider/spider.h"
 
-//#include "mesh_data.h" // not used currently
+static SPLightID spot_light_id;
+static uint32_t last_mouse_pos_x = 0;
+static uint32_t last_mouse_pos_y = 0;
+static const uint32_t surface_width = 1280;
+static const uint32_t surface_height = 720;
+static vec3 cam_rot = {0.0f, 0.0f, 0.0f};
+static vec4 forward = {0.0f, 0.0f, 1.0f, 0.0f};
+static float sensitivity = 2.0f;
+static float vertical_limit = 0.01f;
 
-SPLightID spot_light_id;
-clock_t start_clock;
-
-float randFloat(void) {
-    return (float) rand() / (float) RAND_MAX;
-}
-
-float randFloatRange(float min, float max) {
-    return min + randFloat() * (max - min);
-}
-
-void createObjects(void) {
-    // TODO: lights have to be created before materials right now 
+void init(void) {
+    // Lights have to be created before materials right now 
     const vec3 light_pos = {0.0f, 5.0f, 0.5f};
     const vec3 light_look_at = {2.0f, 0.0f, 0.0f};
     vec3 light_direction = {-1.0, -1.0f, 0.2f};
@@ -41,26 +37,11 @@ void createObjects(void) {
     /*SPSceneNodeID sponza_node_id = */spLoadGltf("assets/gltf/Sponza/Sponza.gltf");
 }
 
-static float time_elapsed_total_s = 0.0f;
-static uint32_t last_mouse_pos_x = 0;
-static uint32_t last_mouse_pos_y = 0;
-static const uint32_t surface_width = 1280;
-static const uint32_t surface_height = 720;
-static vec3 cam_rot = {0.0f, 0.0f, 0.0f};
-static vec4 forward = {0.0f, 0.0f, 1.0f, 0.0f};
-static float sensitivity = 2.0f;
-static float vertical_limit = 0.01f;
-
-void frame(void) {
-    clock_t cur_clock = clock();
-    float delta_time_s = ((float)(cur_clock - start_clock) / CLOCKS_PER_SEC);
-    start_clock = clock();
-    time_elapsed_total_s += delta_time_s;
-    spBeginUI(delta_time_s);
+bool update(float delta_time_s) {
     static bool show_controls = true;
     igBegin("Controls", &show_controls, ImGuiWindowFlags_None);
         igText("Look:");
-            igBulletText("Hold middle mouse button and move mouse");
+            igBulletText("Hold right mouse button and move mouse");
         igText("Move:");
             igBulletText("W: Forward");
             igBulletText("S: Back");
@@ -77,18 +58,10 @@ void frame(void) {
     glm_vec4_normalize(forward);
 
     if(cam) {
-        if(spGetMouseButtonPressed(SPMouseButton_Middle)) {
-            vec2 last_mouse_pos = {
-                (float)last_mouse_pos_x,
-                (float)last_mouse_pos_y
-            };
-            vec2 mouse_pos = {
-                (float)spGetMousePositionX(),
-                (float)spGetMousePositionY()
-            };
+        if(spGetMouseButtonPressed(SPMouseButton_Right)) {
             vec2 relative_delta = {
-                (mouse_pos[0] - last_mouse_pos[0]) / (float) surface_width,
-                (mouse_pos[1] - last_mouse_pos[1]) / (float) surface_height
+                ((float)spGetMousePositionX() - (float)last_mouse_pos_x) / (float) surface_width,
+                ((float)spGetMousePositionY() - (float)last_mouse_pos_y) / (float) surface_height
             };
             float rotation_speed = sensitivity * M_PI;
             cam_rot[1] -= rotation_speed * relative_delta[0]; // horizontal
@@ -122,6 +95,7 @@ void frame(void) {
             igSliderFloat("Vertical look limit##cam", &vertical_limit, 0.0f, M_PI * 0.5f, "%.2f", 1.0f);
             igSliderFloat3("Position##cam", (float*)&cam->pos, -10.0f, 10.0f, "%.2f", 1.0f);
             igSliderFloat3("Rotation (Rad)##cam", (float*)&cam_rot, -M_PI, M_PI, "%.2f", 1.0f);
+            igSliderFloat("Vertical field of view (Rad)##cam", &cam->fovy, 0.01f, M_PI, "%.2f", 1.0f);
         }
     }
 
@@ -138,31 +112,26 @@ void frame(void) {
         }
     }
     igEnd();
-    spUpdate(delta_time_s);
-    spRender();
+
+    // return false if you want to quit
+    return true;
 }
 
 int main() {
-    srand(0); // to ensure getting comparable results every run
-    vec3 dir = {0.0f, 0.0f, 1.0f}; // for SPCameraMode_Direction
-    glm_vec3_normalize(dir);
-    const vec3 pos = {0.0f, 2.0f, 0.0f};
-    const vec3 center = {0.0f, 0.0f, 0.0f}; // for SPCameraMode_LookAt
-
     spInit(&(SPInitDesc){
         .surface_size = {
             .width = surface_width,
             .height = surface_height
         },
+        .update_func = update,
         .camera = {
-            .pos = {pos[0], pos[1], pos[2]},
-            .dir = {dir[0], dir[1], dir[2]},
-            .look_at = {center[0], center[1], center[2]},
+            .pos = {0.0f, 2.0f, 0.0f},
+            .dir = {0.0f, 0.0f, 1.0f},
+            .look_at = {0.0f, 0.0f, 0.0f},
             .mode = SPCameraMode_Direction,
             .fovy = glm_rad(60.0f),
             .aspect = (float)surface_width / (float) surface_height,
             .near = 0.1f,
-            .far = 100.0f // not used
         },
         .pools.capacities = {
             .meshes = 128,
@@ -174,9 +143,8 @@ int main() {
         .show_stats = true,
     });
 
-    createObjects();
-    start_clock = clock();
+    init();
 
-    emscripten_set_main_loop(frame, 200, false);
+    spStart();
     return 0;
 }

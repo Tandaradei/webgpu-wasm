@@ -389,7 +389,7 @@ void _spImGuiRender(WGPUTextureView view) {
 	index_offsets[0] = 0;
 	uint32_t index_data_offset = 0;
 
-	for(int cl_index = 0; cl_index < draw_data->CmdListsCount; cl_index++) {
+	for(uint32_t cl_index = 0; cl_index < (uint32_t)draw_data->CmdListsCount; cl_index++) {
 		ImDrawList* cl = draw_data->CmdLists[cl_index];
 		// Populate vertex data
 		{
@@ -473,7 +473,7 @@ void _spImGuiRender(WGPUTextureView view) {
 
 	uint32_t cmd_list_count = draw_data->CmdListsCount;
 	uint32_t draw_cmd_count = 0;
-	for(int cl_index = 0; cl_index < cmd_list_count; cl_index++) {
+	for(uint32_t cl_index = 0; cl_index < cmd_list_count; cl_index++) {
 		ImDrawList* cl = draw_data->CmdLists[cl_index];
 
 		
