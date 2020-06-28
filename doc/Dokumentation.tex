@@ -1,6 +1,7 @@
 \PassOptionsToPackage{table}{xcolor}
 
 \documentclass[oneside]{ausarbeitung}
+\setcounter{tocdepth}{4}
 
 \bibliography{references}
 
@@ -16,11 +17,14 @@
 }
 
 \usepackage{dirtree}
+\usepackage[htt]{hyphenat}
 
 \usepackage{xcolor}
 
 \definecolor{lightblue}{RGB}{117, 200, 255}
 \definecolor{lightgreen}{RGB}{84, 255, 129}
+\definecolor{lightred}{RGB}{255, 87, 84}
+\definecolor{lightorange}{RGB}{255, 181, 84}
 
 \colorlet{punct}{red!60!black}
 \definecolor{background}{HTML}{EEEEEE}
@@ -151,6 +155,21 @@
 	%morecomment=[l][keywordstyle4]{\#},
 }
 
+\lstdefinelanguage{JavaScript}{
+  keywords={break, case, catch, continue, debugger, default, delete, do, else, false, finally, for, function, if, in, instanceof, new, null, return, switch, this, throw, true, try, typeof, var, void, while, with, await},
+  morecomment=[l]{//},
+  morecomment=[s]{/*}{*/},
+  morestring=[b]',
+  morestring=[b]",
+  ndkeywords={class, export, boolean, throw, implements, import, this},
+  keywordstyle=\color{blue}\bfseries,
+  ndkeywordstyle=\color{darkgray}\bfseries,
+  identifierstyle=\color{black},
+  commentstyle=\color{purple}\ttfamily,
+  stringstyle=\color{red}\ttfamily,
+  sensitive=true
+}
+
 
 \newcommand*{\captionsource}[2]{%
   \caption[{#1}]{%
@@ -184,7 +203,7 @@
 
 \examinerA{Prof.~Dr.~Winfried~Bantel}
 \examinerB{Prof.~Dr.~Carsten~Lecon}
-\date{XX. Juni 2020}
+\date{29. Juni 2020}
 
 %--- Titelseite Anzeigen
 \maketitle
@@ -202,7 +221,11 @@
 %---
 \chapter*{Kurzfassung}
 \addcontentsline{toc}{chapter}{Kurzfassung}
-In dieser Bachelorarbeit geht es um die neuartige Grafik-API WebGPU, die einen Nachfolger zu WebGL darstellt. Mit WebGPU ist es möglich, detaillierte 3D-Szenen, aufwendige Simulationen und XXX in Echtzeit direkt im Webbrowser zu berechnen und darzustellen. 
+Mit dem schleichenden Wechsel der Webbrowsern von reinen Anzeigewerkzeugen für einfache Webseiten hin zu einer Laufzeitumgebung mit integrierter Softwaredistributionsplattform, werden die Anforderungen an die Webbrowser immer ähnlicher zu denen von Betriebssystemen. Ein wichtiger Teil moderner Applikationen ist dabei auch das effiziente Anzeigen und Erstellen von Grafiken. Zwar hat die Web-Plattform mit WebGL (bzw. WebGL 2.0) eine Grafik-API, die den meisten Anforderungen gerecht wird, jedoch ist auch bei den Grafik-APIs seit ungefähr Mitte des vergangenen Jahrzehnts ein Paradigmenwechsel von \quotize{einfach zu benutzen} hin zu \quotize{mehr Kontrolle für die Entwickler} zu beobachten. Um in diesem Gebiet aufzuschließen, wird die Grafik-API \textbf{WebGPU} entwickelt.
+
+In dieser Arbeit werden dafür die Grundlagen von Grafik-APIs beschrieben um dann die Geschichte und Beweggründe hinter \textbf{WebGPU} zu schildern. Dann werden Aspekte der aktuell verfügbaren Version der \textbf{WebGPU}-API ausführlich besprochen und mit ihnen ein Minimalbeispiel zur Benutzung  beschrieben und ausgearbeitet. An diesem lässt sich dann gut erkennen, dass die Einstiegshürde zur Erstellung einer Applikation relativ hoch liegt und sich sehr von den derzeitig im Web verfügbaren Grafik-APIs unterscheidet. \textbf{WebGPU} lehnt sich dabei in ihrer Struktur und Funktionsweise sehr an die \quotize{modernen} Grafik-APIs Vulkan, DirectX 12 und Metal an, schafft es aber trotzdem, die Komplexität im Vergleich niedriger zu halten. Deswegen wird auch auf die Möglichkeit eingegangen, \textbf{WebGPU} als Grafik-API für zukünftige Cross-Platform-Applikationen zu verwenden. Dies wird exemplarisch mit der parallel zu dieser Arbeit entstandenen \textbf{spider}-Engine aufgezeigt. Die \textbf{spider}-Engine bildet dabei ein C-Framework, dass es mithilfe des Compiler-Werkzeugs emscripten erlaubt, relativ einfach 3D-Applikationen in C zu schreiben aber dann später als Webseite zu veröffentlichen.
+
+Als Ergebnis dieser Arbeit stellt sich heraus, dass die \textbf{WebGPU}-API einen guten Kompromiss zwischen der Komplexität und dem tatsächlichem Nutzen der bestehenden Desktop-Grafik-APIs findet. Ob sich \textbf{WebGPU} aber langfristig großer Popularität erfreuen kann, liegt, wie bei den meisten Web-APIs, an der Verfügbarkeit und Unterstützung in den Webbrowsern. Hier liegen zwar experimentelle Implementierungen vor, diese ändern sich (wie Teile der Spezifikation) aber wöchentlich, so dass der produktive Einsatz noch nicht greifbar scheint.
 
 %-----------------------------------------------------------------------
 \cleardoublepage
@@ -252,15 +275,21 @@ In dieser Bachelorarbeit geht es um die neuartige Grafik-API WebGPU, die einen N
 
 \section{Motivation}
 \label{sec:motivation}
+Wo Webseiten vor einem Jahrzehnt noch großteils der Informationsdarstellung dienten, wandern in den letzten Jahren immer mehr traditionelle Desktop-Applikationen in den Webbrowser. So ist zum Beispiel die ganze Office-Suite von Microsoft als WebApp im Webbrowser nutzbar \cite{microsoft:webapps}. Dies hilft natürlich extrem bei der Verbreitung von Applikationen, da diese nicht mehr aufwendig heruntergeladen und installiert werden müssen.
+
+Anwendungen mit hohen Grafikanforderungen, wie Videospiele, Architektursoftware oder 3D-Visualisierungen, haben allerdings bisher diesen Schritt zu großen Teilen nicht geschafft. Zwar gibt es Grafik-APIs fürs Web, doch diese stehen hinter den nativen Desktop-Varianten im Bezug auf Umfang und Effizienz. Mit \textbf{WebGPU} soll nun dafür eine \quotize{moderne} Grafik-API entwickelt werden, damit mehr Anwendungen im Web umgesetzt werden können.
 
 \section{Problemstellung und -abgrenzung}
 \label{sec:problemstellung}
+Da sich \textbf{WebGPU} sowohl bei der Spezifikation, als auch bei der tatsächlichen Implementierung in den Webbrowsern, noch in einem experimentellen Status befindet, soll diese Arbeit nur einen Überblick über die prinzipiellen Strukturen und Funktionsweisen geben. Auch der Vergleich mit anderen Grafik-APIs kann hier nur auf struktureller Ebene erfolgen, da zum Beispiel Performance- und Effizienzvergleiche aufgrund des experimentellen Status nicht aussagekräftig sind. Auch auf Funktionen abseits von der Kernfunktion einer Grafik-API, die Berechnung und Darstellung von Grafiken, wird nur am Rande eingegangen. Dies liegt daran, dass Funktionen wie \textit{GPU-Compute} zur Berechnung \quotize{beliebiger Daten}, kaum oder nur unzureichend zum jetzigen Zeitpunkt in den Webbrowsern implementiert ist.
 
 \section{Ziel der Arbeit}
 \label{sec:ziel}
+Am Ende der Arbeit soll ein Überblick über \textbf{WebGPU} im Bezug auf Funktionsweise und noch bestehenden Schwächen vorhanden sein. Die Arbeit soll außerdem Interessierten an \textbf{WebGPU} einen Einstieg zur Erstellung einfacher Applikationen bieten.
 
 \section{Vorgehen}
 \label{sec:vorgehen}
+Der praktische Teil dieser Arbeit besteht aus dem Entwickeln eines C-Frameworks zur Erstellung von 3D-Web-Applikationen mithilfe des Compiler-Werkzeugs emscripten. Dadurch sollen praktische Erfahrungen mit der \textbf{WebGPU}-API und ihrer Unterstützung in Webbrowsern erlangt werden. Durch den offenen Entwicklungsprozess der Spezifikation und der Implementierungen, kann hier außerdem \quotize{hinter die Kulissen} geschaut und eventuell sogar Feedback gegeben werden.
 
 
 % ---
@@ -348,7 +377,7 @@ Die \textit{Geometrieverarbeitung} ist dafür zuständig, die Geometriedaten (\t
 
 \begin{figure}
     \includegraphics[width=\textwidth]{images/mvp_matrix.png}
-    \caption{Transformation von Objekt bezogenen Vertexdaten in den \textit{world space}, dann in den \textit{view space} und schlussendlich in den \textit{clip space}. Die finale Umwandlung vom \textit{clip space} in den \textit{screen space} passiert dabei automatisch und verschiebt den Ursprung von der Mitte in entweder die ober oder untere (abhängig von der verwendeten Grafik-API) linke Ecke. Quelle: \url{https://learnopengl.com/img/getting-started/coordinate\_systems.png} \cite{learnopengl:coordinate_systems}}
+    \caption{Transformation von Objekt bezogenen Vertexdaten in den \textit{world space}, dann in den \textit{view space} und schlussendlich in den \textit{clip space}. Die finale Umwandlung vom \textit{clip space} in den \textit{screen space} passiert dabei automatisch und verschiebt den Ursprung von der Mitte in entweder die ober oder untere (abhängig von der verwendeten Grafik-API) linke Ecke. \cite{learnopengl:coordinate_systems}}
     \label{fig:mvp_matrix}
 \end{figure}
 
@@ -504,10 +533,39 @@ Kurze Zeit später wurde die W3C Gruppe \quotize{GPU for the Web} gegründet und
 
 \section{WGSL}
 \subsection{Übersicht}
-Mit WGSL \cite{w3:wgsl} soll auch \textbf{WebGPU} eine eigene Shader-Sprache bekommen. Bisherige Implementierungen unterstützen jedoch bisher nur SPIR-V. Dadurch konnte der Verfasser leider keine praktischen Erfahrungen bei der Verwendung von WGSL machen. Die \textbf{spider}-Engine, die diese Arbeit begleitet hat, verwendet daher GLSL-Shader, die zu SPIR-V kompiliert werden. Trotzdem werden im Folgenden die Grundprinzipien und Beispiele zu WGSL besprochen, da es in Zukunft wohl ein wichtiger Bestandteil von \textbf{WebGPU} sein wird.
+Mit WGSL \cite{w3:wgsl} soll auch \textbf{WebGPU} eine eigene Shader-Sprache bekommen. Bisherige \textbf{WebGPU}-Implementierungen unterstützen jedoch bisher nur SPIR-V als Shader-Code. Dadurch konnte der Verfasser leider keine praktischen Erfahrungen bei der Verwendung von WGSL machen. Die \textbf{spider}-Engine, die diese Arbeit begleitet hat, verwendet daher GLSL-Shader, die zu SPIR-V kompiliert werden. Trotzdem werden im Folgenden die Grundprinzipien und Beispiele zu WGSL besprochen, da es in Zukunft wohl ein wichtiger Bestandteil von \textbf{WebGPU} sein wird. Jedoch ist hier zu beachten, dass dies nur dem aktuellen Stand der Spezifikation entspricht und sich hier noch vieles verändern kann.
 
 \subsection{Kritik an WGSL}
-WGSL soll \quotize{trivial von und zu SPIR-V konvertierbar} \cite[Vgl.][Goals]{w3:wgsl} sein, was unter anderem die Frage aufwirft, warum dann WGSL überhaupt benötigt wird \cite[Vgl.][]{github:wgsl_terrible}. Durch die Nähe zu der Zwischensprache SPIR-V ist die Syntax von WGSL für Entwickler, die mit einer bisherigen Shader-Sprache vertraut sind, nicht sehr üblich. Auch gibt es nicht die aus den meisten Programmiersprachen bekannten Schleifenstrukturen, sondern nur eine \texttt{loop}-Anweisung, aber nicht direkt \texttt{for}, \texttt{while} oder \texttt{do-while} \cite[Vgl.][]{github:wgsl_loop}. In Zukunft soll nur noch WGSL als Shader-Sprache akzeptiert werden. Dazu müssten die bei vielen Entwicklern schon bestehenden GLSL- oder HLSL-Shader erst konvertiert werden. Dies würde in etwas so aussehen:
+\begin{minipage}{\textwidth}
+\begin{lstlisting}[language=GLSL, label={lst:loop}, caption={for-Schleifen in GLSL und WGSL}]
+// for-loop in GLSL
+int a = 2;
+const int step = 1;
+for (int i = 0; i < 4; i += step) {
+  if (i % 2 == 0) continue;
+  a *= 2;
+}
+
+// "for-loop" in WGSL
+const a : i32 = 2;
+var i : i32 = 0;
+loop {
+  if (i >= 4) { break; }
+
+  const step : i32 = 1;
+
+  if (i % 2 == 0) { continue; }
+
+  a = a * 2;
+
+  continuing {
+    i = i + step;
+  }
+}
+\end{lstlisting}
+\end{minipage}
+
+WGSL soll \quotize{trivial von und zu SPIR-V konvertierbar} \cite[Vgl.][Goals]{w3:wgsl} sein, was unter anderem die Frage aufwirft, warum dann WGSL überhaupt benötigt wird \cite[Vgl.][]{github:wgsl_terrible}. Durch die Nähe zu der Zwischensprache SPIR-V ist die Syntax von WGSL für Entwickler, die mit einer bisherigen Shader-Sprache vertraut sind, nicht sehr üblich. Auch gibt es nicht die aus den meisten Programmiersprachen bekannten Schleifenstrukturen, sondern nur eine \texttt{loop}-Anweisung (siehe Listing \ref{lst:loop}), aber nicht direkt \texttt{for}, \texttt{while} oder \texttt{do-while} \cite[Vgl.][]{github:wgsl_loop}. In Zukunft soll nur noch WGSL als Shader-Sprache akzeptiert werden. Dazu müssten die bei vielen Entwicklern schon bestehenden GLSL- oder HLSL-Shader erst konvertiert werden. Dies würde in etwas so aussehen:
 
 \texttt{GLSL/HLSL -> SPIR-V -> WGSL -> *WebGPU* -> SPIR-V/DXIL/MSL}
 
@@ -515,7 +573,8 @@ Für die Umwandlung von GLSL/HLSL zu SPIR-V gibt es bereits zahlreiche Tools, we
 
 Die Ursache für die Entscheidung für WGSL und gegen SPIR-V als primäres Shader-Code-Format, liegt wohl einerseits an der für das Web übliche Praxis, von Menschen lesbare Datenformate zu verwenden (kein Binärcode). Anderseits scheint es wohl rechtliche Spannungen zwischen Apple und der für SPIR-V verantwortlichen Khronos Group zu geben \cite[Vgl.][]{hacker_news:apple_khronos}.
 
-\subsection{Datentypen}
+\subsection{Vergleich zu GLSL und HLSL}
+In diesem Abschnitt sollen die Grundlagen von WGSL aufgezeigt werden, im Besonderen im Bezug auf Unterschiede zu GLSL und HLSL. Da sich die Spezifikation von WGSL jedoch noch in Arbeit befindet, ist alles folgende nur auf Grundlage der zur Zeit des Verfassens dieses Abschnittes (24. Juni 2020) aktuellen Spezifikation.
 
 \subsubsection{Skalare Typen}
 \label{sub:scalars}
@@ -634,15 +693,80 @@ vec3 faulty_vec = some_vec.xrr;
 
 Dabei wird es in WGSL nicht möglich sein, in mehrere Komponenten gleichzeitig zu schreiben, also einen \quotize{swizzled} Ausdruck auf der linken Seite einer Zuweisung zu haben \cite[Vgl.][Typed Storage]{w3:wgsl}.
 
+\subsubsection{Variablen} \
+
+Im Gegensatz zu den C ähnlichen Sprachen GLSL und HLSL, verwendet WGSL eine Syntax zur Variablendefinition, die häufig in \quotize{moderneren} Sprachen wie Rust oder TypeScript benutzt wird:
+
+\texttt{var \textit{Name} : \textit{Type} \textit{[= InitialValue]};} 
+
+bzw. 
+
+\texttt{const \textit{Name} : \textit{Type} = \textit{Value};}
+
+Wird der initiale Wert weggelassen, wird die Variable mit  \texttt{0} (bzw. \texttt{0.0} / \texttt{false}) initialisiert \cite[Vgl.][Zero values]{w3:wgsl}.
+
+\subsubsection{Strukturen} \
+
+Eine Struktur ist ein Tupel mit \textit{N} Felder, wobei \textit{N} eine Ganzzahl größer \texttt{0} ist. Die Felder \textit{T1} bis \textit{TN} haben jeweils einen Datentyp, welcher wiederum eine Struktur sein kann (siehe Listing \ref{lst:wgsl_structs}).
+
+\begin{minipage}{\textwidth}
+\begin{lstlisting}[language=GLSL, label={lst:wgsl_structs}, caption={Definition und Benutzung von Strukturen in WGSL}]
+type Student = struct {
+  grade : i32;
+  GPA : f32;
+  attendance : array<bool,4>;
+};
+
+# The zero value for Student
+var student: Student = Student(2, 1.5, array<bool,4>(false,false,true,false));
+\end{lstlisting}
+\end{minipage}
+
 \section{Der aktuelle Stand}
 \subsection{Spezifikation}
-Die Spezifikation \cite{w3:webgpu} der \textbf{WebGPU}-\ac{API} ist zum Zeitpunkt des Verfassens dieses Abschnittes (09.06.2020) noch nicht abgeschlossen und wurde auch während dem Verlauf der Arbeit mehrmals erweitert und angepasst.
+\textit{Unter \url{https://gpuweb.github.io/gpuweb/} \cite{w3:webgpu} kann die aktuellste Version der Spezifikation eingesehen werden.}
 
-\subsection{Implementierung}
-\textit{Der aktuelle Stand der Implementierung in Webbrowsern kann unter \cite{webgpu:implementation_status} eingesehen werden.}
+Zum Zeitpunkt des Verfassens dieses Abschnittes (24. Juni 2020) steht ein Großteil der \textbf{WebGPU}-Spezifikation fest. Jedoch gibt es noch immer Punkte bei denen noch keine Einigung gefunden werden konnte. Da der Großteil der Implementierung der \textbf{spider}-Engine vor Juni 2020 statt gefunden hat, werden die folgenden Beschreibungen und Erkenntnisse zur Zeit der Abgabe der Arbeit (oder insbesondere zu einem späteren Zeitpunkt) nicht mehr zwingend aktuell sein. An der grundlegenden Struktur oder den grundlegenden Mechaniken zur Verwendung von \textbf{WebGPU} sollte sich zwar nicht mehr allzu viel ändern, trotzdem sollte die folgenden Abschnitte nicht als direkte Vorlage zum Implementieren einer \textbf{WebGPU}-Applikation gesehen wird.
+
+
+
+\subsection{Aktuelle Unterstützung in Webbrowsern}
+\textit{Der aktuelle Stand der Implementierung in Webbrowsern kann unter \url{https://github.com/gpuweb/gpuweb/wiki/Implementation-Status} \cite{webgpu:implementation_status} eingesehen werden.}
+
+Der produktive Nutzen von \textbf{WebGPU} hängt in erster Linie von der Unterstützung in den Webbrowsern ab. Laut StatCounter \cite{statcounter:browser} benutzten im Mai 2020 über 95\% aller Nutzer einer der in Tabelle \ref{tab:browser_share} aufgelisteten Webbrowser.
+
+\begin{table}[htb]
+\begin{center}
+\begin{tabular} { |l|r| }
+  \hline
+  \textbf{Webbrowser} & \textbf{Marktanteil} \\
+  \hline
+  Chrome & 63,93\% \\
+  \hline
+  Safari & 18,19\% \\
+  \hline
+  Firefox & 4,38\% \\
+  \hline
+  Samsung Internet & 3,28\%\\
+  \hline
+  Edge Legacy & 2,13\%\\
+  \hline
+  UC Browser & 2,00\% \\
+  \hline
+  Opera & 1,92\% \\
+  \hline
+  Internet Explorer & 1,40\% \\
+  \hline
+\end{tabular}
+\end{center}
+\caption{Marktanteile der verbreitetsten Webbrowser im Mai 2020 laut StatCounter \cite{statcounter:browser}}
+\label{tab:browser_share}
+\end{table}
+
+Wobei hier anzumerken ist, dass sowohl Chrome \cite{wikipedia:google_chrome}, Samsung Internet \cite{wikipedia:samsung_internet} und Opera \cite{wikipedia:opera} auf dem Webbrowser Chromium basieren. Chromium, Safari und Firefox haben jeweils eine experimentelle \textbf{WebGPU}-Implementierung, jedoch nur in den jeweiligen Preview-Versionen der Webbrowser. Dies lässt jedoch trotzdem den Schluss zu, dass \textbf{WebGPU} für mindestens 90\% der Nutzer in naher Zukunft zur Verfügung stehen wird.
 
 \subsubsection{Chromium \cite{chromium} / Dawn \cite{google:dawn}}
-\textit{Dawn} ist eine Open-Source \textbf{WebGPU}-Implementierung, die in dem Open-Source Webbrowser Chromium verwendet wird. Unter anderem basieren die bekannten Webbrowser \textit{Google Chrome}, \textit{Opera} und seit neustem auch \textit{Microsoft Edge} auf Chromium. 
+\textit{Dawn} ist eine Open-Source \textbf{WebGPU}-Implementierung, die in dem Open-Source Webbrowser Chromium verwendet wird. 
 
 Die \quotize{native} Implementierung von \textit{Dawn} benutzt dafür die Grafik-APIs der jeweils ausführenden Plattform:
 
@@ -656,12 +780,522 @@ Die \quotize{native} Implementierung von \textit{Dawn} benutzt dafür die Grafik
 Das heißt, dass die \textbf{WebGPU}-Befehle hier im Hintergrund die jeweiligen Befehle der nativen Grafik-API aufrufen. Dies hat den Vorteil, dass \textbf{WebGPU} so keinen eigenen Treiber braucht, um mit der \ac{GPU} zu kommunizieren. Da die generelle \textbf{WebGPU}-API-Struktur auch ähnlich zu der Struktur der nativen APIs (bis auf OpenGL) ist, bedeutet dies auch keinen großen Mehraufwand bei der Implementierung und kann sogar teilweise von Codegeneratoren bewerkstelligt werden.
 
 \subsubsection{Firefox Nightly \cite{mozilla:firefox_nightly} / wgpu \cite{mozilla:wgpu}}
-\textit{wgpu} ist ebenfalls eine Open-Source \textbf{WebGPU}-Implementierung in der Programmiersprache \textit{Rust}. \textit{wgpu} wird hierbei unter anderem im \textit{Mozilla Firefox}-Webbrowser verwendet und von der \textit{Mozilla Foundation} federführend entwickelt.
-\section{Nutzen außerhalb von Grafik}
+\textit{wgpu} ist ebenfalls eine Open-Source \textbf{WebGPU}-Implementierung in der Programmiersprache \textit{Rust}. \textit{wgpu} wird hierbei unter anderem im \textit{Mozilla Firefox}-Webbrowser verwendet und von der \textit{Mozilla Foundation} federführend entwickelt. Ähnlich wie \textit{Dawn} benutzt \textit{wgpu} die nativen Grafik-APIs zur Übermittlung der Befehle an die \ac{GPU}. Jedoch baut \textit{wgpu} dabei auf die, ebenfalls von \textit{Mozilla Foundation} entwickelten, Hardwarebstraktionsschicht \textit{gfx-hal} auf und nicht direkt auf die einzelnen nativen Grafik-APIs.
 
+\chapter{Minimalbeispiel einer WebGPU-Applikation}
+\label{cha:example}
+
+In den folgenden Abschnitten wird für Codebeispiele die in der Spezifikation benutzten JavaScript-Notation für Strukturen und Funktionen verwendet. Die Konvertierung von der JavaScript-Notationen in die jeweilige C-Notation (die im Begleitprojekt verwendet wurde) ist dabei relativ simpel.
+
+Für ein Objekt in der JavaScript-Notation, zum Beispiel \texttt{GPUDevice}, gibt es ein Äquivalent in der C-Notation: \texttt{WGPUDevice}. Dabei ist zu beachten, dass \texttt{WGPUDevice} nur ein Zeiger ist, und nicht direkt auf ein Objekt zeigt. Um eine Methode eines Objektes, in JavaScript-Notation zum Beispiel 
+
+\texttt{GPUDevice.createBuffer(GPUBufferDescriptor)}
+
+, in C aufzurufen wird 
+
+\texttt{wgpuDeviceCreateBuffer(WGPUDevice, const GPUBufferDescriptor*)}
+
+verwendet. Dadurch dass es in C keine Methoden gibt, sind die Funktionen alle global und haben das Prefix \texttt{wgpu}, danach kommt der Objekt-Typ (hier \texttt{Device}) und dann der eigentliche Name der Funktion (\texttt{CreateBuffer}). Zusätzlich muss als erster Parameter noch das Objekt (bzw. der Zeiger), auf das die Methode aufgerufen werden soll, übergeben werden.
+
+\section{Initialisierung}
+Die in diesem Abschnitt beschriebenen Schritte müssen normalerweise einmal am Start der Applikation getätigt werden, um das Rendering in Abschnitt \ref{sec:rendering} vorzubereiten. Im Vergleich zu \quotize{älteren} Grafik-APIs wie OpenGL, DirectX pre 12 und insbesondere WebGL ist dies der größte Unterschied. Bei \quotize{modernen} Grafik-APIs wird versucht, so viel Arbeit wie möglich beim Start zu erledigen, damit die eigentliche Rendering-Schleife so \quotize{schlank} wie möglich sein kann.
+
+\subsection{\texttt{GPU}}
+Die Schnittstelle \texttt{GPU} markiert den Einstiegspunkt für \textbf{WebGPU}. Wenn \textbf{WebGPU} verfügbar ist, kann auf das \texttt{GPU}-Objekt in JavaScript über \texttt{navigator.gpu} zugegriffen werden.
+
+\begin{lstlisting}[language=JavaScript]
+var gpu = navigator.gpu;
+\end{lstlisting}
+
+\subsection{\texttt{GPUAdapter}}
+
+Von dem \texttt{GPU}-Objekt lässt sich ein \texttt{GPUAdapter} anfordern, welcher die \textbf{WebGPU}-Implementierung auf dem jeweiligen System repräsentiert. Hierbei kann man optional noch Optionen zur Auswahl eines \texttt{GPUAdapter} angeben. Zum Beispiel, dass dedizierte \ac{GPU}s integrierten bevorzugt werden sollen.
+
+\begin{lstlisting}[language=JavaScript]
+var adapter = await gpu.requestAdapter({powerPreference: "high-performance"});
+\end{lstlisting}
+
+\subsection{\texttt{GPUDevice}}
+
+Hat man nun erfolgreich ein \texttt{GPUAdapter}-Objekt erhalten, kann man von diesem ein \texttt{GPUDevice} anfordern, welches die logische Repräsentation des Gerätes ist und zum Erstellen von Ressourcen auf der \ac{GPU} benötigt wird. Hier kann man wiederum optional angeben, dass das gewünschte \texttt{GPUDevice} bestimmte \textit{extensions} (zum Beispiel bestimmte Kompressionsverfahren) unterstützen oder bestimmte Mindestanforderungen bei den Ressourcen (zum Beispiel die unterstütze Mindestgröße für bestimmte \textit{Buffer}) erfüllen soll.
+
+\begin{lstlisting}[language=JavaScript]
+var device = await adapter.requestDevice({extensions: ["texture-compression-bc"]});
+\end{lstlisting}
+
+\subsection{\texttt{GPUQueue}}
+
+Eine \texttt{GPUQueue} erlaubt es, Befehle für die \ac{GPU} zu sammeln und ihr zu übermitteln. Dabei werden die in der \texttt{GPUQueue} gesammelten Befehle der Reihe nach abgearbeitet, wenn diese abgeschickt wurde. Momentan gibt es nur eine \texttt{GPUQueue} pro \texttt{GPUDevice}, welche über dessen \texttt{defaultQueue}-Attribut erlangt werden kann. 
+
+\begin{lstlisting}[language=JavaScript]
+var queue = device.defaultQueue;
+\end{lstlisting}
+
+Zu einem späteren Zeitpunkt, sollen allerdings mehrere \texttt{GPUQueue}s pro \texttt{GPUDevice} möglich sein \cite{github:default_queue}.
+
+\subsection{\texttt{GPUBuffer}}
+Da dedizierte \ac{GPU}s ihren eigenen Arbeitsspeicher, den sogenannten VRAM (Video-RAM), haben, kann die \ac{GPU} nicht direkt mit den Daten im normalen Arbeitsspeicher (im folgenden RAM) arbeiten. Integrierte \ac{GPU}s benutzen meistens den RAM als VRAM, jedoch wird er aus Anwendersicht zur Vereinheitlichung trotzdem als separat angesehen.
+
+Um den VRAM der \ac{GPU} nun also mit den benötigten Daten zu füllen, müssen dort sogenannte \textit{Buffer} erstellt werden. Dies sind einfach Datenblöcke im VRAM mit einer gewissen Größe (in Bytes) und zusätzlich Informationen zu der beabsichtigten Verwendung der Daten. Die Datenblöcke kann man sich wie das Ergebnis des \texttt{malloc} Befehl in C vorstellen, der einen Datenblock mit einer gewissen Größe im RAM alloziert.
+
+Um die Daten nun vom RAM in den VRAM zu bekommen, muss der \textit{Buffer} in den RAM \textit{gemapped} werden, also ein gleich großer Datenblock im RAM erstellt werden, der später in den VRAM kopiert wird. Dies kann nun entweder bei der Erstellung eines \texttt{GPUBuffer} (die \textbf{WebGPU}-Implementierung eines \textit{Buffers}), gar nicht (wenn der \textit{Buffer} nur von der \ac{GPU} beschrieben und gelesen wird) oder erst im späteren Verlauf der Anwendung passieren.
+
+In folgendem Beispiel erstellen wir einen \texttt{GPUBuffer} für unsere Vertexdaten. Um den Buffer später auch als \textit{Vertex-Buffer} einsetzen zu können, muss die Option \texttt{GPUBufferUsage.VERTEX} gesetzt sein.
+
+\begin{minipage} {\textwidth}
+\begin{lstlisting}[language=JavaScript]
+// Vertex Data (4 vertices with each 3 float for position and 3 float for color)
+const vertex_data = new Float32Array([
+    -1.0, -1.0, 0.0,    1.0, 0.0, 0.0,
+     1.0, -1.0, 0.0,    0.0, 1.0, 0.0,
+    -1.0,  1.0, 0.0,    0.0, 0.0, 1.0,
+     1.0,  1.0, 0.0,    1.0, 1.0, 1.0,
+]);
+
+var [vertex_buffer, buffer_data] = device.createBufferMapped({
+  size: vertex_data.byteLength,
+  usage: GPUBufferUsage.VERTEX
+});
+\end{lstlisting}
+\end{minipage}
+
+\texttt{createBufferMapped} liefert hier einerseits den erstellten \texttt{GPUBuffer} und anderseits direkt den \textit{gemappeten} Speicherbereich als \texttt{ArrayBuffer}. In diesen können wir dann unsere Daten schreiben und den \texttt{GPUBuffer} \textit{unmappen}, damit dieser von der \ac{GPU} benutzt werden kann.
+\begin{lstlisting}[language=JavaScript]
+buffer_data = vertex_data;
+vertex_buffer.unmap();
+\end{lstlisting}
+
+Dies war lange Zeit die einzige Möglichkeit einen \texttt{GPUBuffer} bei der Erstellung mit Daten zu initialisieren. Seit kurzem (zum Zeitpunkt des Verfassens), gibt es jedoch auch \texttt{writeBuffer} und \texttt{writeTexture} Methoden auf der \texttt{GPUQueue} \cite{github:write_buffer}, die diese Aufgaben übernehmen. Dies verwenden wir bei der Erstellung eines \texttt{GPUBuffer} für unsere Indexdaten:
+\begin{lstlisting}[language=JavaScript]
+// Index data (2 triangles with each 3 indexes)
+const index_data = new Uint16Array([
+   0, 1, 2, 
+   3, 2, 1
+]);
+
+var index_buffer = device.createBuffer({
+  size: index_data.byteLength,
+  usage: GPUBufferUsage.INDEX
+});
+queue.writeBuffer(index_buffer, 0, index_data);
+\end{lstlisting}
+
+Dadurch, dass der \texttt{GPUBuffer} für \texttt{writeBuffer} nicht \textit{gemapped} sein darf, verwenden wir hier \texttt{createBuffer} anstatt \texttt{createBufferMapped}. Dies liefert nur den \textit{unmapped} \texttt{GPUBuffer} als Resultat zurück. Hier ist anzumerken, dass die \texttt{writeBuffer}-Methode zum Zeitpunkt des Verfassens dieses Abschnittes (28. Juni 2020) nur in Chromium, jedoch noch nicht in Firefox Nightly, implementiert ist.
+
+\subsection{\texttt{GPUTexture}}
+
+\begin{figure}
+    \includegraphics[width=\textwidth]{images/texture_filtering.png}
+    \caption{Eine Textur als Lookup-Tabelle für Farbwerte. Ohne Interpolation (links) und mit bilinearer Interpolation (rechts). \cite{vulkan_tutorial:texture_filtering}}
+    \label{fig:texture_filtering}
+\end{figure}
+
+Neben Buffern sind Texturen die zweite wichtige Datenstruktur für die \ac{GPU}. Eine Textur ist im Prinzip eine \textit{Lookup-Tabelle} \cite{wikipedia:lookup} mit 1-3 Dimensionen und der Möglichkeit zwischen den einzelnen \textit{Zellen} zu interpolieren (siehe Abbildung \ref{fig:texture_filtering}).
+
+Dabei sind für das Erstellen einer \texttt{GPUTexture} besonders die Eigenschaften \texttt{dimension}, \texttt{textureSize}, \texttt{format} und \texttt{textureUsage} wichtig. Die \texttt{dimension} gibt die Anzahl der Dimensionen (\textit{1D}, \textit{2D} oder \textit{3D}) an. Die \texttt{textureSize} wiederum wie viele Texel (\textit{texture element} \cite{wikipedia:texel}) es in den jeweiligen Dimension gibt. Das heißt, ein \textit{1D}-Textur darf nur in einer Dimension mehr als ein Element haben (zum Beispiel (256, 1, 1)). Die einzelnen Eigenschaften der \texttt{textureSize} heißen dabei \texttt{width}, \texttt{height} und \texttt{depth}. Das \texttt{format} gibt an, was in jedem Texel gespeichert wird. Hier dürfte RGBA8 (also Rot, Grün, Blau und Alpha mit jeweils 8 Bit) wohl am bekanntesten sein. Jedoch gibt es sehr viele mehr, so sind aktuell 52 Texturformate in \textbf{WebGPU} verfügbar. \texttt{textureUsage} gibt an, wie die Texture benutzt werden soll, zum Beispiel zum Lesen oder zum Schreiben, als Kopierquelle oder Kopierziel, oder eine beliebige Kombination davon.
+
+\begin{minipage}{\textwidth}
+\begin{lstlisting}[language=JavaScript]
+var texture = device.createTexture({
+  size: {
+  	width: 1024,
+  	height: 1024,
+  	depth: 1
+  },
+  mipLevelCount: 1,
+  sampleCount: 1,
+  dimension: '2d',
+  format: 'rgba8unorm',
+  usage: GPUTextureUsage.SAMPLED | GPUTextureUsage.COPY_DST 
+});
+\end{lstlisting}
+\end{minipage}
+
+Analog zu \texttt{writeBuffer} gibt es für Texturen auch eine \texttt{writeTexture}-Methode in der \texttt{GPUQueue}. Dies funktioniert allerdings nur, wenn die \texttt{GPUTexture} ein Kopierziel (\texttt{GPUTextureUsage.COPY\_DST}) ist. Um Daten in die \texttt{GPUTexture} zu kopieren, muss dafür unter anderem erst eine \texttt{GPUTextureCopyView} erstellt werden, die zum Beispiel den Offset der Kopieroperation festlegt, so dass auch zum Beispiel Daten nur in die Mitte der Textur geschrieben werden können. Hier ist anzumerken, dass die \texttt{writeTexture}-Methode zum Zeitpunkt des Verfassens dieses Abschnittes (28. Juni 2020) weder in Chromium, noch in Firefox Nightly implementiert ist.
+
+\begin{minipage}{\textwidth}
+\begin{lstlisting}[language=JavaScript]
+var texture_data = new Uint32Array(1024 * 1024);
+texture_data.fill(0x00FF00FF); // 0 red, 255 blue, 0 green, 255 alpha
+
+var texture_copy_view = {
+    texture: texture,
+    mipLevel: 0,
+    origin: {
+        x: 0,
+        y: 0,
+        z: 0
+    }
+};
+    
+var data_layout = {
+    offset: 0,
+    bytesPerRow: 1024 * 4,
+    rowsPerImage: 1024
+};
+
+var copy_size = {
+    width: 1024,
+    height: 1024,
+    depth: 1
+};
+    
+queue.writeTexture(texture_copy_view, texture_data, data_layout, copy_size);
+\end{lstlisting}
+\end{minipage}
+
+Um die \texttt{GPUTexture} nun wirklich nutzen zu können, wird noch eine \texttt{GPUTextureView} benötigt, die beschreibt wie genau auf die Daten der \texttt{GPUTexture} zugegriffen wird. In den meisten Fällen reicht allerdings die Erzeugung einer \texttt{GPUTextureView} von der \texttt{GPUTexture} ohne Angabe zusätzlicher Optionen. Dann übernimmt die \texttt{GPUTextureView} die Eigenschaften der \texttt{GPUTexture}:
+
+\begin{lstlisting}[language=JavaScript]
+var texture_view = texture.createView();
+\end{lstlisting}
+
+\subsection{\texttt{GPUPipelineLayout}}
+\label{sub:gpupipelinebase}
+Die \texttt{GPUPipelineBase} beschreibt die Basis für \texttt{GPURenderPipeline} und \texttt{GPUComputePipeline}. Die Gemeinsamkeit aller Pipelines besteht darin, dass sie unter anderem ein Set von Eingaben bekommen und daraus wiederum ein Set aus Ausgaben erstellen. Die Eingaben und Ausgaben bestehen dabei grundlegend aus Buffern und Texturen. Dabei muss beim Erstellen einer Pipeline ihr \textit{Layout} festgelegt werden, d.h. was für Ressourcentypen benötigt werden und welche grundsätzlichen Eigenschaften diese Ressourcen haben. Die Eigenschaften umfassen zum Beispiel in welchem Shader (Vertex, Fragment oder Compute) die Ressourcen verfügbar sein sollen oder welche Dimension eine etwaige Textur hat.
+
+Dabei ist zu beachten, dass hier nur die generelle Struktur der Ressourcen, aber nicht die Ressourcen an sich, festgelegt werden. Ein \texttt{GPUPipelineLayout} besteht dabei aus maximal 4 \texttt{GPUBindGroupLayout}s mit jeweils bis zu 16 \texttt{GPUBindGroupLayoutEntry}s. Diese Limitationen sind dabei die Mindestgrößen, die bei \textbf{WebGPU} garantiert werden. Je nach Hardware könnte hier auch mehr verfügbar sein. Generell ist es aber zu empfehlen, die Mindestgrößen zu verwenden, um eine Funktionalität auf möglichst vielen Geräten zu ermöglichen.
+
+Als \textit{binding} wird die Verknüpfung einer Ressource mit dem jeweiligen Shader verstanden. Jedoch ist es nicht möglich ein einzelnes \textit{binding} zu ändern, sondern immer nur eine \textit{bind group}. Deshalb ist es sinnvoll die benötigten \textit{bindings} so in die \textit{bind groups} aufzuteilen, dass ein unnötiges Aktualisieren von \textit{bindings}, die nicht aktualisiert werden müssen, vermieden wird. Als Beispiel könnte man hier einen Vertex-Shader sehen, der für jedes Modell die gleichen \textit{View}- und \textit{Projection}-Matrizen verwenden kann (da sich die Kamera nicht innerhalb eines \textit{frames} verändert, aber jeweils die \textit{Model}-Matrix aktualisieren muss (siehe Abschnitt \ref{sub:geometry_processing}). Hier könnte man dann zwei \textit{bind groups} mit jeweils einem \textit{binding} zu einem Buffer erstellen. Wobei ein Buffer hier die \textit{View}- und \textit{Projection}-Matrizen beinhaltet, so dass dieses \textit{binding} nur einmal gesetzt werden muss. Das \textit{binding} zum anderen Buffer, welcher die jeweilige \textit{Model}-Matrix beinhaltet, muss dabei für jedes Modell aktualisiert werden.
+
+\begin{minipage}{\textwidth}
+\begin{lstlisting}[language=JavaScript]
+// bgle = BindGroupLayoutEntry
+// bgl = BindGroupLayout
+
+var bgle_view_proj = {
+    binding: 0,
+    visibility: GPUShaderStage.VERTEX,
+    type: 'uniform-buffer',
+    hasDynamicOffset: false
+};
+
+var bgl_common = device.createBindGroupLayout({
+    entries: [
+        bgle_view_proj
+    ]
+});
+
+var bgle_model = {
+    binding: 0,
+    visibility: GPUShaderStage.VERTEX,
+    type: 'uniform-buffer',
+    hasDynamicOffset: true
+};
+
+var bgl_update = device.createBindGroupLayout({
+    entries: [
+        bgle_model
+    ]
+});
+
+var pipeline_layout = device.createPipelineLayout({
+    bindGroupLayouts: [
+        bgl_common,
+        bgl_update
+    ]
+});
+\end{lstlisting}
+\end{minipage}
+
+Das Attribut \texttt{binding} eines \texttt{BindGroupLayoutEntry} gibt hierbei einen Index an, der im Shader benutzt wird, um die Ressource innerhalb der \textit{bind group} zu identifizieren. Im Shader wird die jeweilige \textit{bind group} dann mit \texttt{set} identifiziert, was sich auf den Index des jeweiligen \texttt{GPUBindGroupLayout} in \texttt{GPUPipelineLayout.bindGroupLayouts} bezieht (siehe Listing \ref{lst:set_binding}).
+
+\begin{lstlisting}[language=GLSL, label={lst:set_binding}, caption={Deklaration der Buffer im Shader. \texttt{set} identifiziert hierbei die \textit{bind group}, und \texttt{binding} die Ressource innerhalb der \textit{bind group}.}]
+layout(set = 0, binding = 0) uniform Common {
+	mat4 view;
+	mat4 proj;
+} common;
+
+layout(set = 1, binding = 0) uniform Update {
+	mat4 model;
+} update;
+
+...
+\end{lstlisting}
+
+\subsection{\texttt{GPURenderPipeline}}
+\begin{table}[htb]
+\begin{center}
+\begin{tabular}{ |l|l|p{6cm}| }
+    \hline
+    \textbf{\#} & \textbf{WebGPU-Objekt} & \textbf{Beschreibung} \\
+    \hline
+    \rowcolor{lightorange}
+    \texttt{1} & \texttt{GPUVertexStateDescriptor} & Beschreibt das Format der Indexdaten (\texttt{Uint16} oder \texttt{Uint32}) und das Layout der einzelnen Vertexbuffer  \\
+    \hline
+    \rowcolor{lightgreen}
+    \texttt{2} & \texttt{GPUShaderModule} & Vertex-Shader \\
+    \hline
+    \rowcolor{lightorange}
+    \texttt{3} & \texttt{GPUPrimitiveTopology} & Beschreibt wie die Liste der Vertices aufgefasst werden soll (Punkte, Linien oder Dreiecke) \\
+    \hline
+    \rowcolor{lightorange}
+    \texttt{4} & \texttt{GPURasterizationStateDescriptor} & Beschreibt wie die Vorderseite eines Dreiecks ermittelt werden soll und welche Seiten verworfen werden sollen \\
+    \hline
+    \rowcolor{lightgreen}
+    \texttt{5} & \texttt{GPUShaderModule} & Pixel- bzw. Fragment-Shader \\
+    \hline
+    \rowcolor{lightorange}
+    \texttt{6} & \texttt{GPUDepthStencilStateDescriptor} & Beschreibt die Tests und Operationen für den \textit{stencil} (Bitmaske) und \textit{depth buffer} \\
+    \hline
+    \rowcolor{lightorange}
+    \texttt{7} & \texttt{GPUColorStateDescriptor} & Beschreibt wie die Resultate von Abschnitt 5 in den \textit{color buffer} gemischt werden sollen \\
+    \hline
+\end{tabular}
+\end{center}
+Legende: \colorbox{lightorange}{nur konfigurierbar} \colorbox{lightgreen}{frei programmierbar}
+\caption{Beschreibung der Abschnitte von \texttt{GPURenderPipeline}}
+\label{tab:render_pipeline_stages}
+\end{table}
+
+Die \texttt{GPURenderPipeline} bildet die im Abschnitt \ref{sec:render_pipeline} beschriebene Rendering-Pipeline im \textbf{WebGPU}-Kontext. Dabei produziert sie aus den Eingaben mithilfe von einer Reihe von jeweils festen oder frei programmierbaren Abschnitten Ausgaben. Die Eingaben bestehen dabei, zusätzlich zu den \textit{bindings} jeder Pipeline, aus Vertex bzw. Indexdaten und \textit{color} und \textit{depth buffers}, die zum Start entweder geleert oder übernommen werden können. Die Ausgaben bestehen dabei aus den (eventuell) veränderten \textit{color} und \textit{depth buffers} und optional werden auch ein Teil der \textit{bindings} (zum Beispiel \textit{storage buffer}s oder \textit{writeonly-storage-texture}s) verändert.
+
+Die Rendering-Pipeline ist dabei in 6 nur konfigurierbare und 2 gänzlich frei programmierbare Abschnitte aufgeteilt (siehe Tabelle \ref{tab:render_pipeline_stages}).
+
+Mit diesen Informationen und dem \texttt{GPUPipelineLayout} aus Abschnitt \ref{sub:gpupipelinebase} lässt sich nun eine \texttt{GPURenderPipeline} erstellen (siehe Listing \ref{lst:renderpipeline}).
+
+\begin{lstlisting}[language=JavaScript, label={lst:renderpipeline}, caption={Erstellen einer \quotize{Standard}-\texttt{GPURenderPipeline}}]
+var render_pipeline = device.createRenderPipeline({
+    layout: pipeline_layout,
+    vertexState: {
+        indexFormat: 'uint16',
+        vertexBuffers: [
+            {
+                arrayStride: 24, // 24 bytes per vertex
+                stepMode: 'vertex',
+                attributes: [
+                    { // pos attribute
+                        format: 'float3',
+                        offset: 0,
+                        shaderLocation: 0
+                    },
+                    { // color attribute
+                        format: 'float3',
+                        offset: 12, // offset in bytes
+                        shaderLocation: 1
+                    }
+                ]
+            }
+        ]
+    },
+    vertexStage: {
+        module: device.createShaderModule({
+            code: VertexShaderCode
+        }),
+        entryPoint: 'main'
+    },
+    primitiveTopology: 'triangle-list',
+    rasterizationState: {
+        frontFace = 'ccw', // counter clock wise
+        cullMode = 'none', // don't cull faces
+    },
+    fragmentStage: {
+        module: device.createShaderModule({
+            code: FragmentShaderCode
+        }),
+        entryPoint: 'main'
+    },
+    depthStencilState: {
+        format: 'depth32float',
+        depthWriteEnabled: true,
+        depthCompare: 'greater'
+    }
+    colorStates: [
+        {
+            format: 'rgba8srgb',
+            alphaBlend: { 
+                srcFactor: 'one', 
+                dstFactor: 'zero', 
+                operation: 'add'
+            },
+            colorBlend: { 
+                srcFactor: 'one', 
+                dstFactor: 'zero', 
+                operation: 'add'
+            },
+            writeMask: GPUColorWrite.ALL
+        }
+    ]
+});
+\end{lstlisting}
+
+\subsection{\texttt{GPUBindGroup}}
+Um die Ressourcen nun in der \texttt{GPURenderPipeline} nutzen zu können, müssen diese in \texttt{GPUBindGroup}s zusammengefasst werden. Dabei beschreibt eine \texttt{GPUBindGroup} die tatsächliche Verknüpfung von Ressourcen auf Grundlage eines \texttt{GPUBindGroupLayout}. Analog dazu beschreibt ein \texttt{GPUBindGroupLayoutEntry} die grundlegende Struktur der zu verknüpfenden Ressource und \texttt{GPUBindGroupEntry} beschreibt die tatsächliche Verknüpfung. Dazu müssen wir aber erst die jeweiligen Ressourcen erstellen. In unserem Fall sind das 2 Buffer vom Typ \textit{uniform}, d.h die Daten in den Buffern sind für jeden Shader-Aufruf gleich und unterscheiden sich nicht zwischen den einzelnen \textit{vertices} (oder \textit{fragments}). In einem Buffer werden dabei die \textit{View}- und \textit{Projection}-Matrizen gespeichert und in dem anderen die \textit{Model}-Matrix (siehe Listing \ref{lst:uniform_buffers}). 
+
+\begin{minipage}{\textwidth}
+\begin{lstlisting}[language=JavaScript, label={lst:uniform_buffers}, caption={Erstellen der Uniform-Buffer für einerseits \textit{common data} (\textit{View}- / \textit{Projection}-Matrix) und anderseits \textit{dynamic data} (\textit{Model}-Matrix).}]
+const fovy_rad = 60.0 * PI / 180.0;
+const f = 1.0 / Math.tan(fovy_rad * 0.5);
+const aspect = 800.0 / 600.0;
+var common_data = new Float32Array([
+    // view matrix
+    1.0, 0.0, 0.0, 0.0,
+    0.0, 1.0, 0.0, 0.0,
+    0.0, 0.0, 1.0, 0.0,
+    0.0, 0.0, 0.0, 1.0,
+    // proj matrix
+    f / aspect, 0.0, 0.0, 0.0,
+    0.0, f, 0.0, 0.0,
+    0.0, 0.0, 0.0, 0.1,
+    0.0, 0.0, -1.0, 0.0
+]);
+
+var common_buffer = device.createBuffer({
+    size: common_data.byteLength,
+    usage: GPUBufferUsage.UNIFORM
+});
+
+queue.writeBuffer(common_buffer, 0, common_data);
+
+var model_data = new Float32Array([
+    // model matrix (moved 2 units in Z direction)
+    1.0, 0.0, 0.0, 0.0,
+    0.0, 1.0, 0.0, 0.0,
+    0.0, 0.0, 1.0, 2.0,
+    0.0, 0.0, 0.0, 1.0
+]);
+
+var dynamic_buffer = device.createBuffer({
+    size: model_data.byteLength,
+    usage: GPUBufferUsage.UNIFORM
+});
+
+queue.writeBuffer(dynamic_buffer, 0, model_data);
+\end{lstlisting}
+\end{minipage}
+
+Da wir in Abschnitt \ref{sub:gpupipelinebase} 2 \texttt{GPUBindGroupLayout}s mit jeweils 1 \texttt{GPUBindGroupLayoutEntry} erstellt haben, müssen wir nun passenden \texttt{GPUBindGroup}s und \texttt{GPUBindGroupEntry}s erstellen (siehe Listing \ref{lst:bind_groups}).
+
+\begin{minipage}{\textwidth}
+\begin{lstlisting}[language=JavaScript, label={lst:bind_groups}, caption={Erstellen der \texttt{GPUBindGroup}s für \textit{common} und \textit{dynamic data}.}]
+var bind_group_common = device.createBindGroup({
+    layout: bgl_common,
+    entries: [
+        {
+            binding: 0,
+            resource: {
+                buffer: common_buffer,
+                offset: 0,
+                size: common_data.byteLength
+            }
+        }
+    ]
+});
+
+var bind_group_dynamic = device.createBindGroup({
+    layout: bgl_dynamic,
+    entries: [
+        {
+            binding: 0,
+            resource: {
+                buffer: dynamic_buffer,
+                offset: 0,
+                size: model_data.byteLength
+            }
+        }
+    ]
+});
+\end{lstlisting}
+\end{minipage}
+
+\subsection{\texttt{GPUSwapChain}}
+Um nun unsere Modelle zu rendern zu können brauchen wir noch eine Textur, in die wir das fertige Bild schreiben können, den \textit{color buffer}. Diese Textur bekommen wir von der \textit{swap chain} \cite{wikipedia:swap_chain} zugeteilt. Dazu müssen wir aber erst ein \texttt{GPUSwapChain}-Objekt erstellen. Die \texttt{GPUSwapChain} können wir von einem \texttt{HTMLCanvasElement} bekommen (siehe Listing \ref{lst:canvas_swap_chain}).
+
+\begin{minipage}{\textwidth}
+\begin{lstlisting}[language=JavaScript, label={lst:canvas_swap_chain}, caption={Erstellen einer \texttt{GPUSwapChain} von einem \texttt{HTMLCanvasElement}}]
+var canvas = document.getElementById('canvas');
+var canvas_context = canvas.getContext('gpupresent');
+var swap_chain = canvas_context.configureSwapChain({
+    device: device,
+    format: 'rgba8srgb',
+    usage: GPUTextureUsage.OUTPUT_ATTACHMENT
+});
+\end{lstlisting}
+\end{minipage}
+
+\section{Rendering}
+Die Schritte in diesem Abschnitt müssen für jeden \textit{frame} betätigt werden. Es ist zwar möglich, dies nur einmal zu machen, um zum Beispiel ein statisches Bild zu generieren. Für eine interaktive Applikation oder zum Beispiel einen Video-Player sollte die Wiederholrate an das Ausgabegerät angepasst werden, was meist um die 60 Hertz bzw. Bilder die Sekunde sind.
+
+\subsection{\texttt{GPUCommandEncoder}}
+Ein \texttt{GPUCommandEncoder} nimmt Befehle für die \ac{GPU} auf. Um zum Beispiel den Inhalt eines \texttt{GPUBuffer} in einen anderen zu kopieren, kann die Methode \texttt{copyBufferToBuffer} benutzt werden. Hierbei ist aber wichtig zu beachten, dass die Befehle nicht direkt ausgeführt werden, sondern nur aufgenommen werden. Um die Befehle dann tatsächlich auf der \ac{GPU} ausführen zu lassen, muss ein \texttt{GPUCommandBuffer} erstellt werden (siehe Abschnitt \ref{sub:command_buffer}). Die Erstellung eines \texttt{GPUCommandEncoder} ist dabei trivial (siehe Listing \ref{lst:command_encoder}).
+
+\begin{lstlisting}[language=JavaScript, label={lst:command_encoder}, caption={Erstellen eines \texttt{GPUCommandEncoder}}]
+var command_enc = device.createCommandEncoder();
+\end{lstlisting}
+
+\subsection{\texttt{GPURenderPassEncoder}}
+Um nun die \textit{Render}-Befehle aufzunehmen, muss erst ein \texttt{GPURenderPassEncoder} vom \texttt{GPUCommandEncoder erstellt werden}. Der \texttt{GPURenderPassEncoder} benötigt dabei zur Erstellung den \textit{color} und \textit{depth buffer}. Den \textit{color buffer} bzw. die \textit{color texture} erhalten wir dabei von der \texttt{GPUSwapChain} und den \textit{depth buffer} bzw. die \textit{depth texture} erstellen wir jedes Mal neu (siehe Listing \ref{lst:render_pass}).
+
+\begin{minipage}{\textwidth}
+\begin{lstlisting}[language=JavaScript, label={lst:render_pass}, caption={Erstellen eines \texttt{GPURenderPassEncoder} vom \texttt{GPUCommandEncoder}. Die benötigte \textit{color texture} bekommen wir von der \texttt{GPUSwapChain} und die benötigte \textit{depth texture} erstellen wir jedes Mal neu.}]
+var color_texture = swap_chain.getCurrentTexture();
+var depth_texture = device.createTexture({
+    size: {
+        width: canvas.width,
+        height: canvas.height,
+        depth: 1
+    },
+    mipLevelCount: 1,
+    sampleCount: 1,
+    dimension: '2d',
+    format: 'depth32float',
+    usage: GPUTextureUsage.OUTPUT_ATTACHMENT
+});
+
+var render_pass = command_enc.beginRenderPass({
+    colorAttachments: [
+        {
+            attachment: color_texture.createView(),
+            loadValue: {r: 0.3, g: 0.0, b: 0.2, a: 1.0}, // clear to dark purple
+            storeOp: 'store'
+        }
+    ],
+    depthStencilAttachment: {
+        attachment: depth_texture.createView(),
+        depthLoadValue: 0.0,
+        depthStoreOp: 'store',
+        depthReadOnly: false,
+        stencilLoadValue: 0,
+        stencilStoreOp: 'store',
+        stencilReadOnly: true
+    },
+});
+\end{lstlisting}
+\end{minipage}
+
+Dem nun erstellten \texttt{GPURenderPassEncoder} können wir nun die \texttt{GPURenderPipeline}, die Vertex- und Index-Buffer, sowie die zwei \textit{GPUBindGroup}s zuweisen und dann einen Befehl zum \textit{rendern} des Modells aufnehmen (siehe Listing \ref{lst:render}). Auch die Befehle zum Setzen der Ressourcen werden hier nur aufgenommen (in dem \texttt{GPUCommandEncoder} mit dem der \texttt{GPURenderPassEncoder} erstellt wurde) und erst später ausgeführt.
+
+\begin{lstlisting}[language=JavaScript, label={lst:render}, caption={Erstellen einer \texttt{GPUSwapChain} von einem \texttt{HTMLCanvasElement}}]
+render_pass.setPipeline(render_pipeline);
+render_pass.setVertexBuffer(0, vertex_buffer);
+render_pass.setIndexBuffer(index_buffer);
+render_pass.setBindGroup(0, bind_group_common);
+render_pass.setBindGroup(1, bind_group_dynamic);
+render_pass.drawIndexed(index_data.length);
+render_pass.endPass();
+\end{lstlisting}
+
+\subsection{\texttt{GPUCommandBuffer}}
+\label{sub:command_buffer}
+Haben wir nun alle benötigten Befehle aufgenommen können wir ein \texttt{GPUCommandBuffer} vom \texttt{GPUCommandEncoder} generieren und die Befehle mithilfe der \texttt{GPUQueue} zur \ac{GPU} schicken (siehe Listing \ref{lst:submit}).
+
+\begin{lstlisting}[language=JavaScript, label={lst:submit}, caption={Generieren eines \texttt{GPUCommandBuffer} und Abschicken der Befehle an die GPU.}]
+var command_buffer = command_enc.finish();
+queue.submit([command_buffer]);
+\end{lstlisting}
+
+\section{Resultat}
+\begin{figure}
+    \includegraphics[width=\textwidth]{images/simple_result.png}
+    \caption{Resultat des Minimalbeispiels in Google Chrome Canary.}
+    \label{fig:simple_result}
+\end{figure}
+Wie in Abbildung \ref{fig:simple_result} zu sehen, erhalten wir nun ein farbiges Bild in unserem HTML-Canvas. Dabei haben wir nur die Eckpunkte und ihre jeweiligen Farben spezifiziert und die \ac{GPU} hat die Farben für die inneren Pixel aus den Vertexdaten interpoliert.
+
+Dabei ist zu beachten, dass dieses Minimalbeispiel nicht darauf ausgelegt ist ein beachtliches Resultat zu erzeugen, sondern es soll mehr einen Querschnitt durch die \textbf{WebGPU} aufzeigen und veranschaulichen, was dazu nötig ist, eine sehr simple Applikation zu erstellen. Da der größte Teil des Aufwands hierbei in der Initialisierung steckt, kann die Applikation nun mit relativ wenig Aufwand erweitert werden. Dazu müssen primär nur noch die einzelnen Ressourcen (Vertex-, Index- und Uniform-Buffer) und die Shader erweitert werden. An der Grundstruktur muss nicht mehr viel angepasst werden.
 %---
-\chapter{Implementierung einer WebGPU-Applikation}
-\label{cha:implementierung}
+\chapter{Die spider-Engine}
+\label{cha:spider}
 \textit{Für das in diesem Kapitel beschriebene Projekt wurde Windows 10 mit Ubuntu 19.10 per \ac{WSL} \cite{microsoft:wsl} verwendet. Dabei wurden die Quellcodedateien in Windows erstellt und bearbeitet, aber in Ubuntu benutzt (kompilieren, linken usw.). Deshalb beziehen sich im Folgenden alle Angaben zur Installation oder Benutzung von Werkzeugen auf die jeweilige Linux-Version.}
 
 \section{spider}
@@ -775,7 +1409,7 @@ globale Variable & \texttt{\_sp\_} & \texttt{\_sp\_state} \\
 \hline
 \end{tabular}
 \end{center}
-\caption{Verwendete Prefixe}
+\caption{In der \textbf{spider}-Engine verwendete Prefixe}
 \label{tab:prefixes}
 \end{table}
 
@@ -896,7 +1530,7 @@ void update() {
 \end{minipage}
 
 \section{emscripten \cite{emscripten}}
-Augenscheinlich wurde das Projekt, das diese Arbeit begleitet hat, in C geschrieben. Da die entstandene Applikation jedoch später in einem Webbrowser laufen und dort die \textbf{WebGPU}-\ac{API} benutzen soll, \textbf{<TODO>}. Dazu wird das Werkzeug \textbf{Emscripten} verwendet. Mit \textbf{Emscripten} lässt sich (unter anderem) C-Quellcode mit Hilfe von LLVM \cite{llvm} zu JavaScript und WebAssembly \cite{wasm} kompilieren.
+Augenscheinlich wurde das Projekt, das diese Arbeit begleitet hat, in C geschrieben. Da die entstandene Applikation jedoch später in einem Webbrowser laufen und dort die \textbf{WebGPU}-\ac{API} benutzen soll, muss der C-Quellcode in ein Format umgewandelt werden, welches ein Webbrowser verstehen kann. Dazu wird das Werkzeug \textbf{Emscripten} verwendet. Mit \textbf{Emscripten} lässt sich (unter anderem) C-Quellcode mit Hilfe von LLVM \cite{llvm} zu JavaScript und WebAssembly \cite{wasm} kompilieren.
 
 \subsection{Funktionsweise}
 Um \textbf{Emscripten} benutzen zu können, muss als erstes das Emscripten SDK (emsdk) heruntergeladen und installiert werden \cite{emsdk}. Am einfachsten ist es hierbei, das SDK im gleichen Ordner zu platzieren, wie das Projekt, das es benutzen soll:
@@ -915,13 +1549,12 @@ Im Projektordner (\textit{path\textbackslash to\textbackslash my\_project\textba
 
 \texttt{./emcc test.c -WASM=1 -o test.html}
 
-\section{Benutzte WebGPU-Features}
-Die benutzten Features der \ac{WebGPU}-API wurden nach mehreren Punkten ausgesucht:
+Dadurch entstehen folgende Dateien:
 \begin{itemize}
-\item{Die Implementierung sollte sowohl in Chromium Canary als auch in Firefox Nightly verfügbar sein, um vergleich- und testbar zu sein}
-\item{Es sollte einen konkreten Nutzen in der \textbf{spider}-Engine erfüllen, um das Projekt nicht unnötig kompliziert zu machen}
+\item \texttt{test.html}: Eintrittspunkt für die Web-Applikation
+\item \texttt{test.wasm}: Kompilierter C-Code in WebAssembly
+\item \texttt{test.js}:   JavaScript-Code zur Verknüfung von HTML, JavaScript und WebAssembly
 \end{itemize}
-
 
 \section{Besonderheiten bei der Entwicklung einer GPU Applikation}
 Dadurch, dass viele Befehle nicht auf der \ac{CPU}, sondern auf der \ac{GPU} ablaufen, sind traditionelle \textit{Debugger}, wie \textit{gdb}, nur begrenzt nützlich zum Finden von Fehlern im Programm. Damit kann man zwar immer noch den generellen Ablauf des Programms überprüfen, aber was genau nach dem Aufrufen einer \ac{API}-Funktion auf der \ac{GPU} geschieht, ist damit nicht einsehbar. Dafür gibt es verschiedene Grafik-Debugger, die praktisch alle nach dem gleichen Prinzip ablaufen. So muss meist das zu testende Programm über den Grafik-Debugger gestartet werden, damit dieser sich in das Programm einklinken kann. Im Gegensatz zu klassischen Debuggern muss das Programm dabei nicht als \textbf{Debug}-Version gebaut werden. Wenn das zu testende Programm nun erfolgreich gestartet wurde, hat man die Möglichkeit einen oder mehrere \textit{frames}(Einzelbilder) zu erfassen. Die jeweiligen \textit{frames} werden dann aufbereitet und man kann sich alle vom Programm getätigten \ac{API}-Aufrufe und alle \ac{GPU}-Ressourcen zum jeweiligen Zeitpunkt anschauen.
@@ -1135,7 +1768,7 @@ int main() {
 \chapter{Anhang B}
 \label{appendix:b}
 
-\begin{lstlisting}[language=glsl, label={lst:fragment_shader}, caption={Kompletter GLSL-Code des Fragment-Shaders der in der \textbf{spider}-Engine} für das \ac{PBR} benutzt wird]
+\begin{lstlisting}[language=glsl, label={lst:fragment_shader}, caption={Kompletter GLSL-Code des Fragment-Shaders der in der \textbf{spider}-Engine für das \ac{PBR} benutzt wird}]
 #version 450
 #extension GL_ARB_separate_shader_objects : enable
 #extension  GL_EXT_samplerless_texture_functions : enable
@@ -1319,5 +1952,369 @@ void main() {
 }
 \end{lstlisting}
 
+\chapter{Anhang C}
+\label{appendix:c}
+\begin{lstlisting}[language=glsl, label={lst:vert_full}, caption={Kompletter GLSL-Code des Vertex-Shaders für das Minimalbeispiel aus Kapitel \ref{cha:example}}]
+#version 450
+
+layout(set = 0, binding = 0) uniform Common {
+    mat4 view;
+    mat4 proj;
+};
+
+layout(set = 1, binding = 0) uniform Dynamic {
+    mat4 model;
+};
+
+layout (location = 0) in vec3 inPos;
+layout (location = 1) in vec3 inColor;
+
+layout (location = 0) out vec3 outColor;
+
+void main() {
+    vec4 pos = proj * view * model * vec4(inPos, 1.0);
+    outColor = inColor;
+    gl_Position = pos;
+}
+\end{lstlisting}
+\begin{lstlisting}[language=glsl, label={lst:fragment_shader}, caption={Kompletter GLSL-Code des Fragment-Shaders für das Minimalbeispiel aus Kapitel \ref{cha:example}}]
+#version 450
+
+layout (location = 0) in vec3 inColor;
+
+layout (location = 0) out vec4 outFragColor;
+
+void main() {
+    outFragColor = vec4(inColor, 1.0);
+}
+\end{lstlisting}
+\begin{lstlisting}[language=HTML, label={lst:html_full}, caption={Kompletter HTML-Quellcode für das Minimalbeispiel aus Kapitel \ref{cha:example}}]
+<html>
+<body>
+    <canvas id="canvas" width="800" height="600"></canvas>
+    <script src="webgpu.js"></script>
+</body>
+</html>
+\end{lstlisting}
+
+\begin{lstlisting}[language=JavaScript, label={lst:js_full}, caption={Kompletter JavaScript-Quellcode für das Minimalbeispiel aus Kapitel \ref{cha:example}}]
+async function loadShader(shaderPath) {
+   return await fetch(new Request(shaderPath), { method: 'GET', mode: 'cors' }).then((res) =>
+        res.arrayBuffer().then((arr) => new Uint32Array(arr))
+    );
+}
+
+function initBuffer(data, usage, device, queue) {
+    const use_write_buffer = true;
+    if(use_write_buffer && queue["writeBuffer"] !== undefined){
+        var buffer = device.createBuffer({
+            size: data.byteLength,
+            usage: usage | GPUBufferUsage.COPY_DST
+        });
+        queue.writeBuffer(buffer, 0, data.buffer);
+        return buffer;
+    }
+    else {
+        var [buffer, buffer_data] = device.createBufferMapped({
+            size: data.byteLength,
+            usage: usage
+        });
+        var writeArray = data instanceof Uint16Array ? new Uint16Array(buffer_data) : new Float32Array(buffer_data);
+        writeArray.set(data);
+        buffer.unmap();
+        return buffer;
+    }
+}
+
+async function start() {
+    var gpu = navigator.gpu;
+    var adapter = await gpu.requestAdapter({powerPreference: "high-performance"});
+    var device = await adapter.requestDevice();
+    var queue = device.defaultQueue;
+    // Vertex Data (4 vertices with each 3 float for position and 3 float for color)
+    const vertex_data = new Float32Array([
+    //     x,    y,   z,      r,   g,   b
+        -1.0,  1.0, 0.5,    1.0, 0.0, 0.0,
+         1.0,  1.0, 0.5,    0.0, 1.0, 0.0,
+        -1.0, -1.0, 0.5,    0.0, 0.0, 1.0,
+         1.0, -1.0, 0.5,    1.0, 1.0, 1.0,
+    ]);
+
+    var vertex_buffer = initBuffer(vertex_data, GPUBufferUsage.VERTEX, device, queue);
+
+    // Index data (2 triangles with each 3 indices)
+    const index_data = new Uint16Array([
+        0, 1, 2, 
+        2, 1, 3
+    ]);
+
+    var index_buffer = initBuffer(index_data, GPUBufferUsage.INDEX, device, queue);
+
+    var texture = device.createTexture({
+        size: {
+            width: 1024,
+            height: 1024,
+            depth: 1
+        },
+        mipLevelCount: 1,
+        sampleCount: 1,
+        dimension: '2d',
+        format: 'rgba8unorm',
+        usage: GPUTextureUsage.SAMPLED | GPUTextureUsage.COPY_DST
+    });
+    console.log(texture);
+
+    var texture_data = new Uint32Array(1024 * 1024);
+    texture_data.fill(0x00FF00FF); // 0 red, 255 blue, 0 green, 255 alpha
+
+    var texture_copy_view = {
+        texture: texture,
+        mipLevel: 0,
+        origin: {
+            x: 0,
+            y: 0,
+            z: 0
+        }
+    };
+    
+    var data_layout = {
+        offset: 0,
+        bytesPerRow: 1024 * 4,
+        rowsPerImage: 1024
+    };
+
+    var copy_size = {
+        width: 0,
+        height: 0,
+        depth: 0
+    };
+    if(queue["writeTexture"] !== undefined) {
+        queue.writeTexture(texture_copy_view, texture_data, data_layout, copy_size);
+    }
+    else {
+        console.log("writeTexture not implemented");
+    }
+
+    // bgle = BindGroupLayoutEntry
+    // bgl = BindGroupLayout
+
+    var bgle_view_proj = {
+        binding: 0,
+        visibility: GPUShaderStage.VERTEX,
+        type: 'uniform-buffer',
+        hasDynamicOffset: false
+    };
+    
+    var bgl_common = device.createBindGroupLayout({
+        entries: [
+            bgle_view_proj
+        ]
+    });
+
+    var bgle_model = {
+        binding: 0,
+        visibility: GPUShaderStage.VERTEX,
+        type: 'uniform-buffer',
+        hasDynamicOffset: false
+    };
+
+    var bgl_dynamic = device.createBindGroupLayout({
+        entries: [
+            bgle_model
+        ]
+    });
+
+    var pipeline_layout = device.createPipelineLayout({
+        bindGroupLayouts: [
+            bgl_common,
+            bgl_dynamic
+        ]
+    });
+
+    var canvas = document.getElementById('canvas');
+    var canvas_context = canvas.getContext('gpupresent');
+    const canvas_format = await canvas_context.getSwapChainPreferredFormat(device);
+    var swap_chain = canvas_context.configureSwapChain({
+        device: device,
+        format: canvas_format,
+        usage: GPUTextureUsage.OUTPUT_ATTACHMENT
+    });
+
+    const vertex_shader_code_spirv = await loadShader('simple.vert.spv');
+    const frag_shader_code_spirv = await loadShader('simple.frag.spv');
+
+    var render_pipeline = device.createRenderPipeline({
+        layout: pipeline_layout,
+        vertexState: {
+            indexFormat: 'uint16',
+            vertexBuffers: [
+                {
+                    arrayStride: 24, // 24 bytes per vertex
+                    stepMode: 'vertex',
+                    attributes: [
+                        { // pos attribute
+                            format: 'float3',
+                            offset: 0,
+                            shaderLocation: 0
+                        },
+                        { // color attribute
+                            format: 'float3',
+                            offset: 12, // offset in bytes
+                            shaderLocation: 1
+                        }
+                    ]
+                }
+            ]
+        },
+        vertexStage: {
+            module: device.createShaderModule({
+                code: vertex_shader_code_spirv
+            }),
+            entryPoint: 'main'
+        },
+        primitiveTopology: 'triangle-list',
+        rasterizationState: {
+            frontFace: 'cw', // clock wise
+            cullMode: 'none', // don't cull faces
+        },
+        fragmentStage: {
+            module: device.createShaderModule({
+                code: frag_shader_code_spirv
+            }),
+            entryPoint: 'main'
+        },
+        depthStencilState: {
+            format: 'depth32float',
+            depthWriteEnabled: true,
+            depthCompare: 'greater'
+        },
+        colorStates: [
+            {
+                format: canvas_format,
+                alphaBlend: { 
+                    srcFactor: 'one', 
+                    dstFactor: 'zero', 
+                    operation: 'add'
+                },
+                colorBlend: { 
+                    srcFactor: 'one', 
+                    dstFactor: 'zero', 
+                    operation: 'add'
+                },
+                writeMask: GPUColorWrite.ALL
+            }
+        ]
+    });
+
+    var common_data = new Float32Array([
+        // view matrix
+        1.0, 0.0, 0.0, 0.0,
+        0.0, 1.0, 0.0, 0.0,
+        0.0, 0.0, 1.0, 0.0,
+        0.0, 0.0, 0.0, 1.0,
+        // proj matrix
+        1.0, 0.0, 0.0, 0.0,
+        0.0, 1.0, 0.0, 0.0,
+        0.0, 0.0, 1.0, 0.0,
+        0.0, 0.0, 0.0, 1.0,
+    ]);
+
+    var common_buffer = initBuffer(common_data, GPUBufferUsage.UNIFORM, device, queue);
+
+    var bind_group_common = device.createBindGroup({
+        layout: bgl_common,
+        entries: [
+            {
+                binding: 0,
+                resource: {
+                    buffer: common_buffer,
+                    offset: 0,
+                    size: common_data.byteLength
+                }
+            }
+        ]
+    });
+
+    var model_data = new Float32Array([
+        // model matrix (translate 2 units in Z direction)
+        1.0, 0.0, 0.0, 0.0,
+        0.0, 1.0, 0.0, 0.0,
+        0.0, 0.0, 1.0, 0.0,
+        0.0, 0.0, 0.0, 1.0
+    ]);
+
+    var dynamic_buffer = initBuffer(model_data, GPUBufferUsage.UNIFORM, device, queue);
+
+    var bind_group_dynamic = device.createBindGroup({
+        layout: bgl_dynamic,
+        entries: [
+            {
+                binding: 0,
+                resource: {
+                    buffer: dynamic_buffer,
+                    offset: 0,
+                    size: model_data.byteLength
+                }
+            }
+        ]
+    });
+    
+    render(device, swap_chain, queue, canvas, render_pipeline, vertex_buffer, index_buffer, bind_group_common, bind_group_dynamic, index_data);
+
+}
+
+function render(device, swap_chain, queue, canvas, render_pipeline, vertex_buffer, index_buffer, bind_group_common, bind_group_dynamic, index_data) {
+    var color_texture = swap_chain.getCurrentTexture();
+    var depth_texture = device.createTexture({
+        size: {
+            width: canvas.width,
+            height: canvas.height,
+            depth: 1
+        },
+        mipLevelCount: 1,
+        sampleCount: 1,
+        dimension: '2d',
+        format: 'depth32float',
+        usage: GPUTextureUsage.OUTPUT_ATTACHMENT
+    });
+
+    var command_enc = device.createCommandEncoder();
+    var render_pass = command_enc.beginRenderPass({
+        colorAttachments: [
+            {
+                attachment: color_texture.createView(),
+                loadValue: {r: 0.3, g: 0.0, b: 0.2, a: 1.0}, // clear to dark purple
+                storeOp: 'store'
+            }
+        ],
+        depthStencilAttachment: {
+            attachment: depth_texture.createView(),
+            depthLoadValue: 0.0,
+            depthStoreOp: 'store',
+            depthReadOnly: false,
+            stencilLoadValue: 0,
+            stencilStoreOp: 'store',
+            stencilReadOnly: true
+        },
+    });
+
+    render_pass.setPipeline(render_pipeline);
+    render_pass.setVertexBuffer(0, vertex_buffer);
+    render_pass.setIndexBuffer(index_buffer);
+    render_pass.setBindGroup(0, bind_group_common);
+    render_pass.setBindGroup(1, bind_group_dynamic);
+    render_pass.drawIndexed(index_data.length);
+    render_pass.endPass();
+
+    var command_buffer = command_enc.finish();
+    queue.submit([command_buffer]);
+
+    requestAnimationFrame(function() {
+        render(device, swap_chain, queue, canvas, render_pipeline, vertex_buffer, index_buffer, bind_group_common, bind_group_dynamic, index_data);
+    });
+}
+
+start();
+\end{lstlisting}
 
 \end{document}

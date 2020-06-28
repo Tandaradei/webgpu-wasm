@@ -37,7 +37,7 @@
       \field{labeltitlesource}{title}
       \field{title}{AMD Ryzen™ Threadripper™ 3990X}
       \field{type}{Hardware}
-      \field{urlday}{3}
+      \field{urlday}{28}
       \field{urlmonth}{6}
       \field{urlyear}{2020}
       \field{urldateera}{ce}
@@ -164,7 +164,7 @@
       \field{labeltitlesource}{title}
       \field{title}{Emscripten}
       \field{type}{Software (Werkzeug)}
-      \field{urlday}{15}
+      \field{urlday}{28}
       \field{urlmonth}{6}
       \field{urlyear}{2020}
       \field{urldateera}{ce}
@@ -194,7 +194,7 @@
       \field{labeltitlesource}{title}
       \field{title}{Getting Started}
       \field{type}{Software (Werkzeug)}
-      \field{urlday}{15}
+      \field{urlday}{28}
       \field{urlmonth}{6}
       \field{urlyear}{2020}
       \field{urldateera}{ce}
@@ -224,7 +224,7 @@
       \field{labeltitlesource}{title}
       \field{title}{Chrome Canary}
       \field{type}{Software (Anwendung)}
-      \field{urlday}{12}
+      \field{urlday}{28}
       \field{urlmonth}{6}
       \field{urlyear}{2020}
       \field{urldateera}{ce}
@@ -254,7 +254,7 @@
       \field{labeltitlesource}{title}
       \field{title}{Chromium}
       \field{type}{Software (Anwendung)}
-      \field{urlday}{15}
+      \field{urlday}{28}
       \field{urlmonth}{6}
       \field{urlyear}{2020}
       \field{urldateera}{ce}
@@ -284,7 +284,7 @@
       \field{labeltitlesource}{title}
       \field{title}{Dawn, a WebGPU implementation}
       \field{type}{Software (Implementierung)}
-      \field{urlday}{15}
+      \field{urlday}{28}
       \field{urlmonth}{6}
       \field{urlyear}{2020}
       \field{urldateera}{ce}
@@ -313,7 +313,7 @@
       \field{labelnamesource}{author}
       \field{labeltitlesource}{title}
       \field{title}{GPU for the Web Community Group}
-      \field{urlday}{20}
+      \field{urlday}{28}
       \field{urlmonth}{6}
       \field{urlyear}{2020}
       \field{urldateera}{ce}
@@ -342,7 +342,7 @@
       \field{labelnamesource}{author}
       \field{labeltitlesource}{title}
       \field{title}{Implementation Status}
-      \field{urlday}{9}
+      \field{urlday}{28}
       \field{urlmonth}{6}
       \field{urlyear}{2020}
       \field{urldateera}{ce}
@@ -392,7 +392,7 @@
       \field{labeltitlesource}{title}
       \field{note}{Editor’s Draft, 8 June 2020}
       \field{title}{WebGPU}
-      \field{urlday}{9}
+      \field{urlday}{28}
       \field{urlmonth}{6}
       \field{urlyear}{2020}
       \field{urldateera}{ce}
@@ -437,7 +437,7 @@
       \field{labeltitlesource}{title}
       \field{note}{Editor’s Draft, 22 June 2020}
       \field{title}{WebGPU Shading Language}
-      \field{urlday}{20}
+      \field{urlday}{28}
       \field{urlmonth}{6}
       \field{urlyear}{2020}
       \field{urldateera}{ce}
@@ -467,7 +467,7 @@
       \field{labelnamesource}{author}
       \field{labeltitlesource}{title}
       \field{title}{Apple stellt moderne 3D-Grafik für das Web vor}
-      \field{urlday}{20}
+      \field{urlday}{28}
       \field{urlmonth}{6}
       \field{urlyear}{2020}
       \field{urldateera}{ce}
@@ -497,7 +497,7 @@
       \field{labeltitlesource}{title}
       \field{title}{Intel® Core™ i3 Prozessor 9100}
       \field{type}{Hardware}
-      \field{urlday}{3}
+      \field{urlday}{28}
       \field{urlmonth}{6}
       \field{urlyear}{2020}
       \field{urldateera}{ce}
@@ -527,7 +527,7 @@
       \field{labeltitlesource}{title}
       \field{title}{Intel® Core™ i9-9900K Prozessor}
       \field{type}{Hardware}
-      \field{urlday}{3}
+      \field{urlday}{28}
       \field{urlmonth}{6}
       \field{urlyear}{2020}
       \field{urldateera}{ce}
@@ -556,7 +556,7 @@
       \field{labeltitlesource}{title}
       \field{title}{WGSL is terrible!}
       \field{type}{Online-Diskussion}
-      \field{urlday}{20}
+      \field{urlday}{28}
       \field{urlmonth}{6}
       \field{urlyear}{2020}
       \field{urldateera}{ce}
@@ -565,6 +565,35 @@
       \endverb
       \verb{url}
       \verb https://github.com/gpuweb/gpuweb/issues/566
+      \endverb
+    \endentry
+    \entry{github:default_queue}{misc}{}
+      \name{author}{1}{}{%
+        {{hash=b2a6fa0df0c37f4cd98596d56b085494}{%
+           family={{kainino0x}},
+           familyi={k\bibinitperiod}}}%
+      }
+      \strng{namehash}{b2a6fa0df0c37f4cd98596d56b085494}
+      \strng{fullhash}{b2a6fa0df0c37f4cd98596d56b085494}
+      \strng{bibnamehash}{b2a6fa0df0c37f4cd98596d56b085494}
+      \strng{authorbibnamehash}{b2a6fa0df0c37f4cd98596d56b085494}
+      \strng{authornamehash}{b2a6fa0df0c37f4cd98596d56b085494}
+      \strng{authorfullhash}{b2a6fa0df0c37f4cd98596d56b085494}
+      \field{sortinit}{k}
+      \field{sortinithash}{d3edc18d54b9438a72c24c925bfb38f4}
+      \field{labelnamesource}{author}
+      \field{labeltitlesource}{title}
+      \field{title}{Change .getQueue() to .defaultQueue}
+      \field{type}{Online-Diskussion}
+      \field{urlday}{28}
+      \field{urlmonth}{6}
+      \field{urlyear}{2020}
+      \field{urldateera}{ce}
+      \verb{urlraw}
+      \verb https://github.com/gpuweb/gpuweb/pull/490
+      \endverb
+      \verb{url}
+      \verb https://github.com/gpuweb/gpuweb/pull/490
       \endverb
     \endentry
     \entry{github:wgsl_loop}{misc}{}
@@ -585,7 +614,7 @@
       \field{labeltitlesource}{title}
       \field{title}{Consider adding sugar for familiar loop constructs}
       \field{type}{Online-Diskussion}
-      \field{urlday}{20}
+      \field{urlday}{28}
       \field{urlmonth}{6}
       \field{urlyear}{2020}
       \field{urldateera}{ce}
@@ -619,7 +648,7 @@
       \field{labeltitlesource}{title}
       \field{title}{RenderDoc}
       \field{type}{Software (Anwendung)}
-      \field{urlday}{12}
+      \field{urlday}{28}
       \field{urlmonth}{6}
       \field{urlyear}{2020}
       \field{urldateera}{ce}
@@ -649,7 +678,7 @@
       \field{labeltitlesource}{title}
       \field{title}{glTF Overview}
       \field{type}{Datenformat}
-      \field{urlday}{15}
+      \field{urlday}{28}
       \field{urlmonth}{6}
       \field{urlyear}{2020}
       \field{urldateera}{ce}
@@ -680,7 +709,7 @@
       \field{note}{\small \texttt{Original Crytek Sponza model provided at: http://www.crytek.com/cryengine/cryengine3/downloads glTF conversion provided by @Themaister at: http://themaister.net/sponza-gltf-pbr/ There is no explicitly stated license for the model. The source page states: \quotize{The Atrium Sponza Palace, Dubrovnik, is an elegant and improved model created by Frank Meinl. The original Sponza model was created by Marko Dabrovic in early 2002. Over the years, the Sponza Atrium scene has become one of the most popular 3D scenes for testing global illumination and radiosity due to it's specific architectural structure which is particularly complex for global illumination light. However, nowadays it is considered as a simple model, thus it was decided to crate a new model with highly improved appearance and scene complexity. It is donated to the public for radiosity and is represented in several different formats (3ds, Obj) for use with various commercial 3D applications and renderers.}}}
       \field{title}{Sponza}
       \field{type}{3D-Modell}
-      \field{urlday}{15}
+      \field{urlday}{28}
       \field{urlmonth}{6}
       \field{urlyear}{2020}
       \field{urldateera}{ce}
@@ -689,6 +718,35 @@
       \endverb
       \verb{url}
       \verb https://github.com/KhronosGroup/glTF-Sample-Models/tree/master/2.0/Sponza
+      \endverb
+    \endentry
+    \entry{github:write_buffer}{misc}{}
+      \name{author}{1}{}{%
+        {{hash=c999af3f0434b3ecb72658dd10b1436d}{%
+           family={{kvark}},
+           familyi={k\bibinitperiod}}}%
+      }
+      \strng{namehash}{c999af3f0434b3ecb72658dd10b1436d}
+      \strng{fullhash}{c999af3f0434b3ecb72658dd10b1436d}
+      \strng{bibnamehash}{c999af3f0434b3ecb72658dd10b1436d}
+      \strng{authorbibnamehash}{c999af3f0434b3ecb72658dd10b1436d}
+      \strng{authornamehash}{c999af3f0434b3ecb72658dd10b1436d}
+      \strng{authorfullhash}{c999af3f0434b3ecb72658dd10b1436d}
+      \field{sortinit}{k}
+      \field{sortinithash}{d3edc18d54b9438a72c24c925bfb38f4}
+      \field{labelnamesource}{author}
+      \field{labeltitlesource}{title}
+      \field{title}{Add Queue/writeBuffer method}
+      \field{type}{Online-Diskussion}
+      \field{urlday}{28}
+      \field{urlmonth}{6}
+      \field{urlyear}{2020}
+      \field{urldateera}{ce}
+      \verb{urlraw}
+      \verb https://github.com/gpuweb/gpuweb/pull/749
+      \endverb
+      \verb{url}
+      \verb https://github.com/gpuweb/gpuweb/pull/749
       \endverb
     \endentry
     \entry{learnopengl:coordinate_systems}{misc}{}
@@ -709,7 +767,7 @@
       \field{labeltitlesource}{title}
       \field{title}{Overview of coordinate systems}
       \field{type}{Bild}
-      \field{urlday}{20}
+      \field{urlday}{28}
       \field{urlmonth}{6}
       \field{urlyear}{2020}
       \field{urldateera}{ce}
@@ -738,7 +796,7 @@
       \field{labeltitlesource}{title}
       \field{title}{LLVM}
       \field{type}{Software (Werkzeug)}
-      \field{urlday}{15}
+      \field{urlday}{28}
       \field{urlmonth}{6}
       \field{urlyear}{2020}
       \field{urldateera}{ce}
@@ -796,7 +854,7 @@
       \field{labeltitlesource}{title}
       \field{title}{D3D11On12}
       \field{type}{Software (API)}
-      \field{urlday}{12}
+      \field{urlday}{28}
       \field{urlmonth}{6}
       \field{urlyear}{2020}
       \field{urldateera}{ce}
@@ -807,7 +865,7 @@
       \verb https://github.com/microsoft/D3D11On12
       \endverb
     \endentry
-    \entry{microsoft:pix}{misc}{}
+    \entry{microsoft:webapps}{online}{}
       \name{author}{1}{}{%
         {{hash=b9a8b868588ad4bc6b36c29936e26423}{%
            family={{Microsoft Corporation}},
@@ -824,9 +882,38 @@
       \field{sortinithash}{2e5c2f51f7fa2d957f3206819bf86dc3}
       \field{labelnamesource}{author}
       \field{labeltitlesource}{title}
+      \field{title}{Office 365}
+      \field{urlday}{28}
+      \field{urlmonth}{6}
+      \field{urlyear}{2020}
+      \field{urldateera}{ce}
+      \verb{urlraw}
+      \verb https://www.office.com/?ms.officeurl=webapps
+      \endverb
+      \verb{url}
+      \verb https://www.office.com/?ms.officeurl=webapps
+      \endverb
+    \endentry
+    \entry{microsoft:pix}{misc}{}
+      \name{author}{1}{}{%
+        {{hash=b9a8b868588ad4bc6b36c29936e26423}{%
+           family={{Microsoft Corporation}},
+           familyi={M\bibinitperiod}}}%
+      }
+      \strng{namehash}{b9a8b868588ad4bc6b36c29936e26423}
+      \strng{fullhash}{b9a8b868588ad4bc6b36c29936e26423}
+      \strng{bibnamehash}{b9a8b868588ad4bc6b36c29936e26423}
+      \strng{authorbibnamehash}{b9a8b868588ad4bc6b36c29936e26423}
+      \strng{authornamehash}{b9a8b868588ad4bc6b36c29936e26423}
+      \strng{authorfullhash}{b9a8b868588ad4bc6b36c29936e26423}
+      \field{extraname}{3}
+      \field{sortinit}{M}
+      \field{sortinithash}{2e5c2f51f7fa2d957f3206819bf86dc3}
+      \field{labelnamesource}{author}
+      \field{labeltitlesource}{title}
       \field{title}{PIX on Windows}
       \field{type}{Software (Anwendung)}
-      \field{urlday}{12}
+      \field{urlday}{28}
       \field{urlmonth}{6}
       \field{urlyear}{2020}
       \field{urldateera}{ce}
@@ -849,14 +936,14 @@
       \strng{authorbibnamehash}{b9a8b868588ad4bc6b36c29936e26423}
       \strng{authornamehash}{b9a8b868588ad4bc6b36c29936e26423}
       \strng{authorfullhash}{b9a8b868588ad4bc6b36c29936e26423}
-      \field{extraname}{3}
+      \field{extraname}{4}
       \field{sortinit}{M}
       \field{sortinithash}{2e5c2f51f7fa2d957f3206819bf86dc3}
       \field{labelnamesource}{author}
       \field{labeltitlesource}{title}
       \field{title}{What is the Windows Subsystem for Linux?}
       \field{type}{Software (Werkzeug)}
-      \field{urlday}{15}
+      \field{urlday}{28}
       \field{urlmonth}{6}
       \field{urlyear}{2020}
       \field{urldateera}{ce}
@@ -886,7 +973,7 @@
       \field{labeltitlesource}{title}
       \field{title}{Firefox Nighlty}
       \field{type}{Software (Anwendung)}
-      \field{urlday}{12}
+      \field{urlday}{28}
       \field{urlmonth}{6}
       \field{urlyear}{2020}
       \field{urldateera}{ce}
@@ -916,7 +1003,7 @@
       \field{labeltitlesource}{title}
       \field{title}{wgpu}
       \field{type}{Software (Implementierung)}
-      \field{urlday}{15}
+      \field{urlday}{28}
       \field{urlmonth}{6}
       \field{urlyear}{2020}
       \field{urldateera}{ce}
@@ -946,7 +1033,7 @@
       \field{labeltitlesource}{title}
       \field{title}{NVIDIA GeForce GTX 1650}
       \field{type}{Hardware}
-      \field{urlday}{3}
+      \field{urlday}{28}
       \field{urlmonth}{6}
       \field{urlyear}{2020}
       \field{urldateera}{ce}
@@ -976,7 +1063,7 @@
       \field{labeltitlesource}{title}
       \field{title}{NVIDIA GeForce RTX 2080Ti}
       \field{type}{Hardware}
-      \field{urlday}{3}
+      \field{urlday}{28}
       \field{urlmonth}{6}
       \field{urlyear}{2020}
       \field{urldateera}{ce}
@@ -1006,7 +1093,7 @@
       \field{labeltitlesource}{title}
       \field{title}{NVIDIA® Nsight™ Graphics}
       \field{type}{Software (Anwendung)}
-      \field{urlday}{12}
+      \field{urlday}{28}
       \field{urlmonth}{6}
       \field{urlyear}{2020}
       \field{urldateera}{ce}
@@ -1035,7 +1122,7 @@
       \field{labeltitlesource}{title}
       \field{title}{Discussion on: WebGPU Shading Language}
       \field{type}{Online-Diskussion}
-      \field{urlday}{20}
+      \field{urlday}{28}
       \field{urlmonth}{6}
       \field{urlyear}{2020}
       \field{urldateera}{ce}
@@ -1064,7 +1151,7 @@
       \field{labeltitlesource}{title}
       \field{title}{RenderMan Shading Language}
       \field{type}{Spezifikation}
-      \field{urlday}{12}
+      \field{urlday}{28}
       \field{urlmonth}{6}
       \field{urlyear}{2020}
       \field{urldateera}{ce}
@@ -1093,7 +1180,7 @@
       \field{labeltitlesource}{title}
       \field{title}{Figure 3: barycentric coordinates can be used to interpolate vertex data at the hit point. In this example for example we compute the color at P using vertex color.}
       \field{type}{Bild}
-      \field{urlday}{20}
+      \field{urlday}{28}
       \field{urlmonth}{6}
       \field{urlyear}{2020}
       \field{urldateera}{ce}
@@ -1122,7 +1209,7 @@
       \field{labeltitlesource}{title}
       \field{title}{shaderc}
       \field{type}{Software (Werkzeug)}
-      \field{urlday}{15}
+      \field{urlday}{28}
       \field{urlmonth}{6}
       \field{urlyear}{2020}
       \field{urldateera}{ce}
@@ -1131,6 +1218,63 @@
       \endverb
       \verb{url}
       \verb https://github.com/google/shaderc
+      \endverb
+    \endentry
+    \entry{statcounter:browser}{online}{}
+      \name{author}{1}{}{%
+        {{hash=fee3fc182e02f376217580e5bfec4f51}{%
+           family={{StatCounter}},
+           familyi={S\bibinitperiod}}}%
+      }
+      \strng{namehash}{fee3fc182e02f376217580e5bfec4f51}
+      \strng{fullhash}{fee3fc182e02f376217580e5bfec4f51}
+      \strng{bibnamehash}{fee3fc182e02f376217580e5bfec4f51}
+      \strng{authorbibnamehash}{fee3fc182e02f376217580e5bfec4f51}
+      \strng{authornamehash}{fee3fc182e02f376217580e5bfec4f51}
+      \strng{authorfullhash}{fee3fc182e02f376217580e5bfec4f51}
+      \field{sortinit}{S}
+      \field{sortinithash}{c319cff79d99c853d775f88277d4e45f}
+      \field{labelnamesource}{author}
+      \field{labeltitlesource}{title}
+      \field{title}{Browser Market Share Worldwide - May 2020}
+      \field{urlday}{28}
+      \field{urlmonth}{6}
+      \field{urlyear}{2020}
+      \field{urldateera}{ce}
+      \verb{urlraw}
+      \verb https://gs.statcounter.com/browser-market-share
+      \endverb
+      \verb{url}
+      \verb https://gs.statcounter.com/browser-market-share
+      \endverb
+    \endentry
+    \entry{vulkan_tutorial:texture_filtering}{misc}{}
+      \name{author}{1}{}{%
+        {{hash=d8c7e4ca96ecdd99424ae0de495334e5}{%
+           family={{Vulkan Tutorial}},
+           familyi={V\bibinitperiod}}}%
+      }
+      \strng{namehash}{d8c7e4ca96ecdd99424ae0de495334e5}
+      \strng{fullhash}{d8c7e4ca96ecdd99424ae0de495334e5}
+      \strng{bibnamehash}{d8c7e4ca96ecdd99424ae0de495334e5}
+      \strng{authorbibnamehash}{d8c7e4ca96ecdd99424ae0de495334e5}
+      \strng{authornamehash}{d8c7e4ca96ecdd99424ae0de495334e5}
+      \strng{authorfullhash}{d8c7e4ca96ecdd99424ae0de495334e5}
+      \field{sortinit}{V}
+      \field{sortinithash}{02432525618c08e2b03cac47c19764af}
+      \field{labelnamesource}{author}
+      \field{labeltitlesource}{title}
+      \field{title}{Texture filtering}
+      \field{type}{Bild}
+      \field{urlday}{28}
+      \field{urlmonth}{6}
+      \field{urlyear}{2020}
+      \field{urldateera}{ce}
+      \verb{urlraw}
+      \verb https://vulkan-tutorial.com/images/texture_filtering.png
+      \endverb
+      \verb{url}
+      \verb https://vulkan-tutorial.com/images/texture_filtering.png
       \endverb
     \endentry
     \entry{wasm}{misc}{}
@@ -1151,7 +1295,7 @@
       \field{labeltitlesource}{title}
       \field{title}{WebAssembly}
       \field{type}{Spezifikation}
-      \field{urlday}{15}
+      \field{urlday}{28}
       \field{urlmonth}{6}
       \field{urlyear}{2020}
       \field{urldateera}{ce}
@@ -1182,7 +1326,7 @@
       \field{labelnamesource}{author}
       \field{labeltitlesource}{title}
       \field{title}{Handles are the better pointers}
-      \field{urlday}{15}
+      \field{urlday}{28}
       \field{urlmonth}{6}
       \field{urlyear}{2020}
       \field{urldateera}{ce}
@@ -1213,7 +1357,7 @@
       \field{labelnamesource}{author}
       \field{labeltitlesource}{title}
       \field{title}{Modern C for C++ Peeps}
-      \field{urlday}{15}
+      \field{urlday}{28}
       \field{urlmonth}{6}
       \field{urlyear}{2020}
       \field{urldateera}{ce}
@@ -1242,7 +1386,7 @@
       \field{labeltitlesource}{title}
       \field{title}{Picture of a Zotax Gaming 2080 ti Graphics Card}
       \field{type}{Bild}
-      \field{urlday}{3}
+      \field{urlday}{28}
       \field{urlmonth}{6}
       \field{urlyear}{2020}
       \field{year}{2019}
@@ -1272,7 +1416,7 @@
       \field{labelnamesource}{author}
       \field{labeltitlesource}{title}
       \field{title}{3dfx Voodoo Graphics}
-      \field{urlday}{20}
+      \field{urlday}{28}
       \field{urlmonth}{6}
       \field{urlyear}{2020}
       \field{urldateera}{ce}
@@ -1301,7 +1445,7 @@
       \field{labelnamesource}{author}
       \field{labeltitlesource}{title}
       \field{title}{GeForce 256}
-      \field{urlday}{20}
+      \field{urlday}{28}
       \field{urlmonth}{6}
       \field{urlyear}{2020}
       \field{urldateera}{ce}
@@ -1330,7 +1474,7 @@
       \field{labelnamesource}{author}
       \field{labeltitlesource}{title}
       \field{title}{GeForce 3 series}
-      \field{urlday}{20}
+      \field{urlday}{28}
       \field{urlmonth}{6}
       \field{urlyear}{2020}
       \field{urldateera}{ce}
@@ -1341,7 +1485,7 @@
       \verb https://en.wikipedia.org/wiki/GeForce_3_series
       \endverb
     \endentry
-    \entry{wikipedia:hlsl}{online}{}
+    \entry{wikipedia:google_chrome}{online}{}
       \name{author}{1}{}{%
         {{hash=f95e8679bf3071e22969b73a59ae1756}{%
            family={{Wikipedia, the free encyclopedia}},
@@ -1358,19 +1502,19 @@
       \field{sortinithash}{1af34bd8c148ffb32de1494636b49713}
       \field{labelnamesource}{author}
       \field{labeltitlesource}{title}
-      \field{title}{High-Level Shading Language}
-      \field{urlday}{20}
+      \field{title}{Google Chrome}
+      \field{urlday}{28}
       \field{urlmonth}{6}
       \field{urlyear}{2020}
       \field{urldateera}{ce}
       \verb{urlraw}
-      \verb https://en.wikipedia.org/wiki/High-Level_Shading_Language
+      \verb https://de.wikipedia.org/wiki/Google_Chrome
       \endverb
       \verb{url}
-      \verb https://en.wikipedia.org/wiki/High-Level_Shading_Language
+      \verb https://de.wikipedia.org/wiki/Google_Chrome
       \endverb
     \endentry
-    \entry{wikipedia:swizzling}{online}{}
+    \entry{wikipedia:hlsl}{online}{}
       \name{author}{1}{}{%
         {{hash=f95e8679bf3071e22969b73a59ae1756}{%
            family={{Wikipedia, the free encyclopedia}},
@@ -1387,19 +1531,19 @@
       \field{sortinithash}{1af34bd8c148ffb32de1494636b49713}
       \field{labelnamesource}{author}
       \field{labeltitlesource}{title}
-      \field{title}{Swizzling (computer graphics)}
-      \field{urlday}{20}
+      \field{title}{High-Level Shading Language}
+      \field{urlday}{28}
       \field{urlmonth}{6}
       \field{urlyear}{2020}
       \field{urldateera}{ce}
       \verb{urlraw}
-      \verb https://en.wikipedia.org/wiki/Swizzling_(computer_graphics)
+      \verb https://en.wikipedia.org/wiki/High-Level_Shading_Language
       \endverb
       \verb{url}
-      \verb https://en.wikipedia.org/wiki/Swizzling_(computer_graphics)
+      \verb https://en.wikipedia.org/wiki/High-Level_Shading_Language
       \endverb
     \endentry
-    \entry{wikipedia:webgpu}{online}{}
+    \entry{wikipedia:lookup}{online}{}
       \name{author}{1}{}{%
         {{hash=f95e8679bf3071e22969b73a59ae1756}{%
            family={{Wikipedia, the free encyclopedia}},
@@ -1416,8 +1560,182 @@
       \field{sortinithash}{1af34bd8c148ffb32de1494636b49713}
       \field{labelnamesource}{author}
       \field{labeltitlesource}{title}
+      \field{title}{Lookup-Tabelle}
+      \field{urlday}{28}
+      \field{urlmonth}{6}
+      \field{urlyear}{2020}
+      \field{urldateera}{ce}
+      \verb{urlraw}
+      \verb https://de.wikipedia.org/wiki/Lookup-Tabelle
+      \endverb
+      \verb{url}
+      \verb https://de.wikipedia.org/wiki/Lookup-Tabelle
+      \endverb
+    \endentry
+    \entry{wikipedia:opera}{online}{}
+      \name{author}{1}{}{%
+        {{hash=f95e8679bf3071e22969b73a59ae1756}{%
+           family={{Wikipedia, the free encyclopedia}},
+           familyi={W\bibinitperiod}}}%
+      }
+      \strng{namehash}{f95e8679bf3071e22969b73a59ae1756}
+      \strng{fullhash}{f95e8679bf3071e22969b73a59ae1756}
+      \strng{bibnamehash}{f95e8679bf3071e22969b73a59ae1756}
+      \strng{authorbibnamehash}{f95e8679bf3071e22969b73a59ae1756}
+      \strng{authornamehash}{f95e8679bf3071e22969b73a59ae1756}
+      \strng{authorfullhash}{f95e8679bf3071e22969b73a59ae1756}
+      \field{extraname}{7}
+      \field{sortinit}{W}
+      \field{sortinithash}{1af34bd8c148ffb32de1494636b49713}
+      \field{labelnamesource}{author}
+      \field{labeltitlesource}{title}
+      \field{title}{Opera (Browser)}
+      \field{urlday}{28}
+      \field{urlmonth}{6}
+      \field{urlyear}{2020}
+      \field{urldateera}{ce}
+      \verb{urlraw}
+      \verb https://de.wikipedia.org/wiki/Opera_(Browser)
+      \endverb
+      \verb{url}
+      \verb https://de.wikipedia.org/wiki/Opera_(Browser)
+      \endverb
+    \endentry
+    \entry{wikipedia:samsung_internet}{online}{}
+      \name{author}{1}{}{%
+        {{hash=f95e8679bf3071e22969b73a59ae1756}{%
+           family={{Wikipedia, the free encyclopedia}},
+           familyi={W\bibinitperiod}}}%
+      }
+      \strng{namehash}{f95e8679bf3071e22969b73a59ae1756}
+      \strng{fullhash}{f95e8679bf3071e22969b73a59ae1756}
+      \strng{bibnamehash}{f95e8679bf3071e22969b73a59ae1756}
+      \strng{authorbibnamehash}{f95e8679bf3071e22969b73a59ae1756}
+      \strng{authornamehash}{f95e8679bf3071e22969b73a59ae1756}
+      \strng{authorfullhash}{f95e8679bf3071e22969b73a59ae1756}
+      \field{extraname}{8}
+      \field{sortinit}{W}
+      \field{sortinithash}{1af34bd8c148ffb32de1494636b49713}
+      \field{labelnamesource}{author}
+      \field{labeltitlesource}{title}
+      \field{title}{Samsung Internet}
+      \field{urlday}{28}
+      \field{urlmonth}{6}
+      \field{urlyear}{2020}
+      \field{urldateera}{ce}
+      \verb{urlraw}
+      \verb https://en.wikipedia.org/wiki/Samsung_Internet
+      \endverb
+      \verb{url}
+      \verb https://en.wikipedia.org/wiki/Samsung_Internet
+      \endverb
+    \endentry
+    \entry{wikipedia:swap_chain}{online}{}
+      \name{author}{1}{}{%
+        {{hash=f95e8679bf3071e22969b73a59ae1756}{%
+           family={{Wikipedia, the free encyclopedia}},
+           familyi={W\bibinitperiod}}}%
+      }
+      \strng{namehash}{f95e8679bf3071e22969b73a59ae1756}
+      \strng{fullhash}{f95e8679bf3071e22969b73a59ae1756}
+      \strng{bibnamehash}{f95e8679bf3071e22969b73a59ae1756}
+      \strng{authorbibnamehash}{f95e8679bf3071e22969b73a59ae1756}
+      \strng{authornamehash}{f95e8679bf3071e22969b73a59ae1756}
+      \strng{authorfullhash}{f95e8679bf3071e22969b73a59ae1756}
+      \field{extraname}{9}
+      \field{sortinit}{W}
+      \field{sortinithash}{1af34bd8c148ffb32de1494636b49713}
+      \field{labelnamesource}{author}
+      \field{labeltitlesource}{title}
+      \field{title}{Swap chain}
+      \field{urlday}{28}
+      \field{urlmonth}{6}
+      \field{urlyear}{2020}
+      \field{urldateera}{ce}
+      \verb{urlraw}
+      \verb https://en.wikipedia.org/wiki/Swap_chain
+      \endverb
+      \verb{url}
+      \verb https://en.wikipedia.org/wiki/Swap_chain
+      \endverb
+    \endentry
+    \entry{wikipedia:swizzling}{online}{}
+      \name{author}{1}{}{%
+        {{hash=f95e8679bf3071e22969b73a59ae1756}{%
+           family={{Wikipedia, the free encyclopedia}},
+           familyi={W\bibinitperiod}}}%
+      }
+      \strng{namehash}{f95e8679bf3071e22969b73a59ae1756}
+      \strng{fullhash}{f95e8679bf3071e22969b73a59ae1756}
+      \strng{bibnamehash}{f95e8679bf3071e22969b73a59ae1756}
+      \strng{authorbibnamehash}{f95e8679bf3071e22969b73a59ae1756}
+      \strng{authornamehash}{f95e8679bf3071e22969b73a59ae1756}
+      \strng{authorfullhash}{f95e8679bf3071e22969b73a59ae1756}
+      \field{extraname}{10}
+      \field{sortinit}{W}
+      \field{sortinithash}{1af34bd8c148ffb32de1494636b49713}
+      \field{labelnamesource}{author}
+      \field{labeltitlesource}{title}
+      \field{title}{Swizzling (computer graphics)}
+      \field{urlday}{28}
+      \field{urlmonth}{6}
+      \field{urlyear}{2020}
+      \field{urldateera}{ce}
+      \verb{urlraw}
+      \verb https://en.wikipedia.org/wiki/Swizzling_(computer_graphics)
+      \endverb
+      \verb{url}
+      \verb https://en.wikipedia.org/wiki/Swizzling_(computer_graphics)
+      \endverb
+    \endentry
+    \entry{wikipedia:texel}{online}{}
+      \name{author}{1}{}{%
+        {{hash=f95e8679bf3071e22969b73a59ae1756}{%
+           family={{Wikipedia, the free encyclopedia}},
+           familyi={W\bibinitperiod}}}%
+      }
+      \strng{namehash}{f95e8679bf3071e22969b73a59ae1756}
+      \strng{fullhash}{f95e8679bf3071e22969b73a59ae1756}
+      \strng{bibnamehash}{f95e8679bf3071e22969b73a59ae1756}
+      \strng{authorbibnamehash}{f95e8679bf3071e22969b73a59ae1756}
+      \strng{authornamehash}{f95e8679bf3071e22969b73a59ae1756}
+      \strng{authorfullhash}{f95e8679bf3071e22969b73a59ae1756}
+      \field{extraname}{11}
+      \field{sortinit}{W}
+      \field{sortinithash}{1af34bd8c148ffb32de1494636b49713}
+      \field{labelnamesource}{author}
+      \field{labeltitlesource}{title}
+      \field{title}{Texel (graphics)}
+      \field{urlday}{28}
+      \field{urlmonth}{6}
+      \field{urlyear}{2020}
+      \field{urldateera}{ce}
+      \verb{urlraw}
+      \verb https://en.wikipedia.org/wiki/Texel_(graphics)
+      \endverb
+      \verb{url}
+      \verb https://en.wikipedia.org/wiki/Texel_(graphics)
+      \endverb
+    \endentry
+    \entry{wikipedia:webgpu}{online}{}
+      \name{author}{1}{}{%
+        {{hash=f95e8679bf3071e22969b73a59ae1756}{%
+           family={{Wikipedia, the free encyclopedia}},
+           familyi={W\bibinitperiod}}}%
+      }
+      \strng{namehash}{f95e8679bf3071e22969b73a59ae1756}
+      \strng{fullhash}{f95e8679bf3071e22969b73a59ae1756}
+      \strng{bibnamehash}{f95e8679bf3071e22969b73a59ae1756}
+      \strng{authorbibnamehash}{f95e8679bf3071e22969b73a59ae1756}
+      \strng{authornamehash}{f95e8679bf3071e22969b73a59ae1756}
+      \strng{authorfullhash}{f95e8679bf3071e22969b73a59ae1756}
+      \field{extraname}{12}
+      \field{sortinit}{W}
+      \field{sortinithash}{1af34bd8c148ffb32de1494636b49713}
+      \field{labelnamesource}{author}
+      \field{labeltitlesource}{title}
       \field{title}{WebGPU}
-      \field{urlday}{20}
+      \field{urlday}{28}
       \field{urlmonth}{6}
       \field{urlyear}{2020}
       \field{urldateera}{ce}
