@@ -1303,7 +1303,7 @@ Dabei ist zu beachten, dass dieses Minimalbeispiel nicht darauf ausgelegt ist ei
 \textit{In diesem Abschnitt wird mit \quotize{der Benutzer}, ein Benutzer der \textbf{spider}-Engine verstanden, also eine Person, die mithilfe der Engine eine eigene Applikation entwickelt. \quotize{Der Benutzer} sollte hier als neutrale Form, die die weibliche, sowie die männliche Form beinhaltet, verstanden werden.}
 \subsection{Überblick}
 \label{sub:overview}
-Mit der parallel zu dieser Arbeit entstandenen \textbf{spider}-Engine, lässt sich mit geringem Aufwand eine Webapplikation zur Darstellung von 3D-Szenen in C/C++ erstellen.
+Mit der parallel zu dieser Arbeit entstandenen \textbf{spider}-Engine (\url{https://github.com/Tandaradei/webgpu-wasm}), lässt sich mit geringem Aufwand eine Webapplikation zur Darstellung von 3D-Szenen in C/C++ erstellen.
 Das Grundgerüst dafür ist sehr minimal (siehe Listing \ref{lst:spider_base}).
 
 \begin{minipage}{\textwidth}
@@ -1579,27 +1579,19 @@ und als API \textit{D3D12 (ignore D3D11)} ausgewählt werden (wie in Abbildung \
 
 
 %---
-\chapter{Evaluierung}
-\label{cha:evaluation}
-
-
-%---
 \chapter{Zusammenfassung und Ausblick}
 \label{cha:zusammenfassung}
 
 \section{Erreichte Ergebnisse}
 \label{sec:ergebnisse}
+Durch die Arbeit hat der Verfasser ein tieferes Verständnis von \textbf{WebGPU} (und anderen Grafik-APIs) erhalten. Dadurch konnte unter anderem die \textbf{spider}-Engine erfolgreich als praktischer Teil umgesetzt werden, so dass andere diese benutzen können um ihre eigenen interaktiven 3D-Web-Applikationen zu erstellen. 
 
+Auch ist ein besseres Verständnis für das Compiler-Werkzeug emscripten zustande gekommen. Dies ging sogar so weit, dass der Verfasser, die \textbf{WebGPU}-Integration in emscripten aktualisieren und verbessern konnte (siehe \url{https://github.com/emscripten-core/emscripten/pull/11067}).
 
 \section{Ausblick}
 \label{sec:ausblick}
 
-\subsection{Erweiterbarkeit der Ergebnisse}
-\label{sub:erweiterbarkeit}
-
-\subsection{Übertragbarkeit der Ergebnisse}
-\label{sub:uebertragbarkeit}
-
+Sobald die \textbf{WebGPU}-Spezifikation und Implementierung vollständig (Version 1.0) ist, lassen sich die Ergebnisse dieser Arbeit neu evaluieren und man kann dann den Fortschritt daran messen. Da die in dieser Arbeit beschriebenen Teile von \textbf{WebGPU} schon relativ fest stehen und sich zur \quotize{fertigen} Version wahrscheinlich nicht mehr großartig ändern werden, könnte sich eine weitere Arbeit explizit mit den (dann hoffentlich besser spezifizierten und implementierten) \textit{GPU-Compute}-Funktionen beschäftigen.
 
 %-----------------------------------------------------------------------
 \addcontentsline{toc}{chapter}{Referenzen}
