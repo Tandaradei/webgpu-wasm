@@ -19,6 +19,7 @@ void _spUpdateUboModel(void) {
         .usage = WGPUBufferUsage_CopySrc,
         .size = (_sp_state.pools.render_mesh.info.size - 1) * _sp_state.dynamic_alignment,
     };
+    SP_ASSERT(buffer_desc.size % 4 == 0);
     WGPUCreateBufferMappedResult result = wgpuDeviceCreateBufferMapped(_sp_state.device, &buffer_desc);
     _sp_state.buffers.uniform.model_staging = result.buffer;
 
@@ -55,6 +56,7 @@ void _spUpdateUboCamera(void) {
         .usage = WGPUBufferUsage_CopySrc,
         .size = sizeof (_SPUboCamera),
     };
+    SP_ASSERT(buffer_desc.size % 4 == 0);
     WGPUCreateBufferMappedResult result = wgpuDeviceCreateBufferMapped(_sp_state.device, &buffer_desc);
     _sp_state.buffers.uniform.camera_staging = result.buffer;
     
@@ -87,6 +89,7 @@ void _spUpdateUboLight(void) {
         .usage = WGPUBufferUsage_CopySrc,
         .size = (_sp_state.pools.light.info.size - 1) * _sp_state.dynamic_alignment,
     };
+    SP_ASSERT(buffer_desc.size % 4 == 0);
     WGPUCreateBufferMappedResult result = wgpuDeviceCreateBufferMapped(_sp_state.device, &buffer_desc);
     _sp_state.buffers.uniform.light_staging = result.buffer;
     

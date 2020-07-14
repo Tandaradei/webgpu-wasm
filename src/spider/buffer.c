@@ -6,15 +6,18 @@
 extern _SPState _sp_state;
 
 _SPGpuBuffer _spCreateGpuBuffer(const _SPGpuBufferDesc* desc) {
+    // Ensure that buffer size is a multiple of 4
+    const uint32_t size = (desc->size + 3) & ~3;
+
     _SPGpuBuffer buffer = {
         .usage = desc->usage,
-        .size = desc->size,
+        .size = size,
     };
 
     WGPUBufferDescriptor buffer_desc = {
         .label = desc->label,
         .usage = desc->usage,
-        .size = desc->size,
+        .size = size,
     };
     if(desc->initial.data && desc->initial.size > 0 && desc->initial.size <= desc->size) {
         WGPUCreateBufferMappedResult result = wgpuDeviceCreateBufferMapped(_sp_state.device, &buffer_desc);
@@ -33,6 +36,7 @@ void _spRecordCopyDataToBuffer(WGPUCommandEncoder encoder, _SPGpuBuffer dest, ui
     SP_ASSERT(encoder);
     SP_ASSERT(data && size > 0);
     SP_ASSERT(dest.buffer && dest.size >= dest_offset + size && (dest.usage & WGPUBufferUsage_CopyDst));
+    SP_ASSERT(size % 4 == 0);
     WGPUBufferDescriptor staging_buffer_desc = {
         .usage = WGPUBufferUsage_CopySrc,
         .size = size,

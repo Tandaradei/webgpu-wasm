@@ -81,7 +81,7 @@ SPMaterialID spCreateMaterial(const SPMaterialDesc* desc) {
             .binding = 0,
             .buffer = _sp_state.buffers.uniform.model,
             .offset = 0,
-            .size = sizeof(_SPUboModel),
+            .size = (sizeof(_SPUboModel) + 3) & ~3, // TODO: ensure that size is multiple of 4
             .sampler = NULL,
             .textureView = NULL,
         },
@@ -89,7 +89,7 @@ SPMaterialID spCreateMaterial(const SPMaterialDesc* desc) {
             .binding = 1,
             .buffer = _sp_state.buffers.uniform.camera,
             .offset = 0,
-            .size = sizeof(_SPUboCamera),
+            .size = (sizeof(_SPUboCamera) + 3) & ~3, // TODO: ensure that size is multiple of 4
             .sampler = NULL,
             .textureView = NULL,
         },
@@ -97,7 +97,7 @@ SPMaterialID spCreateMaterial(const SPMaterialDesc* desc) {
             .binding = 2,
             .buffer = _sp_state.buffers.uniform.light,
             .offset = 0,
-            .size = sizeof(_SPUboCamera),
+            .size = (sizeof(_SPUboLight) + 3) & ~3, // TODO: ensure that size is multiple of 4
             .sampler = NULL,
             .textureView = NULL,
         }
@@ -269,20 +269,21 @@ void _spCreateAndLoadTextures(_SPTextureViewFromImageDescriptor descriptors[], c
         mat_tex->texture = wgpuDeviceCreateTexture(_sp_state.device, &tex_desc);
         mat_tex->view = wgpuTextureCreateView(mat_tex->texture, tex_view_desc);
 
-        WGPUBufferDescriptor buffer_desc = {
-            .usage = WGPUBufferUsage_CopySrc,
-            .size = width * height * comps
-        };
+        const uint32_t buffer_size = width * height * comps;
 
-        WGPUCreateBufferMappedResult result = wgpuDeviceCreateBufferMapped(_sp_state.device, &buffer_desc);
-        SP_ASSERT(result.data && result.dataLength == width * height * comps);
-        memcpy(result.data, pixel_data, result.dataLength);
+        _SPGpuBuffer gpu_buffer = _spCreateGpuBuffer(&(_SPGpuBufferDesc){
+			.usage = WGPUBufferUsage_CopySrc,
+			.size = buffer_size,
+			.initial = {
+				.data = pixel_data,
+				.size = buffer_size
+			}
+		});
         stbi_image_free(pixel_data);
-        wgpuBufferUnmap(result.buffer);
-        buffers[i] = result.buffer;
+        buffers[i] = gpu_buffer.buffer;
 
         WGPUBufferCopyView buffer_copy_view = {
-            .buffer = result.buffer,
+            .buffer = gpu_buffer.buffer,
             .offset = 0,
             .bytesPerRow = width * comps,
             .rowsPerImage = height,

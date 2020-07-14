@@ -15,30 +15,32 @@ SPMeshID spCreateMesh(const SPMeshDesc* desc) {
     SPMesh* mesh = &(_sp_state.pools.mesh.data[id]);
     // Vertex buffer creation
     {
-        WGPUBufferDescriptor buffer_desc = {
-            .usage = WGPUBufferUsage_Vertex,
-            .size = sizeof(SPVertex) * desc->vertices.count
-        };
+        const uint32_t buffer_size = sizeof(SPVertex) * desc->vertices.count;
 
-        WGPUCreateBufferMappedResult result = wgpuDeviceCreateBufferMapped(_sp_state.device, &buffer_desc);
-
-        memcpy(result.data, desc->vertices.data, result.dataLength);
-        mesh->vertex_buffer = result.buffer;
-        wgpuBufferUnmap(mesh->vertex_buffer);
+        _SPGpuBuffer gpu_buffer = _spCreateGpuBuffer(&(_SPGpuBufferDesc){
+			.usage = WGPUBufferUsage_Vertex,
+			.size = buffer_size,
+			.initial = {
+				.data = desc->vertices.data,
+				.size = buffer_size
+			}
+		});
+        mesh->vertex_buffer = gpu_buffer.buffer;
     }
 
     // Index buffer creation
     {
-        WGPUBufferDescriptor buffer_desc = {
+        const uint32_t buffer_size = sizeof(uint16_t) * desc->indices.count;
+
+        _SPGpuBuffer gpu_buffer = _spCreateGpuBuffer(&(_SPGpuBufferDesc){
             .usage = WGPUBufferUsage_Index,
-            .size = sizeof(uint16_t) * desc->indices.count
-        };
-
-        WGPUCreateBufferMappedResult result = wgpuDeviceCreateBufferMapped(_sp_state.device, &buffer_desc);
-
-        memcpy(result.data, desc->indices.data, result.dataLength);
-        mesh->index_buffer = result.buffer;
-        wgpuBufferUnmap(mesh->index_buffer);
+            .size = buffer_size,
+            .initial = {
+                .data = desc->indices.data,
+                .size = buffer_size,
+            }
+        });
+        mesh->index_buffer = gpu_buffer.buffer;
 
         mesh->indices_count = desc->indices.count;
     }

@@ -65,7 +65,7 @@ void spInit(const SPInitDesc* desc) {
 			.usage = WGPUBufferUsage_Uniform | WGPUBufferUsage_CopyDst,
 			.size = sizeof(_SPUboCamera),
 		};
-
+		SP_ASSERT(buffer_desc.size % 4 == 0);
 	   _sp_state.buffers.uniform.camera = wgpuDeviceCreateBuffer(_sp_state.device, &buffer_desc);
 	}
 
@@ -78,7 +78,7 @@ void spInit(const SPInitDesc* desc) {
 			.usage = WGPUBufferUsage_Uniform | WGPUBufferUsage_CopyDst,
 			.size = _sp_state.dynamic_alignment * instance_count,
 		};
-
+		SP_ASSERT(buffer_desc.size % 4 == 0);
 		_sp_state.buffers.uniform.model = wgpuDeviceCreateBuffer(_sp_state.device, &buffer_desc);
 	}
 
@@ -89,7 +89,7 @@ void spInit(const SPInitDesc* desc) {
 			.usage = WGPUBufferUsage_Uniform | WGPUBufferUsage_CopyDst,
 			.size = _sp_state.dynamic_alignment * light_count,
 		};
-
+		SP_ASSERT(buffer_desc.size % 4 == 0);
 		_sp_state.buffers.uniform.light = wgpuDeviceCreateBuffer(_sp_state.device, &buffer_desc);
 	}
 
@@ -556,7 +556,7 @@ void _spCreateShadowMapRenderPipeline() {
 			.binding = 0,
 			.buffer = _sp_state.buffers.uniform.model,
 			.offset = 0,
-			.size = sizeof(_SPUboModel),
+			.size = (sizeof(_SPUboModel) + 3) & ~3, // TODO: ensure that size is multiple of 4
 			.sampler = NULL,
 			.textureView = NULL,
 		},
@@ -564,7 +564,7 @@ void _spCreateShadowMapRenderPipeline() {
 			.binding = 1,
 			.buffer = _sp_state.buffers.uniform.light,
 			.offset = 0,
-			.size = sizeof(_SPUboLight),
+			.size = (sizeof(_SPUboLight) + 3) & ~3, // TODO: ensure that size is multiple of 4
 			.sampler = NULL,
 			.textureView = NULL,
 		},

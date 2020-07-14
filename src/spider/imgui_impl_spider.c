@@ -67,13 +67,17 @@ void _spImGuiInit(const SPInitImGuiDesc* desc) {
 			.size = pixels_size_bytes,
 		};
 
-		WGPUCreateBufferMappedResult result = wgpuDeviceCreateBufferMapped(_sp_state.device, &buffer_desc);
-		SP_ASSERT(result.buffer && result.data);
-		memcpy(result.data, font_pixels, result.dataLength);
-		wgpuBufferUnmap(result.buffer);
+		_SPGpuBuffer gpu_buffer = _spCreateGpuBuffer(&(_SPGpuBufferDesc){
+			.usage = WGPUBufferUsage_CopySrc,
+			.size = pixels_size_bytes,
+			.initial = {
+				.data = font_pixels,
+				.size = pixels_size_bytes
+			}
+		});
 
 		WGPUBufferCopyView buffer_copy_view = {
-			.buffer = result.buffer,
+			.buffer = gpu_buffer.buffer,
 			.offset = 0,
 			.bytesPerRow = font_width * bytes_per_pixel,
 			.rowsPerImage = font_height
@@ -230,7 +234,7 @@ void _spImGuiInit(const SPInitImGuiDesc* desc) {
 			{
 				.binding = 0,
 				.offset = 0,
-				.size = sizeof(ImVec2),
+				.size = _sp_state.imgui.uniform_buffer.size,
 				.buffer = _sp_state.imgui.uniform_buffer.buffer,
 			}
 		};
