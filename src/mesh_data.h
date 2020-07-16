@@ -56,10 +56,10 @@ vec3 cube_vertices[] = {
 };
 
 vec2 cube_tex_coords[] = {
-    {0.0f, 0.0f},
     {1.0f, 0.0f},
+    {0.0f, 0.0f},
+    {0.0f, 1.0f},
     {1.0f, 1.0f},
-    {0.0f, 1.0f}
 };
 
 SPTriangle cube_faces[] = {

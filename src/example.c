@@ -1,4 +1,7 @@
 #include "spider/spider.h"
+#include "mesh_data.h"
+
+#define SHEETS 19
 
 static SPLightID spot_light_id;
 static uint32_t last_mouse_pos_x = 0;
@@ -9,6 +12,9 @@ static vec3 cam_rot = {0.0f, 0.0f, 0.0f};
 static vec4 forward = {0.0f, 0.0f, 1.0f, 0.0f};
 static float sensitivity = 2.0f;
 static float vertical_limit = 0.01f;
+
+static SPSceneNodeID cube_root;
+static SPSceneNodeID sheets[SHEETS];
 
 void init(void) {
     // Lights have to be created before materials right now 
@@ -35,6 +41,39 @@ void init(void) {
     SP_ASSERT(spot_light_id.id != SP_INVALID_ID);
 
     /*SPSceneNodeID sponza_node_id = */spLoadGltf("assets/gltf/Sponza/Sponza.gltf");
+
+    cube_root = spCreateEmptySceneNode(&(SPEmptySceneNodeDesc){
+        .transform = &(SPTransform) {
+            .pos = {0.0f, 0.0f, 0.0f},
+            .rot = {0.0f, 0.0f, 0.0f},
+            .scale = {1.0f, 1.0f, 1.0f}
+        },
+        .parent = {SP_INVALID_ID}
+    });
+
+    SPMeshID cube_mesh = spCreateMeshFromInit(&cube);
+
+    const float cube_scale = 1.0f;
+    spSceneNodeSetChildrenCapacity(spGetSceneNode(cube_root), SHEETS);
+    for(uint32_t i = 0; i < SHEETS; i++) {
+        char name[50];
+        sprintf(name, "assets/textures/kolloquium/kolloquium-%02d.jpg", i+1);
+        printf("Loading %s\n", name);
+        SPMaterialID mat_id = spCreateMaterial(&(SPMaterialDesc){
+            .albedo = name,
+            .normal = "assets/textures/Metal003_2K_Normal.jpg",
+            .ao_roughness_metallic = "assets/textures/cube_arm.png"
+        });
+        sheets[i] = spCreateRenderMeshSceneNode(&(SPRenderMeshSceneNodeDesc){
+            .material = mat_id,
+            .mesh = cube_mesh,
+            .transform = &(SPTransform){
+                .pos = {-(SHEETS * 0.5f * cube_scale) + i * cube_scale, 1.0f, 0.0f},
+                .scale = {cube_scale * 0.5f, cube_scale * 0.5f, cube_scale * 0.5f}
+            },
+            .parent = cube_root
+        });
+    }
 }
 
 bool update(float delta_time_s) {
@@ -113,6 +152,15 @@ bool update(float delta_time_s) {
     }
     igEnd();
 
+    const float rotation_speed = 20.0f * M_PI / 180.0f;
+    for(uint32_t i = 0; i < SHEETS; i++) {
+        SPSceneNode* node = spGetSceneNode(sheets[i]);
+        if(node) {
+            node->transform.rot[1] += i * rotation_speed * delta_time_s;
+        }
+    }
+    spSceneNodeMarkDirty(spGetSceneNode(cube_root));
+
     // return false if you want to quit
     return true;
 }
@@ -135,8 +183,8 @@ int main() {
         },
         .pools.capacities = {
             .meshes = 128,
-            .materials = 64,
-            .render_meshes = 256,
+            .materials = 128,
+            .render_meshes = 512,
             .lights = 1,
             .scene_nodes = 1024,
         },
